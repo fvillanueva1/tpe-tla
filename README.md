@@ -1,102 +1,43 @@
-[![✗](https://img.shields.io/badge/Release-v0.1.0-ffb600.svg?style=for-the-badge)](https://github.com/fvillanueva1/tpe-tla/releases)
+# Cadence
 
-[![✗](https://github.com/fvillanueva1/tpe-tla/actions/workflows/pipeline.yaml/badge.svg?branch=development)](https://github.com/fvillanueva1/tpe-tla/actions/workflows/pipeline.yaml)
+Cadence es un lenguaje de dominio específico para describir armonía tonal a
+partir de tonalidades, grados, acordes y progresiones. El compilador, escrito
+en C con Flex y Bison, derivará las notas concretas, validará reglas musicales
+y generará artefactos reproducibles.
 
-# Flex-Bison-Compiler
+## Estado del proyecto
 
-A base compiler example, developed with Flex and Bison.
+El proyecto se encuentra en **Stage I: Diseño**. La primera versión de la
+especificación está disponible como [PDF de entrega](<doc/Cadence%20-%20Especificaci%C3%B3n%20Stage%20I.pdf>).
+Es un documento de trabajo: se revisará antes de la entrega definitiva.
 
-* [Requirements](#requirements)
-* [Configuration](#configuration)
-* [Commands](#commands)
-* [CI/CD](#cicd)
-* [Recommended Extensions](#recommended-extensions)
+La fuente editable de la especificación está en
+[docs/stage-i/cadence-especificacion.md](docs/stage-i/cadence-especificacion.md).
 
-## Requirements
+## Documentación
 
-* [Docker v28.3.2](https://www.docker.com/)
+- [Especificación Stage I](docs/stage-i/cadence-especificacion.md)
+- [Consignas y material de la cátedra](docs/consignas/)
+- [PDF de la primera iteración](<doc/Cadence%20-%20Especificaci%C3%B3n%20Stage%20I.pdf>)
 
-## Configuration
+La carpeta `doc/` contiene exclusivamente los entregables. `docs/` contiene
+fuentes de trabajo y material de referencia.
 
-Set the following environment variables to control and configure the behaviour of the application:
+## Desarrollo
 
-| Name                  | Default | Description                                                                                                                                                           |
-| :-------------------- | :-----: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ENVIRONMENT`         | `Local` | The active environment name. The available environments are: `Local`, `Development` and `Production`.                                                                 |
-| `LOG_IGNORED_LEXEMES` | `true`  | When `true`, logs all of the ignored lexemes found with Flex at `DEBUGGING` level. To remove those logs from the console output set it to `false`.                    |
-| `LOGGING_LEVEL`       | `ALL`   | The minimum level to log in the console output. From lower to higher, the available levels are: `ALL`, `DEBUGGING`, `INFORMATION`, `WARNING`, `ERROR` and `CRITICAL`. |
-
-_Docker Compose_ can read the variables from an `.env` file too (see `compose.yaml` file).
-
-## Commands
-
-### Start
-
-Rises an ephemeral container, ready to start development:
+El proyecto base se ejecuta dentro de Docker Compose. Se necesita
+[Docker](https://www.docker.com/).
 
 ```bash
 docker compose run --rm compiler
 ```
 
-### Build
-
-Builds or rebuilds the entire compiler:
+Desde el contenedor se pueden usar los scripts provistos:
 
 ```bash
 src/main/bash/build.sh
-```
-
-### Run
-
-Compiles a program:
-
-```bash
-src/main/bash/run.sh <program>
-```
-
-where `<program>` is the path to the file that represents its entry-point.
-
-### Test
-
-Executes every available unit-test under `src/test/c` folder:
-
-```bash
+src/main/bash/run.sh <programa>
 src/main/bash/test.sh
 ```
 
-### Stop
-
-Logout, destroy the ephemeral containers and shutdowns the cluster:
-
-```bash
-exit
-docker compose down
-```
-
-### Docker
-
-| Command                                 | Description                                             |
-| :-------------------------------------- | :------------------------------------------------------ |
-| `docker builder prune --all`            | Removes all builds and complete build cache.            |
-| `docker compose --progress=plain build` | Forces a build or rebuild of the images in the cluster. |
-| `docker image prune`                    | Removes all of the dangling images from Docker.         |
-| `docker network prune`                  | Removes unused networks from Docker.                    |
-| `docker volume prune`                   | Removes unused volumes from Docker.                     |
-
-## CI/CD
-
-To trigger an automatic integration on every push or PR (_Pull Request_), you must activate _GitHub Actions_ in the _Settings_ tab. Use the following configuration:
-
-| Key                                                        | Value                                               |
-| :--------------------------------------------------------- | :-------------------------------------------------- |
-| `Actions permissions`                                      | `Allow all actions and reusable workflows`          |
-| `Allow GitHub Actions to create and approve pull requests` | `false`                                             |
-| `Artifact and log retention`                               | `30 days`                                           |
-| `Fork pull request workflows from outside collaborators`   | `Require approval for all outside collaborators`    |
-| `Workflow permissions`                                     | `Read repository contents and packages permissions` |
-
-## Recommended Extensions
-
-* [C/C++](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools)
-* [CMake Tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools)
-* [Yash](https://marketplace.visualstudio.com/items?itemName=daohong-emilio.yash)
+Las entregas se realizan sobre la rama `development`.

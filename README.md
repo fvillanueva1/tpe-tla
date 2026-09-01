@@ -7,21 +7,16 @@ y generará artefactos reproducibles.
 
 ## Estado del proyecto
 
-El proyecto se encuentra en **Stage I: Diseño**. La primera versión de la
-especificación está disponible como [PDF de entrega](<doc/Cadence%20-%20Especificaci%C3%B3n%20Stage%20I.pdf>).
-Es un documento de trabajo: se revisará antes de la entrega definitiva.
-
-La fuente editable de la especificación está en
-[docs/stage-i/cadence-especificacion.md](docs/stage-i/cadence-especificacion.md).
+El proyecto se encuentra en **Stage I: Diseño**. La especificación final está
+disponible como [PDF de entrega](<doc/Cadence%20-%20Stage%20I.pdf>).
 
 ## Documentación
 
-- [Especificación Stage I](docs/stage-i/cadence-especificacion.md)
+- [Especificación final de Stage I](<doc/Cadence%20-%20Stage%20I.pdf>)
 - [Consignas y material de la cátedra](docs/consignas/)
-- [PDF de la primera iteración](<doc/Cadence%20-%20Especificaci%C3%B3n%20Stage%20I.pdf>)
 
-La carpeta `doc/` contiene exclusivamente los entregables. `docs/` contiene
-fuentes de trabajo y material de referencia.
+La carpeta `doc/` contiene los entregables. `docs/` contiene material de
+referencia.
 
 ## Desarrollo
 

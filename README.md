@@ -13,10 +13,10 @@ disponible como [PDF de entrega](<doc/Cadence%20-%20Stage%20I.pdf>).
 ## Documentación
 
 - [Especificación final de Stage I](<doc/Cadence%20-%20Stage%20I.pdf>)
-- [Consignas y material de la cátedra](docs/consignas/)
+- [Consignas y material de la cátedra](doc/consignas/)
 
-La carpeta `doc/` contiene los entregables. `docs/` contiene material de
-referencia.
+La carpeta `doc/` contiene los entregables y, en `doc/consignas/`, el material
+de referencia de la cátedra.
 
 ## Desarrollo
 

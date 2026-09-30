@@ -13,6 +13,8 @@ disponible como [PDF de entrega](<doc/Cadence%20-%20Stage%20I.pdf>).
 ## Documentación
 
 - [Especificación final de Stage I](<doc/Cadence%20-%20Stage%20I.pdf>)
+- [Decisiones de diseño de Stage II](doc/stage-ii/decisiones.md)
+- [Tokens y nodos del AST](doc/stage-ii/tokens.md)
 - [Consignas y material de la cátedra](doc/consignas/)
 
 La carpeta `doc/` contiene los entregables y, en `doc/consignas/`, el material

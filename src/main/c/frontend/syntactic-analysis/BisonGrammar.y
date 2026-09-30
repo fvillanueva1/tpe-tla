@@ -26,14 +26,12 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 %union {
 	/** Terminals. */
 
+	char * string;
 	signed int integer;
 	TokenLabel token;
 
 	/** Non-terminals. */
 
-	Constant * constant;
-	Expression * expression;
-	Factor * factor;
 	Program * program;
 }
 
@@ -45,60 +43,137 @@ void yyerror(const YYLTYPE * location, const char * message) {}
  *
  * @see https://www.gnu.org/software/bison/manual/html_node/Destructor-Decl.html
  */
-%destructor { destroyConstant($$); } <constant>
-%destructor { destroyExpression($$); } <expression>
-%destructor { destroyFactor($$); } <factor>
+%destructor { free($$); } <string>
 
 /** Terminals. */
+
+// Literals.
 %token <integer> INTEGER
+%token <string> DEGREE
+%token <string> DURATION
+%token <string> ID
+%token <string> INTERVAL
+%token <string> NOTE
+%token <string> STRING_TEXT
+
+// Types.
+%token <token> BOOLEAN_TYPE
+%token <token> CHORD_TYPE
+%token <token> INTEGER_TYPE
+%token <token> INTERVAL_TYPE
+%token <token> KEY_TYPE
+%token <token> NOTE_TYPE
+%token <token> PROGRESSION_TYPE
+%token <token> SCALE_TYPE
+%token <token> STRING_TYPE
+%token <token> VOICING_TYPE
+
+// Modes and tonal relations.
+%token <token> DIMINISHED
+%token <token> DOMINANT
+%token <token> DORIAN
+%token <token> LOCRIAN
+%token <token> LYDIAN
+%token <token> MAJOR
+%token <token> MINOR
+%token <token> MIXOLYDIAN
+%token <token> PHRYGIAN
+%token <token> RELATIVE
+%token <token> STRICT
+%token <token> SUBDOMINANT
+
+// Harmony.
+%token <token> ARPEGGIATE
+%token <token> BY
+%token <token> INVERT
+%token <token> MODULATE
+%token <token> NINTH
+%token <token> SEVENTH
+%token <token> TRIAD
+
+// Voice leading.
+%token <token> CHECK
+%token <token> PARALLEL_FIFTHS
+%token <token> PARALLEL_OCTAVES
+%token <token> SATB
+%token <token> VOICE
+%token <token> VOICE_CROSSING
+
+// Output.
+%token <token> BPM
+%token <token> EXPORT
+%token <token> LOG
+%token <token> MIDI
+%token <token> SHEET
+
+// Control flow and procedures.
+%token <token> DEFINE
+%token <token> ELSE
+%token <token> FALSE
+%token <token> FOR
+%token <token> IF
+%token <token> RETURN
+%token <token> TRUE
+%token <token> WHILE
+
+// Words shared by several constructions.
+%token <token> AS
+%token <token> AT
+%token <token> IN
+%token <token> OF
+%token <token> ON
+%token <token> TO
+%token <token> WITH
+
+// Operators.
 %token <token> ADD
-%token <token> CLOSE_BRACE
-%token <token> CLOSE_COMMENT
-%token <token> CLOSE_PARENTHESIS
+%token <token> AND
+%token <token> ASSIGN
 %token <token> DIV
+%token <token> EQUAL
+%token <token> GREATER
+%token <token> GREATER_EQUAL
+%token <token> LESS
+%token <token> LESS_EQUAL
 %token <token> MUL
-%token <token> OPEN_BRACE
-%token <token> OPEN_COMMENT
-%token <token> OPEN_PARENTHESIS
+%token <token> NOT
+%token <token> NOT_EQUAL
+%token <token> OR
 %token <token> SUB
+
+// Punctuation.
+%token <token> ARROW
+%token <token> CLOSE_BRACE
+%token <token> CLOSE_BRACKET
+%token <token> CLOSE_INTERPOLATION
+%token <token> CLOSE_PARENTHESIS
+%token <token> CLOSE_STRING
+%token <token> COMMA
+%token <token> DOT
+%token <token> OPEN_BRACE
+%token <token> OPEN_BRACKET
+%token <token> OPEN_INTERPOLATION
+%token <token> OPEN_PARENTHESIS
+%token <token> OPEN_STRING
+%token <token> SEMICOLON
+
+// Comments and lexical errors.
+%token <token> CLOSE_COMMENT
+%token <token> OPEN_COMMENT
 
 %token <token> IGNORED
 %token <token> UNKNOWN
 
 /** Non-terminals. */
-%type <constant> constant
-%type <expression> expression
-%type <factor> factor
 %type <program> program
 
-/**
- * Precedence and associativity.
- *
- * @see https://en.cppreference.com/w/cpp/language/operator_precedence.html
- * @see https://www.gnu.org/software/bison/manual/html_node/Precedence.html
- */
-%left ADD SUB
-%left MUL DIV
+%expect 0
 
 %%
 
 // IMPORTANT: To use λ in the following grammar, use the %empty symbol.
 
-program: expression											{ $$ = ExpressionProgramSemanticAction($1); }
-	;
-
-expression: expression[left] ADD expression[right]			{ $$ = ArithmeticExpressionSemanticAction($left, $right, ADDITION); }
-	| expression[left] DIV expression[right]				{ $$ = ArithmeticExpressionSemanticAction($left, $right, DIVISION); }
-	| expression[left] MUL expression[right]				{ $$ = ArithmeticExpressionSemanticAction($left, $right, MULTIPLICATION); }
-	| expression[left] SUB expression[right]				{ $$ = ArithmeticExpressionSemanticAction($left, $right, SUBTRACTION); }
-	| factor												{ $$ = FactorExpressionSemanticAction($1); }
-	;
-
-factor: OPEN_PARENTHESIS expression CLOSE_PARENTHESIS		{ $$ = ExpressionFactorSemanticAction($2); }
-	| constant												{ $$ = ConstantFactorSemanticAction($1); }
-	;
-
-constant: INTEGER											{ $$ = IntegerConstantSemanticAction($1); }
+program: %empty												{ $$ = ProgramSemanticAction(); }
 	;
 
 %%

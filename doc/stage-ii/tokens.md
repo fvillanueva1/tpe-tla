@@ -100,15 +100,23 @@ del lexer.
 
 ## Nodos del AST
 
-Por ahora solo existe `Program`. Los demás se agregan junto con la regla de
-gramática que los usa, con estos nombres:
+Los nodos se agregan junto con la regla de gramática que los usa. Cada uno
+tiene su función `destroy<Nodo>` en `AbstractSyntaxTree.c`.
+
+Existen:
+
+| Nodo | Contenido |
+|------|-----------|
+| `Program` | La lista de sentencias |
+| `StatementList` | Una sentencia y la lista siguiente (no vacía, en orden) |
+| `Statement` | Declaración (`StatementType` `DECLARATION`, con `DataType`) o asignación (`ASSIGNMENT`) |
+| `Expression` | Literal (entero, booleano, nota, intervalo), variable, operación binaria o negación; el tipo es `ExpressionType` |
+| `DataType` | Enumerado con los tipos del lenguaje (`TYPE_CHORD`, `TYPE_NOTE`, ...) |
+
+Se agregarán con estos nombres:
 
 | Grupo | Nodos |
 |-------|-------|
-| Programa | `Program`, `Statement` |
-| Sentencias | `Declaration`, `Assignment`, `If`, `For`, `While`, `Return`, `Log`, `Export`, `Check`, `ProcedureDefinition`, `ProcedureCall` |
-| Expresiones | `Expression` (binaria, unaria, literal, variable, índice, propiedad, llamada) |
+| Sentencias | `If`, `For`, `While`, `Return`, `Log`, `Export`, `Check`, `ProcedureDefinition`, `ProcedureCall` |
+| Expresiones | índice, propiedad, llamada |
 | Dominio | `ChordByDegree`, `ChordByNotes`, `ProgressionLiteral`, `VectorLiteral`, `Invert`, `Arpeggiate`, `Modulate`, `Membership`, `Voice` |
-| Tipos | `Type` |
-
-Cada nodo tiene su función `destroy<Nodo>` en `AbstractSyntaxTree.c`.

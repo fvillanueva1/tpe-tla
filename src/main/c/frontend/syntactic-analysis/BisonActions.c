@@ -36,9 +36,94 @@ static void _logSyntacticAnalyzerAction(const char * functionName) {
 
 /* PUBLIC FUNCTIONS */
 
-Program * ProgramSemanticAction() {
+Expression * BinaryExpressionSemanticAction(Expression * leftExpression, Expression * rightExpression, ExpressionType type) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	Expression * expression = calloc(1, sizeof(Expression));
+	expression->leftExpression = leftExpression;
+	expression->rightExpression = rightExpression;
+	expression->type = type;
+	return expression;
+}
+
+Expression * BooleanLiteralSemanticAction(const bool value) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	Expression * expression = calloc(1, sizeof(Expression));
+	expression->boolean = value;
+	expression->type = BOOLEAN_LITERAL;
+	return expression;
+}
+
+Expression * IntegerLiteralSemanticAction(const int value) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	Expression * expression = calloc(1, sizeof(Expression));
+	expression->integer = value;
+	expression->type = INTEGER_LITERAL;
+	return expression;
+}
+
+Expression * IntervalLiteralSemanticAction(char * lexeme) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	Expression * expression = calloc(1, sizeof(Expression));
+	expression->text = lexeme;
+	expression->type = INTERVAL_LITERAL;
+	return expression;
+}
+
+Expression * NegationExpressionSemanticAction(Expression * operand) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	Expression * expression = calloc(1, sizeof(Expression));
+	expression->operand = operand;
+	expression->type = NEGATION;
+	return expression;
+}
+
+Expression * NoteLiteralSemanticAction(char * lexeme) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	Expression * expression = calloc(1, sizeof(Expression));
+	expression->text = lexeme;
+	expression->type = NOTE_LITERAL;
+	return expression;
+}
+
+Expression * VariableExpressionSemanticAction(char * name) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	Expression * expression = calloc(1, sizeof(Expression));
+	expression->text = name;
+	expression->type = VARIABLE;
+	return expression;
+}
+
+Program * StatementsProgramSemanticAction(StatementList * statements) {
 	_logSyntacticAnalyzerAction(__FUNCTION__);
 	Program * program = calloc(1, sizeof(Program));
+	program->statements = statements;
 	_compilerState->abstractSyntaxtTree = program;
 	return program;
+}
+
+Statement * AssignmentStatementSemanticAction(char * name, Expression * expression) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	Statement * statement = calloc(1, sizeof(Statement));
+	statement->expression = expression;
+	statement->name = name;
+	statement->type = ASSIGNMENT;
+	return statement;
+}
+
+Statement * DeclarationStatementSemanticAction(DataType dataType, char * name, Expression * expression) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	Statement * statement = calloc(1, sizeof(Statement));
+	statement->dataType = dataType;
+	statement->expression = expression;
+	statement->name = name;
+	statement->type = DECLARATION;
+	return statement;
+}
+
+StatementList * StatementListSemanticAction(Statement * statement, StatementList * next) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	StatementList * statementList = calloc(1, sizeof(StatementList));
+	statementList->next = next;
+	statementList->statement = statement;
+	return statementList;
 }

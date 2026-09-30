@@ -24,6 +24,13 @@ frontend. Si alguna cambia, se actualiza este documento.
 - Tesitura: rangos fijos por defecto para SATB. No hay sintaxis para
   declararla.
 
+## Precedencia
+
+De menor a mayor: `or`, `and`, `not`, relacionales (`== != < <= > >=`, y `in`
+más adelante), `+ -`, `* /`. `not` queda por debajo de los relacionales, así
+que `not a == b` es `not (a == b)`. Los relacionales no son asociativos:
+`a < b < c` se rechaza. Un programa vacío se rechaza.
+
 ## Lexer
 
 - Las notas sin octava (`C`, `G`, ...) son tokens de nota, así que no pueden

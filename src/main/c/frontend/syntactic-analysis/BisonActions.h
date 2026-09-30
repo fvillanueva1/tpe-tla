@@ -16,6 +16,16 @@ ModuleDestructor initializeBisonActionsModule();
  * Bison semantic actions.
  */
 
-Program * ProgramSemanticAction();
+Expression * BinaryExpressionSemanticAction(Expression * leftExpression, Expression * rightExpression, ExpressionType type);
+Expression * BooleanLiteralSemanticAction(const bool value);
+Expression * IntegerLiteralSemanticAction(const int value);
+Expression * IntervalLiteralSemanticAction(char * lexeme);
+Expression * NegationExpressionSemanticAction(Expression * operand);
+Expression * NoteLiteralSemanticAction(char * lexeme);
+Expression * VariableExpressionSemanticAction(char * name);
+Program * StatementsProgramSemanticAction(StatementList * statements);
+Statement * AssignmentStatementSemanticAction(char * name, Expression * expression);
+Statement * DeclarationStatementSemanticAction(DataType dataType, char * name, Expression * expression);
+StatementList * StatementListSemanticAction(Statement * statement, StatementList * next);
 
 #endif

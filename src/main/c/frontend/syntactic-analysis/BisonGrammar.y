@@ -32,7 +32,11 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 
 	/** Non-terminals. */
 
+	DataType dataType;
+	Expression * expression;
 	Program * program;
+	Statement * statement;
+	StatementList * statementList;
 }
 
 /**
@@ -44,6 +48,9 @@ void yyerror(const YYLTYPE * location, const char * message) {}
  * @see https://www.gnu.org/software/bison/manual/html_node/Destructor-Decl.html
  */
 %destructor { free($$); } <string>
+%destructor { destroyExpression($$); } <expression>
+%destructor { destroyStatement($$); } <statement>
+%destructor { destroyStatementList($$); } <statementList>
 
 /** Terminals. */
 
@@ -165,7 +172,25 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 %token <token> UNKNOWN
 
 /** Non-terminals. */
+%type <dataType> dataType
+%type <expression> expression
 %type <program> program
+%type <statement> statement
+%type <statementList> statementList
+
+/**
+ * Precedence and associativity, from the lowest to the highest. "not" binds
+ * weaker than the relational operators, so "not a == b" is "not (a == b)".
+ * The relational operators are not associative: "a < b < c" is rejected.
+ *
+ * @see https://www.gnu.org/software/bison/manual/html_node/Precedence.html
+ */
+%left OR
+%left AND
+%right NOT
+%nonassoc EQUAL NOT_EQUAL LESS LESS_EQUAL GREATER GREATER_EQUAL IN
+%left ADD SUB
+%left MUL DIV
 
 %expect 0
 
@@ -173,7 +198,49 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 
 // IMPORTANT: To use λ in the following grammar, use the %empty symbol.
 
-program: %empty												{ $$ = ProgramSemanticAction(); }
+program: statementList										{ $$ = StatementsProgramSemanticAction($1); }
+	;
+
+statementList: statement statementList						{ $$ = StatementListSemanticAction($1, $2); }
+	| statement												{ $$ = StatementListSemanticAction($1, NULL); }
+	;
+
+statement: dataType ID ASSIGN expression SEMICOLON			{ $$ = DeclarationStatementSemanticAction($1, $2, $4); }
+	| ID ASSIGN expression SEMICOLON						{ $$ = AssignmentStatementSemanticAction($1, $3); }
+	;
+
+dataType: BOOLEAN_TYPE										{ $$ = TYPE_BOOLEAN; }
+	| CHORD_TYPE											{ $$ = TYPE_CHORD; }
+	| INTEGER_TYPE											{ $$ = TYPE_INTEGER; }
+	| INTERVAL_TYPE											{ $$ = TYPE_INTERVAL; }
+	| KEY_TYPE												{ $$ = TYPE_KEY; }
+	| NOTE_TYPE												{ $$ = TYPE_NOTE; }
+	| PROGRESSION_TYPE										{ $$ = TYPE_PROGRESSION; }
+	| SCALE_TYPE											{ $$ = TYPE_SCALE; }
+	| STRING_TYPE											{ $$ = TYPE_STRING; }
+	| VOICING_TYPE											{ $$ = TYPE_VOICING; }
+	;
+
+expression: expression[left] ADD expression[right]			{ $$ = BinaryExpressionSemanticAction($left, $right, ADDITION); }
+	| expression[left] SUB expression[right]				{ $$ = BinaryExpressionSemanticAction($left, $right, SUBTRACTION); }
+	| expression[left] MUL expression[right]				{ $$ = BinaryExpressionSemanticAction($left, $right, MULTIPLICATION); }
+	| expression[left] DIV expression[right]				{ $$ = BinaryExpressionSemanticAction($left, $right, DIVISION); }
+	| expression[left] EQUAL expression[right]				{ $$ = BinaryExpressionSemanticAction($left, $right, EQUALITY); }
+	| expression[left] NOT_EQUAL expression[right]			{ $$ = BinaryExpressionSemanticAction($left, $right, INEQUALITY); }
+	| expression[left] LESS expression[right]				{ $$ = BinaryExpressionSemanticAction($left, $right, LESS_THAN); }
+	| expression[left] LESS_EQUAL expression[right]			{ $$ = BinaryExpressionSemanticAction($left, $right, LESS_THAN_OR_EQUAL); }
+	| expression[left] GREATER expression[right]			{ $$ = BinaryExpressionSemanticAction($left, $right, GREATER_THAN); }
+	| expression[left] GREATER_EQUAL expression[right]		{ $$ = BinaryExpressionSemanticAction($left, $right, GREATER_THAN_OR_EQUAL); }
+	| expression[left] AND expression[right]				{ $$ = BinaryExpressionSemanticAction($left, $right, CONJUNCTION); }
+	| expression[left] OR expression[right]					{ $$ = BinaryExpressionSemanticAction($left, $right, DISJUNCTION); }
+	| NOT expression[operand]								{ $$ = NegationExpressionSemanticAction($operand); }
+	| OPEN_PARENTHESIS expression CLOSE_PARENTHESIS			{ $$ = $2; }
+	| INTEGER												{ $$ = IntegerLiteralSemanticAction($1); }
+	| TRUE													{ $$ = BooleanLiteralSemanticAction(true); }
+	| FALSE													{ $$ = BooleanLiteralSemanticAction(false); }
+	| NOTE													{ $$ = NoteLiteralSemanticAction($1); }
+	| INTERVAL												{ $$ = IntervalLiteralSemanticAction($1); }
+	| ID													{ $$ = VariableExpressionSemanticAction($1); }
 	;
 
 %%

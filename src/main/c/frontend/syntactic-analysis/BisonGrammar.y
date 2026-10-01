@@ -187,7 +187,9 @@ void yyerror(const YYLTYPE * location, const char * message) {}
  * Precedence and associativity, from the lowest to the highest. "not" binds
  * weaker than the relational operators, so "not a == b" is "not (a == b)".
  * The relational operators are not associative: "a < b < c" is rejected. "of"
- * binds tighter than any operator, so "scale of k == j" is "(scale of k) == j".
+ * binds tighter than any operator, so "scale of k == j" is "(scale of k) == j",
+ * and the index and the property access bind even tighter, so "scale of ks[0]"
+ * is "scale of (ks[0])".
  *
  * @see https://www.gnu.org/software/bison/manual/html_node/Precedence.html
  */
@@ -198,6 +200,7 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 %left ADD SUB
 %left MUL DIV
 %right OF
+%left OPEN_BRACKET DOT
 
 %expect 0
 
@@ -212,7 +215,8 @@ statementList: statement statementList						{ $$ = StatementListSemanticAction($
 	| statement												{ $$ = StatementListSemanticAction($1, NULL); }
 	;
 
-statement: dataType ID ASSIGN expression SEMICOLON			{ $$ = DeclarationStatementSemanticAction($1, $2, $4); }
+statement: dataType ID ASSIGN expression SEMICOLON			{ $$ = DeclarationStatementSemanticAction($1, false, $2, $4); }
+	| dataType OPEN_BRACKET CLOSE_BRACKET ID ASSIGN expression SEMICOLON	{ $$ = DeclarationStatementSemanticAction($1, true, $4, $6); }
 	| ID ASSIGN expression SEMICOLON						{ $$ = AssignmentStatementSemanticAction($1, $3); }
 	;
 
@@ -259,6 +263,12 @@ expression: expression[left] ADD expression[right]			{ $$ = BinaryExpressionSema
 	| SEVENTH ON expression[degree] OF expression[key]		{ $$ = BinaryExpressionSemanticAction($degree, $key, SEVENTH_CHORD); }
 	| NINTH ON expression[degree] OF expression[key]		{ $$ = BinaryExpressionSemanticAction($degree, $key, NINTH_CHORD); }
 	| OPEN_BRACE expressionList CLOSE_BRACE					{ $$ = NotesChordExpressionSemanticAction($2); }
+	| OPEN_BRACKET CLOSE_BRACKET							{ $$ = ListLiteralSemanticAction(NULL); }
+	| OPEN_BRACKET expressionList CLOSE_BRACKET				{ $$ = ListLiteralSemanticAction($2); }
+	| expression[left] IN expression[right]					{ $$ = BinaryExpressionSemanticAction($left, $right, IN_EXPRESSION); }
+	| expression[object] OPEN_BRACKET expression[index] CLOSE_BRACKET	{ $$ = BinaryExpressionSemanticAction($object, $index, INDEX_ACCESS); }
+	| expression[object] DOT ID								{ $$ = PropertyAccessSemanticAction($object, $3); }
+	| DIMINISHED											{ $$ = DiminishedLiteralSemanticAction(); }
 	;
 
 expressionList: expression COMMA expressionList				{ $$ = ExpressionListSemanticAction($1, $3); }

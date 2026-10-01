@@ -109,8 +109,8 @@ Existen:
 |------|-----------|
 | `Program` | La lista de sentencias |
 | `StatementList` | Una sentencia y la lista siguiente (no vacía, en orden) |
-| `Statement` | Declaración (`StatementType` `DECLARATION`, con `DataType`) o asignación (`ASSIGNMENT`) |
-| `Expression` | Literal (entero, booleano, nota, intervalo, grado, tonalidad), variable, operación binaria, negación, escala/relación tonal de una tonalidad, o acorde (por grado o por notas); el tipo es `ExpressionType` |
+| `Statement` | Declaración (`StatementType` `DECLARATION`, con `DataType` y si es vector) o asignación (`ASSIGNMENT`) |
+| `Expression` | Literal (entero, booleano, nota, intervalo, grado, tonalidad), variable, operación binaria, negación, escala/relación tonal de una tonalidad, acorde (por grado o por notas), lista entre corchetes, `in`, acceso por índice o acceso a una propiedad; el tipo es `ExpressionType` |
 | `ExpressionList` | Una expresión y la lista siguiente (no vacía, en orden) |
 | `Mode` | Enumerado con los modos (`MODE_MAJOR`, `MODE_MINOR`, ...) |
 | `DataType` | Enumerado con los tipos del lenguaje (`TYPE_CHORD`, `TYPE_NOTE`, ...) |
@@ -120,5 +120,5 @@ Se agregarán con estos nombres:
 | Grupo | Nodos |
 |-------|-------|
 | Sentencias | `If`, `For`, `While`, `Return`, `Log`, `Export`, `Check`, `ProcedureDefinition`, `ProcedureCall` |
-| Expresiones | índice, propiedad, llamada |
-| Dominio | `ProgressionLiteral`, `VectorLiteral`, `Invert`, `Arpeggiate`, `Modulate`, `Membership`, `Voice` |
+| Expresiones | llamada |
+| Dominio | `Invert`, `Arpeggiate`, `Modulate`, `Voice` |

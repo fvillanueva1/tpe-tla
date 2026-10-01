@@ -54,6 +54,26 @@ que `not a == b` es `not (a == b)`. Los relacionales no son asociativos:
 - `of` liga más fuerte que cualquier operador: `triad on V of k == j` es
   `(triad on V of k) == j`.
 
+## Progresiones, vectores, índices y propiedades
+
+- Lista entre corchetes: `[c1, c2]`, `[]`. Es una lista de expresiones; que sea
+  una progresión de acordes o un vector lo decide el tipo declarado.
+- Progresión de grados sobre una tonalidad: `[I, V, VI, IV] in k`.
+- `in` es un único operador binario `expresión in expresión`. Sirve para la
+  progresión de grados sobre una tonalidad y para la pertenencia
+  (`E4 in scale of k`, `E4 in c`); el análisis semántico los distingue por el
+  tipo del lado izquierdo. No es asociativo (`a in b in c` se rechaza) y está
+  en el nivel de los relacionales.
+- Vectores: el tipo lleva `[]` (`chord[] cs = [...]`, `integer[] xs = [1, 2]`)
+  y se accede por índice: `cs[0]`. Solo se declaran vectores de una dimensión.
+  No se puede asignar a un elemento (`cs[0] = c;` se rechaza).
+- Propiedades: `c.root`, `c.quality`, `n.octave`, `k.tonic`, `k.mode`,
+  `p.length`. El nombre de la propiedad es un identificador; que exista lo
+  valida el Stage III. La calidad `diminished` es un literal.
+- El índice y la propiedad ligan más fuerte que `of`: `scale of ks[0]` es
+  `scale of (ks[0])`. Para indexar una escala hay que usar paréntesis:
+  `(scale of k)[3]`.
+
 ## Lexer
 
 - Las notas sin octava (`C`, `G`, ...) son tokens de nota, así que no pueden

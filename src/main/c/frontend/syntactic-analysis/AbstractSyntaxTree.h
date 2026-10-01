@@ -48,23 +48,28 @@ enum ExpressionType {
 	BOOLEAN_LITERAL,
 	CONJUNCTION,
 	DEGREE_LITERAL,
+	DIMINISHED_LITERAL,
 	DISJUNCTION,
 	DIVISION,
 	DOMINANT_OF_KEY,
 	EQUALITY,
 	GREATER_THAN,
 	GREATER_THAN_OR_EQUAL,
+	INDEX_ACCESS,
 	INEQUALITY,
+	IN_EXPRESSION,
 	INTEGER_LITERAL,
 	INTERVAL_LITERAL,
 	KEY_LITERAL,
 	LESS_THAN,
 	LESS_THAN_OR_EQUAL,
+	LIST_LITERAL,
 	MULTIPLICATION,
 	NEGATION,
 	NINTH_CHORD,
 	NOTE_LITERAL,
 	NOTES_CHORD,
+	PROPERTY_ACCESS,
 	RELATIVE_MINOR_OF_KEY,
 	SCALE_OF_KEY,
 	SEVENTH_CHORD,
@@ -95,7 +100,11 @@ enum StatementType {
  * (dominant, subdominant and relative minor) of a key use "operand". The
  * chords built on a degree use the left expression for the degree and the
  * right one for the key, and the chords built on explicit notes use
- * "elements".
+ * "elements". The lists between brackets also use "elements", which is NULL
+ * when the list is empty. The index access uses the left expression for the
+ * indexed value and the right one for the index. The operator "in" is the
+ * same for a progression of degrees over a key and for the membership of a
+ * note, and the semantic analysis tells them apart.
  */
 struct Expression {
 	union {
@@ -110,6 +119,10 @@ struct Expression {
 			bool strict;
 		} key;
 		struct {
+			Expression * object;
+			char * name;
+		} property;
+		struct {
 			Expression * leftExpression;
 			Expression * rightExpression;
 		};
@@ -123,11 +136,15 @@ struct ExpressionList {
 	ExpressionList * next;
 };
 
-/** A declaration ("dataType" is used) or an assignment to a variable. */
+/**
+ * A declaration ("dataType" and "isVector" are used) or an assignment to a
+ * variable.
+ */
 struct Statement {
 	char * name;
 	Expression * expression;
 	DataType dataType;
+	bool isVector;
 	StatementType type;
 };
 

@@ -33,8 +33,13 @@ void destroyExpression(Expression * expression) {
 			case KEY_LITERAL:
 				free(expression->key.tonic);
 				break;
+			case LIST_LITERAL:
 			case NOTES_CHORD:
 				destroyExpressionList(expression->elements);
+				break;
+			case PROPERTY_ACCESS:
+				destroyExpression(expression->property.object);
+				free(expression->property.name);
 				break;
 			case DOMINANT_OF_KEY:
 			case NEGATION:
@@ -50,7 +55,9 @@ void destroyExpression(Expression * expression) {
 			case EQUALITY:
 			case GREATER_THAN:
 			case GREATER_THAN_OR_EQUAL:
+			case INDEX_ACCESS:
 			case INEQUALITY:
+			case IN_EXPRESSION:
 			case LESS_THAN:
 			case LESS_THAN_OR_EQUAL:
 			case MULTIPLICATION:
@@ -62,6 +69,7 @@ void destroyExpression(Expression * expression) {
 				destroyExpression(expression->rightExpression);
 				break;
 			case BOOLEAN_LITERAL:
+			case DIMINISHED_LITERAL:
 			case INTEGER_LITERAL:
 				break;
 		}

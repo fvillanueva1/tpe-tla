@@ -53,6 +53,13 @@ Expression * BooleanLiteralSemanticAction(const bool value) {
 	return expression;
 }
 
+Expression * DiminishedLiteralSemanticAction() {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	Expression * expression = calloc(1, sizeof(Expression));
+	expression->type = DIMINISHED_LITERAL;
+	return expression;
+}
+
 Expression * DegreeLiteralSemanticAction(char * lexeme) {
 	_logSyntacticAnalyzerAction(__FUNCTION__);
 	Expression * expression = calloc(1, sizeof(Expression));
@@ -95,6 +102,14 @@ Expression * KeyRelationExpressionSemanticAction(Expression * key, ExpressionTyp
 	return expression;
 }
 
+Expression * ListLiteralSemanticAction(ExpressionList * elements) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	Expression * expression = calloc(1, sizeof(Expression));
+	expression->elements = elements;
+	expression->type = LIST_LITERAL;
+	return expression;
+}
+
 Expression * NegationExpressionSemanticAction(Expression * operand) {
 	_logSyntacticAnalyzerAction(__FUNCTION__);
 	Expression * expression = calloc(1, sizeof(Expression));
@@ -116,6 +131,15 @@ Expression * NotesChordExpressionSemanticAction(ExpressionList * elements) {
 	Expression * expression = calloc(1, sizeof(Expression));
 	expression->elements = elements;
 	expression->type = NOTES_CHORD;
+	return expression;
+}
+
+Expression * PropertyAccessSemanticAction(Expression * object, char * name) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	Expression * expression = calloc(1, sizeof(Expression));
+	expression->property.object = object;
+	expression->property.name = name;
+	expression->type = PROPERTY_ACCESS;
 	return expression;
 }
 
@@ -152,11 +176,12 @@ Statement * AssignmentStatementSemanticAction(char * name, Expression * expressi
 	return statement;
 }
 
-Statement * DeclarationStatementSemanticAction(DataType dataType, char * name, Expression * expression) {
+Statement * DeclarationStatementSemanticAction(DataType dataType, const bool isVector, char * name, Expression * expression) {
 	_logSyntacticAnalyzerAction(__FUNCTION__);
 	Statement * statement = calloc(1, sizeof(Statement));
 	statement->dataType = dataType;
 	statement->expression = expression;
+	statement->isVector = isVector;
 	statement->name = name;
 	statement->type = DECLARATION;
 	return statement;

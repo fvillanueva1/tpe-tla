@@ -21,6 +21,7 @@ typedef enum Mode Mode;
 typedef enum StatementType StatementType;
 
 typedef struct Expression Expression;
+typedef struct ExpressionList ExpressionList;
 typedef struct Program Program;
 typedef struct Statement Statement;
 typedef struct StatementList StatementList;
@@ -46,6 +47,7 @@ enum ExpressionType {
 	ADDITION,
 	BOOLEAN_LITERAL,
 	CONJUNCTION,
+	DEGREE_LITERAL,
 	DISJUNCTION,
 	DIVISION,
 	DOMINANT_OF_KEY,
@@ -60,11 +62,15 @@ enum ExpressionType {
 	LESS_THAN_OR_EQUAL,
 	MULTIPLICATION,
 	NEGATION,
+	NINTH_CHORD,
 	NOTE_LITERAL,
+	NOTES_CHORD,
 	RELATIVE_MINOR_OF_KEY,
 	SCALE_OF_KEY,
+	SEVENTH_CHORD,
 	SUBDOMINANT_OF_KEY,
 	SUBTRACTION,
+	TRIAD_CHORD,
 	VARIABLE
 };
 
@@ -86,7 +92,10 @@ enum StatementType {
 /**
  * An expression. The literal notes and intervals keep their lexeme, and the
  * variables keep their name, in "text". The scale and the tonal relations
- * (dominant, subdominant and relative minor) of a key use "operand".
+ * (dominant, subdominant and relative minor) of a key use "operand". The
+ * chords built on a degree use the left expression for the degree and the
+ * right one for the key, and the chords built on explicit notes use
+ * "elements".
  */
 struct Expression {
 	union {
@@ -94,6 +103,7 @@ struct Expression {
 		char * text;
 		int integer;
 		Expression * operand;
+		ExpressionList * elements;
 		struct {
 			char * tonic;
 			Mode mode;
@@ -105,6 +115,12 @@ struct Expression {
 		};
 	};
 	ExpressionType type;
+};
+
+/** A non-empty list of expressions, in program order. */
+struct ExpressionList {
+	Expression * expression;
+	ExpressionList * next;
 };
 
 /** A declaration ("dataType" is used) or an assignment to a variable. */
@@ -130,6 +146,7 @@ struct Program {
  */
 
 void destroyExpression(Expression * expression);
+void destroyExpressionList(ExpressionList * expressionList);
 void destroyProgram(Program * program);
 void destroyStatement(Statement * statement);
 void destroyStatementList(StatementList * statementList);

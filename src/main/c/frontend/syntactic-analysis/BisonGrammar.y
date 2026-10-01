@@ -34,6 +34,7 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 
 	DataType dataType;
 	Expression * expression;
+	ExpressionList * expressionList;
 	Mode mode;
 	Program * program;
 	Statement * statement;
@@ -50,6 +51,7 @@ void yyerror(const YYLTYPE * location, const char * message) {}
  */
 %destructor { free($$); } <string>
 %destructor { destroyExpression($$); } <expression>
+%destructor { destroyExpressionList($$); } <expressionList>
 %destructor { destroyStatement($$); } <statement>
 %destructor { destroyStatementList($$); } <statementList>
 
@@ -175,6 +177,7 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 /** Non-terminals. */
 %type <dataType> dataType
 %type <expression> expression
+%type <expressionList> expressionList
 %type <mode> mode
 %type <program> program
 %type <statement> statement
@@ -251,6 +254,15 @@ expression: expression[left] ADD expression[right]			{ $$ = BinaryExpressionSema
 	| RELATIVE MINOR OF expression[key]						{ $$ = KeyRelationExpressionSemanticAction($key, RELATIVE_MINOR_OF_KEY); }
 	| DOMINANT OF expression[key]							{ $$ = KeyRelationExpressionSemanticAction($key, DOMINANT_OF_KEY); }
 	| SUBDOMINANT OF expression[key]						{ $$ = KeyRelationExpressionSemanticAction($key, SUBDOMINANT_OF_KEY); }
+	| DEGREE												{ $$ = DegreeLiteralSemanticAction($1); }
+	| TRIAD ON expression[degree] OF expression[key]		{ $$ = BinaryExpressionSemanticAction($degree, $key, TRIAD_CHORD); }
+	| SEVENTH ON expression[degree] OF expression[key]		{ $$ = BinaryExpressionSemanticAction($degree, $key, SEVENTH_CHORD); }
+	| NINTH ON expression[degree] OF expression[key]		{ $$ = BinaryExpressionSemanticAction($degree, $key, NINTH_CHORD); }
+	| OPEN_BRACE expressionList CLOSE_BRACE					{ $$ = NotesChordExpressionSemanticAction($2); }
+	;
+
+expressionList: expression COMMA expressionList				{ $$ = ExpressionListSemanticAction($1, $3); }
+	| expression											{ $$ = ExpressionListSemanticAction($1, NULL); }
 	;
 
 mode: DORIAN												{ $$ = MODE_DORIAN; }

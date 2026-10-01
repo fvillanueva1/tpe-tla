@@ -43,6 +43,17 @@ que `not a == b` es `not (a == b)`. Los relacionales no son asociativos:
   `(scale of k) == j`.
 - Acceder a un grado de una escala usa el acceso por índice de los vectores.
 
+## Acordes
+
+- Por grado: `triad on V of k`, `seventh on ii of k`, `ninth on I of k`. El
+  grado puede ser un grado literal (`V`, `viidim`) o cualquier expresión, por
+  ejemplo la variable de un `for` (`triad on grado of k`). Que sea un grado
+  válido lo decide el análisis semántico.
+- Por notas explícitas: `{C4, E4, G4}`, con al menos una nota. Los elementos
+  pueden ser cualquier expresión.
+- `of` liga más fuerte que cualquier operador: `triad on V of k == j` es
+  `(triad on V of k) == j`.
+
 ## Lexer
 
 - Las notas sin octava (`C`, `G`, ...) son tokens de nota, así que no pueden

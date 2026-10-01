@@ -53,6 +53,14 @@ Expression * BooleanLiteralSemanticAction(const bool value) {
 	return expression;
 }
 
+Expression * DegreeLiteralSemanticAction(char * lexeme) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	Expression * expression = calloc(1, sizeof(Expression));
+	expression->text = lexeme;
+	expression->type = DEGREE_LITERAL;
+	return expression;
+}
+
 Expression * IntegerLiteralSemanticAction(const int value) {
 	_logSyntacticAnalyzerAction(__FUNCTION__);
 	Expression * expression = calloc(1, sizeof(Expression));
@@ -103,12 +111,28 @@ Expression * NoteLiteralSemanticAction(char * lexeme) {
 	return expression;
 }
 
+Expression * NotesChordExpressionSemanticAction(ExpressionList * elements) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	Expression * expression = calloc(1, sizeof(Expression));
+	expression->elements = elements;
+	expression->type = NOTES_CHORD;
+	return expression;
+}
+
 Expression * VariableExpressionSemanticAction(char * name) {
 	_logSyntacticAnalyzerAction(__FUNCTION__);
 	Expression * expression = calloc(1, sizeof(Expression));
 	expression->text = name;
 	expression->type = VARIABLE;
 	return expression;
+}
+
+ExpressionList * ExpressionListSemanticAction(Expression * expression, ExpressionList * next) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	ExpressionList * expressionList = calloc(1, sizeof(ExpressionList));
+	expressionList->expression = expression;
+	expressionList->next = next;
+	return expressionList;
 }
 
 Program * StatementsProgramSemanticAction(StatementList * statements) {

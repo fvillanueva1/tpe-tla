@@ -24,6 +24,7 @@ void destroyExpression(Expression * expression) {
 	logDebugging(_logger, "Executing destructor: %s", __FUNCTION__);
 	if (expression != NULL) {
 		switch (expression->type) {
+			case DEGREE_LITERAL:
 			case INTERVAL_LITERAL:
 			case NOTE_LITERAL:
 			case VARIABLE:
@@ -31,6 +32,9 @@ void destroyExpression(Expression * expression) {
 				break;
 			case KEY_LITERAL:
 				free(expression->key.tonic);
+				break;
+			case NOTES_CHORD:
+				destroyExpressionList(expression->elements);
 				break;
 			case DOMINANT_OF_KEY:
 			case NEGATION:
@@ -50,7 +54,10 @@ void destroyExpression(Expression * expression) {
 			case LESS_THAN:
 			case LESS_THAN_OR_EQUAL:
 			case MULTIPLICATION:
+			case NINTH_CHORD:
+			case SEVENTH_CHORD:
 			case SUBTRACTION:
+			case TRIAD_CHORD:
 				destroyExpression(expression->leftExpression);
 				destroyExpression(expression->rightExpression);
 				break;
@@ -59,6 +66,15 @@ void destroyExpression(Expression * expression) {
 				break;
 		}
 		free(expression);
+	}
+}
+
+void destroyExpressionList(ExpressionList * expressionList) {
+	logDebugging(_logger, "Executing destructor: %s", __FUNCTION__);
+	if (expressionList != NULL) {
+		destroyExpression(expressionList->expression);
+		destroyExpressionList(expressionList->next);
+		free(expressionList);
 	}
 }
 

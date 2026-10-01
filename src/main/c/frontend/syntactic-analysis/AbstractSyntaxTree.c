@@ -25,6 +25,7 @@ void destroyExpression(Expression * expression) {
 	if (expression != NULL) {
 		switch (expression->type) {
 			case DEGREE_LITERAL:
+			case DURATION_LITERAL:
 			case INTERVAL_LITERAL:
 			case NOTE_LITERAL:
 			case VARIABLE:
@@ -49,6 +50,7 @@ void destroyExpression(Expression * expression) {
 				destroyExpression(expression->operand);
 				break;
 			case ADDITION:
+			case ARPEGGIATION:
 			case CONJUNCTION:
 			case DISJUNCTION:
 			case DIVISION:
@@ -57,9 +59,11 @@ void destroyExpression(Expression * expression) {
 			case GREATER_THAN_OR_EQUAL:
 			case INDEX_ACCESS:
 			case INEQUALITY:
+			case INVERSION:
 			case IN_EXPRESSION:
 			case LESS_THAN:
 			case LESS_THAN_OR_EQUAL:
+			case MODULATION:
 			case MULTIPLICATION:
 			case NINTH_CHORD:
 			case SEVENTH_CHORD:

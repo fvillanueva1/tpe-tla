@@ -189,10 +189,13 @@ void yyerror(const YYLTYPE * location, const char * message) {}
  * The relational operators are not associative: "a < b < c" is rejected. "of"
  * binds tighter than any operator, so "scale of k == j" is "(scale of k) == j",
  * and the index and the property access bind even tighter, so "scale of ks[0]"
- * is "scale of (ks[0])".
+ * is "scale of (ks[0])". "by", "as" and "to" have the lowest precedence, so
+ * what follows them is a whole expression: "invert c by n + 1" is
+ * "invert c by (n + 1)".
  *
  * @see https://www.gnu.org/software/bison/manual/html_node/Precedence.html
  */
+%nonassoc BY AS TO
 %left OR
 %left AND
 %right NOT
@@ -269,6 +272,10 @@ expression: expression[left] ADD expression[right]			{ $$ = BinaryExpressionSema
 	| expression[object] OPEN_BRACKET expression[index] CLOSE_BRACKET	{ $$ = BinaryExpressionSemanticAction($object, $index, INDEX_ACCESS); }
 	| expression[object] DOT ID								{ $$ = PropertyAccessSemanticAction($object, $3); }
 	| DIMINISHED											{ $$ = DiminishedLiteralSemanticAction(); }
+	| DURATION												{ $$ = DurationLiteralSemanticAction($1); }
+	| INVERT expression[chord] BY expression[count]			{ $$ = BinaryExpressionSemanticAction($chord, $count, INVERSION); }
+	| ARPEGGIATE expression[chord] AS expression[duration]	{ $$ = BinaryExpressionSemanticAction($chord, $duration, ARPEGGIATION); }
+	| MODULATE expression[progression] TO expression[key]	{ $$ = BinaryExpressionSemanticAction($progression, $key, MODULATION); }
 	;
 
 expressionList: expression COMMA expressionList				{ $$ = ExpressionListSemanticAction($1, $3); }

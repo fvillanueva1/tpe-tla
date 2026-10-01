@@ -45,6 +45,7 @@ enum DataType {
 
 enum ExpressionType {
 	ADDITION,
+	ARPEGGIATION,
 	BOOLEAN_LITERAL,
 	CONJUNCTION,
 	DEGREE_LITERAL,
@@ -52,6 +53,7 @@ enum ExpressionType {
 	DISJUNCTION,
 	DIVISION,
 	DOMINANT_OF_KEY,
+	DURATION_LITERAL,
 	EQUALITY,
 	GREATER_THAN,
 	GREATER_THAN_OR_EQUAL,
@@ -60,10 +62,12 @@ enum ExpressionType {
 	IN_EXPRESSION,
 	INTEGER_LITERAL,
 	INTERVAL_LITERAL,
+	INVERSION,
 	KEY_LITERAL,
 	LESS_THAN,
 	LESS_THAN_OR_EQUAL,
 	LIST_LITERAL,
+	MODULATION,
 	MULTIPLICATION,
 	NEGATION,
 	NINTH_CHORD,
@@ -104,7 +108,10 @@ enum StatementType {
  * when the list is empty. The index access uses the left expression for the
  * indexed value and the right one for the index. The operator "in" is the
  * same for a progression of degrees over a key and for the membership of a
- * note, and the semantic analysis tells them apart.
+ * note, and the semantic analysis tells them apart. The inversion of a
+ * chord, its arpeggiation and the modulation of a progression use the left
+ * expression for the chord or progression and the right one for the number of
+ * inversions, the duration or the target key.
  */
 struct Expression {
 	union {

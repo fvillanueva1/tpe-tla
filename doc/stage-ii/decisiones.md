@@ -74,6 +74,20 @@ que `not a == b` es `not (a == b)`. Los relacionales no son asociativos:
   `scale of (ks[0])`. Para indexar una escala hay que usar paréntesis:
   `(scale of k)[3]`.
 
+## Transformaciones
+
+- Inversión: `invert c by 1`.
+- Arpegio: `arpeggiate c as eighth`. Las duraciones son literales de
+  expresión, así que también puede ser una variable (`arpeggiate c as d`).
+- Modulación: `modulate p to G major`, `modulate p to dominant of k`,
+  `modulate p to relative minor of k`. El destino es cualquier expresión de
+  tonalidad.
+- `by`, `as` y `to` tienen la precedencia más baja: lo que sigue es una
+  expresión completa, así que `invert c by n + 1` es `invert c by (n + 1)`.
+  Para comparar el resultado hay que usar paréntesis:
+  `(invert c by 1) == d`. Estas formas no se encadenan sin paréntesis
+  (`invert c by 1 by 2` se rechaza).
+
 ## Lexer
 
 - Las notas sin octava (`C`, `G`, ...) son tokens de nota, así que no pueden

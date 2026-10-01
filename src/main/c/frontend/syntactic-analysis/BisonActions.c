@@ -68,6 +68,14 @@ Expression * DegreeLiteralSemanticAction(char * lexeme) {
 	return expression;
 }
 
+Expression * DurationLiteralSemanticAction(char * lexeme) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	Expression * expression = calloc(1, sizeof(Expression));
+	expression->text = lexeme;
+	expression->type = DURATION_LITERAL;
+	return expression;
+}
+
 Expression * IntegerLiteralSemanticAction(const int value) {
 	_logSyntacticAnalyzerAction(__FUNCTION__);
 	Expression * expression = calloc(1, sizeof(Expression));

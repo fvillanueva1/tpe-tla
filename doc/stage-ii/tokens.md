@@ -110,7 +110,7 @@ Existen:
 | `Program` | La lista de sentencias |
 | `StatementList` | Una sentencia y la lista siguiente (no vacía, en orden) |
 | `Statement` | Declaración (`StatementType` `DECLARATION`, con `DataType` y si es vector) o asignación (`ASSIGNMENT`) |
-| `Expression` | Literal (entero, booleano, nota, intervalo, grado, tonalidad), variable, operación binaria, negación, escala/relación tonal de una tonalidad, acorde (por grado o por notas), lista entre corchetes, `in`, acceso por índice o acceso a una propiedad; el tipo es `ExpressionType` |
+| `Expression` | Literal (entero, booleano, nota, intervalo, duración, grado, tonalidad), variable, operación binaria, negación, escala/relación tonal de una tonalidad, acorde (por grado o por notas), lista entre corchetes, `in`, acceso por índice, acceso a una propiedad, inversión, arpegio o modulación; el tipo es `ExpressionType` |
 | `ExpressionList` | Una expresión y la lista siguiente (no vacía, en orden) |
 | `Mode` | Enumerado con los modos (`MODE_MAJOR`, `MODE_MINOR`, ...) |
 | `DataType` | Enumerado con los tipos del lenguaje (`TYPE_CHORD`, `TYPE_NOTE`, ...) |
@@ -121,4 +121,4 @@ Se agregarán con estos nombres:
 |-------|-------|
 | Sentencias | `If`, `For`, `While`, `Return`, `Log`, `Export`, `Check`, `ProcedureDefinition`, `ProcedureCall` |
 | Expresiones | llamada |
-| Dominio | `Invert`, `Arpeggiate`, `Modulate`, `Voice` |
+| Dominio | `Voice` |

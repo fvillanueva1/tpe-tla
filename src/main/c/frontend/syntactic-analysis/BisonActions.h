@@ -20,6 +20,8 @@ Expression * BinaryExpressionSemanticAction(Expression * leftExpression, Express
 Expression * BooleanLiteralSemanticAction(const bool value);
 Expression * IntegerLiteralSemanticAction(const int value);
 Expression * IntervalLiteralSemanticAction(char * lexeme);
+Expression * KeyLiteralSemanticAction(char * tonic, Mode mode, bool strict);
+Expression * KeyRelationExpressionSemanticAction(Expression * key, ExpressionType type);
 Expression * NegationExpressionSemanticAction(Expression * operand);
 Expression * NoteLiteralSemanticAction(char * lexeme);
 Expression * VariableExpressionSemanticAction(char * name);

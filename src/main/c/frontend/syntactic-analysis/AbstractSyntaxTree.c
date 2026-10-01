@@ -29,7 +29,14 @@ void destroyExpression(Expression * expression) {
 			case VARIABLE:
 				free(expression->text);
 				break;
+			case KEY_LITERAL:
+				free(expression->key.tonic);
+				break;
+			case DOMINANT_OF_KEY:
 			case NEGATION:
+			case RELATIVE_MINOR_OF_KEY:
+			case SCALE_OF_KEY:
+			case SUBDOMINANT_OF_KEY:
 				destroyExpression(expression->operand);
 				break;
 			case ADDITION:

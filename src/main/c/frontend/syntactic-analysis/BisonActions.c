@@ -69,6 +69,24 @@ Expression * IntervalLiteralSemanticAction(char * lexeme) {
 	return expression;
 }
 
+Expression * KeyLiteralSemanticAction(char * tonic, Mode mode, bool strict) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	Expression * expression = calloc(1, sizeof(Expression));
+	expression->key.tonic = tonic;
+	expression->key.mode = mode;
+	expression->key.strict = strict;
+	expression->type = KEY_LITERAL;
+	return expression;
+}
+
+Expression * KeyRelationExpressionSemanticAction(Expression * key, ExpressionType type) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	Expression * expression = calloc(1, sizeof(Expression));
+	expression->operand = key;
+	expression->type = type;
+	return expression;
+}
+
 Expression * NegationExpressionSemanticAction(Expression * operand) {
 	_logSyntacticAnalyzerAction(__FUNCTION__);
 	Expression * expression = calloc(1, sizeof(Expression));

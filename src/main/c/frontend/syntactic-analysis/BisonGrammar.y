@@ -34,6 +34,7 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 
 	DataType dataType;
 	Expression * expression;
+	Mode mode;
 	Program * program;
 	Statement * statement;
 	StatementList * statementList;
@@ -174,6 +175,7 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 /** Non-terminals. */
 %type <dataType> dataType
 %type <expression> expression
+%type <mode> mode
 %type <program> program
 %type <statement> statement
 %type <statementList> statementList
@@ -181,7 +183,8 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 /**
  * Precedence and associativity, from the lowest to the highest. "not" binds
  * weaker than the relational operators, so "not a == b" is "not (a == b)".
- * The relational operators are not associative: "a < b < c" is rejected.
+ * The relational operators are not associative: "a < b < c" is rejected. "of"
+ * binds tighter than any operator, so "scale of k == j" is "(scale of k) == j".
  *
  * @see https://www.gnu.org/software/bison/manual/html_node/Precedence.html
  */
@@ -191,6 +194,7 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 %nonassoc EQUAL NOT_EQUAL LESS LESS_EQUAL GREATER GREATER_EQUAL IN
 %left ADD SUB
 %left MUL DIV
+%right OF
 
 %expect 0
 
@@ -241,6 +245,21 @@ expression: expression[left] ADD expression[right]			{ $$ = BinaryExpressionSema
 	| NOTE													{ $$ = NoteLiteralSemanticAction($1); }
 	| INTERVAL												{ $$ = IntervalLiteralSemanticAction($1); }
 	| ID													{ $$ = VariableExpressionSemanticAction($1); }
+	| NOTE mode												{ $$ = KeyLiteralSemanticAction($1, $2, false); }
+	| NOTE mode STRICT										{ $$ = KeyLiteralSemanticAction($1, $2, true); }
+	| SCALE_TYPE OF expression[key]							{ $$ = KeyRelationExpressionSemanticAction($key, SCALE_OF_KEY); }
+	| RELATIVE MINOR OF expression[key]						{ $$ = KeyRelationExpressionSemanticAction($key, RELATIVE_MINOR_OF_KEY); }
+	| DOMINANT OF expression[key]							{ $$ = KeyRelationExpressionSemanticAction($key, DOMINANT_OF_KEY); }
+	| SUBDOMINANT OF expression[key]						{ $$ = KeyRelationExpressionSemanticAction($key, SUBDOMINANT_OF_KEY); }
+	;
+
+mode: DORIAN												{ $$ = MODE_DORIAN; }
+	| LOCRIAN												{ $$ = MODE_LOCRIAN; }
+	| LYDIAN												{ $$ = MODE_LYDIAN; }
+	| MAJOR													{ $$ = MODE_MAJOR; }
+	| MINOR													{ $$ = MODE_MINOR; }
+	| MIXOLYDIAN											{ $$ = MODE_MIXOLYDIAN; }
+	| PHRYGIAN												{ $$ = MODE_PHRYGIAN; }
 	;
 
 %%

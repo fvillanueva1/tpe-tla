@@ -110,7 +110,8 @@ Existen:
 | `Program` | La lista de sentencias |
 | `StatementList` | Una sentencia y la lista siguiente (no vacía, en orden) |
 | `Statement` | Declaración (`StatementType` `DECLARATION`, con `DataType`) o asignación (`ASSIGNMENT`) |
-| `Expression` | Literal (entero, booleano, nota, intervalo), variable, operación binaria o negación; el tipo es `ExpressionType` |
+| `Expression` | Literal (entero, booleano, nota, intervalo, tonalidad), variable, operación binaria, negación, o escala/relación tonal de una tonalidad; el tipo es `ExpressionType` |
+| `Mode` | Enumerado con los modos (`MODE_MAJOR`, `MODE_MINOR`, ...) |
 | `DataType` | Enumerado con los tipos del lenguaje (`TYPE_CHORD`, `TYPE_NOTE`, ...) |
 
 Se agregarán con estos nombres:

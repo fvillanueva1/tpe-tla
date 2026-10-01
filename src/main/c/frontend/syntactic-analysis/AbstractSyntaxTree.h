@@ -17,6 +17,7 @@ ModuleDestructor initializeAbstractSyntaxTreeModule();
 
 typedef enum DataType DataType;
 typedef enum ExpressionType ExpressionType;
+typedef enum Mode Mode;
 typedef enum StatementType StatementType;
 
 typedef struct Expression Expression;
@@ -47,19 +48,34 @@ enum ExpressionType {
 	CONJUNCTION,
 	DISJUNCTION,
 	DIVISION,
+	DOMINANT_OF_KEY,
 	EQUALITY,
 	GREATER_THAN,
 	GREATER_THAN_OR_EQUAL,
 	INEQUALITY,
 	INTEGER_LITERAL,
 	INTERVAL_LITERAL,
+	KEY_LITERAL,
 	LESS_THAN,
 	LESS_THAN_OR_EQUAL,
 	MULTIPLICATION,
 	NEGATION,
 	NOTE_LITERAL,
+	RELATIVE_MINOR_OF_KEY,
+	SCALE_OF_KEY,
+	SUBDOMINANT_OF_KEY,
 	SUBTRACTION,
 	VARIABLE
+};
+
+enum Mode {
+	MODE_DORIAN,
+	MODE_LOCRIAN,
+	MODE_LYDIAN,
+	MODE_MAJOR,
+	MODE_MINOR,
+	MODE_MIXOLYDIAN,
+	MODE_PHRYGIAN
 };
 
 enum StatementType {
@@ -69,7 +85,8 @@ enum StatementType {
 
 /**
  * An expression. The literal notes and intervals keep their lexeme, and the
- * variables keep their name, in "text".
+ * variables keep their name, in "text". The scale and the tonal relations
+ * (dominant, subdominant and relative minor) of a key use "operand".
  */
 struct Expression {
 	union {
@@ -77,6 +94,11 @@ struct Expression {
 		char * text;
 		int integer;
 		Expression * operand;
+		struct {
+			char * tonic;
+			Mode mode;
+			bool strict;
+		} key;
 		struct {
 			Expression * leftExpression;
 			Expression * rightExpression;

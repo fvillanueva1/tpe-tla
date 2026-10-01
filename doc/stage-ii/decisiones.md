@@ -31,6 +31,18 @@ más adelante), `+ -`, `* /`. `not` queda por debajo de los relacionales, así
 que `not a == b` es `not (a == b)`. Los relacionales no son asociativos:
 `a < b < c` se rechaza. Un programa vacío se rechaza.
 
+## Tonalidades
+
+- Tonalidad: una nota sin octava y un modo (`major`, `minor`, `dorian`,
+  `phrygian`, `lydian`, `mixolydian`, `locrian`), con `strict` opcional al
+  final: `key k = G major strict;`.
+- Escala de una tonalidad: `scale of k`.
+- Relaciones tonales, que producen una tonalidad: `relative minor of k`,
+  `dominant of k`, `subdominant of k`. Se pueden anidar.
+- `of` liga más fuerte que cualquier operador: `scale of k == j` es
+  `(scale of k) == j`.
+- Acceder a un grado de una escala usa el acceso por índice de los vectores.
+
 ## Lexer
 
 - Las notas sin octava (`C`, `G`, ...) son tokens de nota, así que no pueden

@@ -26,16 +26,19 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 %union {
 	/** Terminals. */
 
-	signed int integer;
 	char * string;
+	signed int integer;
 	TokenLabel token;
 
 	/** Non-terminals. */
 
-	Constant * constant;
+	DataType dataType;
 	Expression * expression;
-	Factor * factor;
+	ExpressionList * expressionList;
+	Mode mode;
 	Program * program;
+	Statement * statement;
+	StatementList * statementList;
 }
 
 /**
@@ -46,12 +49,15 @@ void yyerror(const YYLTYPE * location, const char * message) {}
  *
  * @see https://www.gnu.org/software/bison/manual/html_node/Destructor-Decl.html
  */
-%destructor { destroyConstant($$); } <constant>
-%destructor { destroyExpression($$); } <expression>
-%destructor { destroyFactor($$); } <factor>
 %destructor { free($$); } <string>
+%destructor { destroyExpression($$); } <expression>
+%destructor { destroyExpressionList($$); } <expressionList>
+%destructor { destroyStatement($$); } <statement>
+%destructor { destroyStatementList($$); } <statementList>
 
 /** Terminals. */
+
+// Literals.
 %token <integer> INTEGER
 %token <string> DEGREE
 %token <string> DURATION
@@ -59,129 +65,230 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 %token <string> INTERVAL
 %token <string> NOTE
 %token <string> STRING_TEXT
+
+// Types.
+%token <token> BOOLEAN_TYPE
+%token <token> CHORD_TYPE
+%token <token> INTEGER_TYPE
+%token <token> INTERVAL_TYPE
+%token <token> KEY_TYPE
+%token <token> NOTE_TYPE
+%token <token> PROGRESSION_TYPE
+%token <token> SCALE_TYPE
+%token <token> STRING_TYPE
+%token <token> VOICING_TYPE
+
+// Modes and tonal relations.
+%token <token> DIMINISHED
+%token <token> DOMINANT
+%token <token> DORIAN
+%token <token> LOCRIAN
+%token <token> LYDIAN
+%token <token> MAJOR
+%token <token> MINOR
+%token <token> MIXOLYDIAN
+%token <token> PHRYGIAN
+%token <token> RELATIVE
+%token <token> STRICT
+%token <token> SUBDOMINANT
+
+// Harmony.
+%token <token> ARPEGGIATE
+%token <token> BY
+%token <token> INVERT
+%token <token> MODULATE
+%token <token> NINTH
+%token <token> SEVENTH
+%token <token> TRIAD
+
+// Voice leading.
+%token <token> CHECK
+%token <token> PARALLEL_FIFTHS
+%token <token> PARALLEL_OCTAVES
+%token <token> SATB
+%token <token> VOICE
+%token <token> VOICE_CROSSING
+
+// Output.
+%token <token> BPM
+%token <token> EXPORT
+%token <token> LOG
+%token <token> MIDI
+%token <token> SHEET
+
+// Control flow and procedures.
+%token <token> DEFINE
+%token <token> ELSE
+%token <token> FALSE
+%token <token> FOR
+%token <token> IF
+%token <token> RETURN
+%token <token> TRUE
+%token <token> WHILE
+
+// Words shared by several constructions.
+%token <token> AS
+%token <token> AT
+%token <token> IN
+%token <token> OF
+%token <token> ON
+%token <token> TO
+%token <token> WITH
+
+// Operators.
 %token <token> ADD
 %token <token> AND
-%token <token> ARPEGGIATE
-%token <token> ARROW
-%token <token> AS
 %token <token> ASSIGN
-%token <token> AT
-%token <token> BOOLEAN_TYPE
-%token <token> BPM
-%token <token> BY
-%token <token> CHECK
-%token <token> CHORD_TYPE
+%token <token> DIV
+%token <token> EQUAL
+%token <token> GREATER
+%token <token> GREATER_EQUAL
+%token <token> LESS
+%token <token> LESS_EQUAL
+%token <token> MUL
+%token <token> NOT
+%token <token> NOT_EQUAL
+%token <token> OR
+%token <token> SUB
+
+// Punctuation.
+%token <token> ARROW
 %token <token> CLOSE_BRACE
 %token <token> CLOSE_BRACKET
-%token <token> CLOSE_COMMENT
 %token <token> CLOSE_INTERPOLATION
 %token <token> CLOSE_PARENTHESIS
 %token <token> CLOSE_STRING
 %token <token> COMMA
-%token <token> DEFINE
-%token <token> DIMINISHED
-%token <token> DIV
-%token <token> DOMINANT
-%token <token> DORIAN
 %token <token> DOT
-%token <token> ELSE
-%token <token> EQUAL
-%token <token> EXPORT
-%token <token> FALSE
-%token <token> FOR
-%token <token> GREATER
-%token <token> GREATER_EQUAL
-%token <token> IF
-%token <token> IN
-%token <token> INTEGER_TYPE
-%token <token> INTERVAL_TYPE
-%token <token> INVERT
-%token <token> KEY_TYPE
-%token <token> LESS
-%token <token> LESS_EQUAL
-%token <token> LOCRIAN
-%token <token> LOG
-%token <token> LYDIAN
-%token <token> MAJOR
-%token <token> MIDI
-%token <token> MINOR
-%token <token> MIXOLYDIAN
-%token <token> MODULATE
-%token <token> MUL
-%token <token> NINTH
-%token <token> NOT
-%token <token> NOTE_TYPE
-%token <token> NOT_EQUAL
-%token <token> OF
-%token <token> ON
 %token <token> OPEN_BRACE
 %token <token> OPEN_BRACKET
-%token <token> OPEN_COMMENT
 %token <token> OPEN_INTERPOLATION
 %token <token> OPEN_PARENTHESIS
 %token <token> OPEN_STRING
-%token <token> OR
-%token <token> PARALLEL_FIFTHS
-%token <token> PARALLEL_OCTAVES
-%token <token> PHRYGIAN
-%token <token> PROGRESSION_TYPE
-%token <token> RELATIVE
-%token <token> RETURN
-%token <token> SATB
-%token <token> SCALE_TYPE
 %token <token> SEMICOLON
-%token <token> SEVENTH
-%token <token> SHEET
-%token <token> STRICT
-%token <token> STRING_TYPE
-%token <token> SUB
-%token <token> SUBDOMINANT
-%token <token> TO
-%token <token> TRIAD
-%token <token> TRUE
-%token <token> VOICE
-%token <token> VOICE_CROSSING
-%token <token> VOICING_TYPE
-%token <token> WHILE
-%token <token> WITH
+
+// Comments and lexical errors.
+%token <token> CLOSE_COMMENT
+%token <token> OPEN_COMMENT
 
 %token <token> IGNORED
 %token <token> UNKNOWN
 
 /** Non-terminals. */
-%type <constant> constant
+%type <dataType> dataType
 %type <expression> expression
-%type <factor> factor
+%type <expressionList> expressionList
+%type <mode> mode
 %type <program> program
+%type <statement> statement
+%type <statementList> statementList
 
 /**
- * Precedence and associativity.
+ * Precedence and associativity, from the lowest to the highest. "not" binds
+ * weaker than the relational operators, so "not a == b" is "not (a == b)".
+ * The relational operators are not associative: "a < b < c" is rejected. "of"
+ * binds tighter than any operator, so "scale of k == j" is "(scale of k) == j",
+ * and the index and the property access bind even tighter, so "scale of ks[0]"
+ * is "scale of (ks[0])". "by", "as" and "to" have the lowest precedence, so
+ * what follows them is a whole expression: "invert c by n + 1" is
+ * "invert c by (n + 1)".
  *
- * @see https://en.cppreference.com/w/cpp/language/operator_precedence.html
  * @see https://www.gnu.org/software/bison/manual/html_node/Precedence.html
  */
+%nonassoc BY AS TO
+%left OR
+%left AND
+%right NOT
+%nonassoc EQUAL NOT_EQUAL LESS LESS_EQUAL GREATER GREATER_EQUAL IN
 %left ADD SUB
 %left MUL DIV
+%right OF
+%left OPEN_BRACKET DOT
+
+%expect 0
 
 %%
 
 // IMPORTANT: To use λ in the following grammar, use the %empty symbol.
 
-program: expression											{ $$ = ExpressionProgramSemanticAction($1); }
+program: statementList										{ $$ = StatementsProgramSemanticAction($1); }
 	;
 
-expression: expression[left] ADD expression[right]			{ $$ = ArithmeticExpressionSemanticAction($left, $right, ADDITION); }
-	| expression[left] DIV expression[right]				{ $$ = ArithmeticExpressionSemanticAction($left, $right, DIVISION); }
-	| expression[left] MUL expression[right]				{ $$ = ArithmeticExpressionSemanticAction($left, $right, MULTIPLICATION); }
-	| expression[left] SUB expression[right]				{ $$ = ArithmeticExpressionSemanticAction($left, $right, SUBTRACTION); }
-	| factor												{ $$ = FactorExpressionSemanticAction($1); }
+statementList: statement statementList						{ $$ = StatementListSemanticAction($1, $2); }
+	| statement												{ $$ = StatementListSemanticAction($1, NULL); }
 	;
 
-factor: OPEN_PARENTHESIS expression CLOSE_PARENTHESIS		{ $$ = ExpressionFactorSemanticAction($2); }
-	| constant												{ $$ = ConstantFactorSemanticAction($1); }
+statement: dataType ID ASSIGN expression SEMICOLON			{ $$ = DeclarationStatementSemanticAction($1, false, $2, $4); }
+	| dataType OPEN_BRACKET CLOSE_BRACKET ID ASSIGN expression SEMICOLON	{ $$ = DeclarationStatementSemanticAction($1, true, $4, $6); }
+	| ID ASSIGN expression SEMICOLON						{ $$ = AssignmentStatementSemanticAction($1, $3); }
 	;
 
-constant: INTEGER											{ $$ = IntegerConstantSemanticAction($1); }
+dataType: BOOLEAN_TYPE										{ $$ = TYPE_BOOLEAN; }
+	| CHORD_TYPE											{ $$ = TYPE_CHORD; }
+	| INTEGER_TYPE											{ $$ = TYPE_INTEGER; }
+	| INTERVAL_TYPE											{ $$ = TYPE_INTERVAL; }
+	| KEY_TYPE												{ $$ = TYPE_KEY; }
+	| NOTE_TYPE												{ $$ = TYPE_NOTE; }
+	| PROGRESSION_TYPE										{ $$ = TYPE_PROGRESSION; }
+	| SCALE_TYPE											{ $$ = TYPE_SCALE; }
+	| STRING_TYPE											{ $$ = TYPE_STRING; }
+	| VOICING_TYPE											{ $$ = TYPE_VOICING; }
+	;
+
+expression: expression[left] ADD expression[right]			{ $$ = BinaryExpressionSemanticAction($left, $right, ADDITION); }
+	| expression[left] SUB expression[right]				{ $$ = BinaryExpressionSemanticAction($left, $right, SUBTRACTION); }
+	| expression[left] MUL expression[right]				{ $$ = BinaryExpressionSemanticAction($left, $right, MULTIPLICATION); }
+	| expression[left] DIV expression[right]				{ $$ = BinaryExpressionSemanticAction($left, $right, DIVISION); }
+	| expression[left] EQUAL expression[right]				{ $$ = BinaryExpressionSemanticAction($left, $right, EQUALITY); }
+	| expression[left] NOT_EQUAL expression[right]			{ $$ = BinaryExpressionSemanticAction($left, $right, INEQUALITY); }
+	| expression[left] LESS expression[right]				{ $$ = BinaryExpressionSemanticAction($left, $right, LESS_THAN); }
+	| expression[left] LESS_EQUAL expression[right]			{ $$ = BinaryExpressionSemanticAction($left, $right, LESS_THAN_OR_EQUAL); }
+	| expression[left] GREATER expression[right]			{ $$ = BinaryExpressionSemanticAction($left, $right, GREATER_THAN); }
+	| expression[left] GREATER_EQUAL expression[right]		{ $$ = BinaryExpressionSemanticAction($left, $right, GREATER_THAN_OR_EQUAL); }
+	| expression[left] AND expression[right]				{ $$ = BinaryExpressionSemanticAction($left, $right, CONJUNCTION); }
+	| expression[left] OR expression[right]					{ $$ = BinaryExpressionSemanticAction($left, $right, DISJUNCTION); }
+	| NOT expression[operand]								{ $$ = NegationExpressionSemanticAction($operand); }
+	| OPEN_PARENTHESIS expression CLOSE_PARENTHESIS			{ $$ = $2; }
+	| INTEGER												{ $$ = IntegerLiteralSemanticAction($1); }
+	| TRUE													{ $$ = BooleanLiteralSemanticAction(true); }
+	| FALSE													{ $$ = BooleanLiteralSemanticAction(false); }
+	| NOTE													{ $$ = NoteLiteralSemanticAction($1); }
+	| INTERVAL												{ $$ = IntervalLiteralSemanticAction($1); }
+	| ID													{ $$ = VariableExpressionSemanticAction($1); }
+	| NOTE mode												{ $$ = KeyLiteralSemanticAction($1, $2, false); }
+	| NOTE mode STRICT										{ $$ = KeyLiteralSemanticAction($1, $2, true); }
+	| SCALE_TYPE OF expression[key]							{ $$ = KeyRelationExpressionSemanticAction($key, SCALE_OF_KEY); }
+	| RELATIVE MINOR OF expression[key]						{ $$ = KeyRelationExpressionSemanticAction($key, RELATIVE_MINOR_OF_KEY); }
+	| DOMINANT OF expression[key]							{ $$ = KeyRelationExpressionSemanticAction($key, DOMINANT_OF_KEY); }
+	| SUBDOMINANT OF expression[key]						{ $$ = KeyRelationExpressionSemanticAction($key, SUBDOMINANT_OF_KEY); }
+	| DEGREE												{ $$ = DegreeLiteralSemanticAction($1); }
+	| TRIAD ON expression[degree] OF expression[key]		{ $$ = BinaryExpressionSemanticAction($degree, $key, TRIAD_CHORD); }
+	| SEVENTH ON expression[degree] OF expression[key]		{ $$ = BinaryExpressionSemanticAction($degree, $key, SEVENTH_CHORD); }
+	| NINTH ON expression[degree] OF expression[key]		{ $$ = BinaryExpressionSemanticAction($degree, $key, NINTH_CHORD); }
+	| OPEN_BRACE expressionList CLOSE_BRACE					{ $$ = NotesChordExpressionSemanticAction($2); }
+	| OPEN_BRACKET CLOSE_BRACKET							{ $$ = ListLiteralSemanticAction(NULL); }
+	| OPEN_BRACKET expressionList CLOSE_BRACKET				{ $$ = ListLiteralSemanticAction($2); }
+	| expression[left] IN expression[right]					{ $$ = BinaryExpressionSemanticAction($left, $right, IN_EXPRESSION); }
+	| expression[object] OPEN_BRACKET expression[index] CLOSE_BRACKET	{ $$ = BinaryExpressionSemanticAction($object, $index, INDEX_ACCESS); }
+	| expression[object] DOT ID								{ $$ = PropertyAccessSemanticAction($object, $3); }
+	| DIMINISHED											{ $$ = DiminishedLiteralSemanticAction(); }
+	| DURATION												{ $$ = DurationLiteralSemanticAction($1); }
+	| INVERT expression[chord] BY expression[count]			{ $$ = BinaryExpressionSemanticAction($chord, $count, INVERSION); }
+	| ARPEGGIATE expression[chord] AS expression[duration]	{ $$ = BinaryExpressionSemanticAction($chord, $duration, ARPEGGIATION); }
+	| MODULATE expression[progression] TO expression[key]	{ $$ = BinaryExpressionSemanticAction($progression, $key, MODULATION); }
+	;
+
+expressionList: expression COMMA expressionList				{ $$ = ExpressionListSemanticAction($1, $3); }
+	| expression											{ $$ = ExpressionListSemanticAction($1, NULL); }
+	;
+
+mode: DORIAN												{ $$ = MODE_DORIAN; }
+	| LOCRIAN												{ $$ = MODE_LOCRIAN; }
+	| LYDIAN												{ $$ = MODE_LYDIAN; }
+	| MAJOR													{ $$ = MODE_MAJOR; }
+	| MINOR													{ $$ = MODE_MINOR; }
+	| MIXOLYDIAN											{ $$ = MODE_MIXOLYDIAN; }
+	| PHRYGIAN												{ $$ = MODE_PHRYGIAN; }
 	;
 
 %%

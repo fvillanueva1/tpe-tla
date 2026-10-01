@@ -16,6 +16,7 @@
 
 extern CompilationStatus EnterMultilineCommentLexemeAction(FlexContext context);
 extern CompilationStatus EOFLexemeAction();
+extern CompilationStatus IdentifierLexemeAction();
 extern CompilationStatus IgnoredLexemeAction();
 extern CompilationStatus IntegerLexemeAction();
 extern CompilationStatus LeaveMultilineCommentLexemeAction();
@@ -156,6 +157,7 @@ whitespace			[[:space:]]+
 "["									{ return TokenLexemeAction(OPEN_BRACKET); }
 "]"									{ return TokenLexemeAction(CLOSE_BRACKET); }
 
+[a-zA-Z_][a-zA-Z0-9_]*				{ return IdentifierLexemeAction(); }
 [[:digit:]]+						{ return IntegerLexemeAction(); }
 
 {whitespace}						{ return IgnoredLexemeAction(); }

@@ -27,6 +27,7 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 	/** Terminals. */
 
 	signed int integer;
+	char * string;
 	TokenLabel token;
 
 	/** Non-terminals. */
@@ -48,9 +49,11 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 %destructor { destroyConstant($$); } <constant>
 %destructor { destroyExpression($$); } <expression>
 %destructor { destroyFactor($$); } <factor>
+%destructor { free($$); } <string>
 
 /** Terminals. */
 %token <integer> INTEGER
+%token <string> ID
 %token <token> ADD
 %token <token> AND
 %token <token> ARPEGGIATE

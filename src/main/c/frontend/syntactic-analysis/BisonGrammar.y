@@ -66,12 +66,11 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 %token <token> AS
 %token <token> ASSIGN
 %token <token> AT
-%token <token> AUGMENTED
 %token <token> BOOLEAN_TYPE
 %token <token> BPM
 %token <token> BY
 %token <token> CHECK
-%token <token> CHORD
+%token <token> CHORD_TYPE
 %token <token> CLOSE_BRACE
 %token <token> CLOSE_BRACKET
 %token <token> CLOSE_COMMENT
@@ -86,7 +85,7 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 %token <token> DORIAN
 %token <token> DOT
 %token <token> ELSE
-%token <token> EQUAL_EQUAL
+%token <token> EQUAL
 %token <token> EXPORT
 %token <token> FALSE
 %token <token> FOR
@@ -97,7 +96,7 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 %token <token> INTEGER_TYPE
 %token <token> INTERVAL_TYPE
 %token <token> INVERT
-%token <token> KEY
+%token <token> KEY_TYPE
 %token <token> LESS
 %token <token> LESS_EQUAL
 %token <token> LOCRIAN
@@ -125,11 +124,11 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 %token <token> PARALLEL_FIFTHS
 %token <token> PARALLEL_OCTAVES
 %token <token> PHRYGIAN
-%token <token> PROGRESSION
+%token <token> PROGRESSION_TYPE
 %token <token> RELATIVE
 %token <token> RETURN
 %token <token> SATB
-%token <token> SCALE
+%token <token> SCALE_TYPE
 %token <token> SEMICOLON
 %token <token> SEVENTH
 %token <token> SHEET
@@ -142,7 +141,7 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 %token <token> TRUE
 %token <token> VOICE
 %token <token> VOICE_CROSSING
-%token <token> VOICING
+%token <token> VOICING_TYPE
 %token <token> WHILE
 %token <token> WITH
 

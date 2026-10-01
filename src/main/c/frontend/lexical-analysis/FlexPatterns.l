@@ -87,11 +87,11 @@ invalid_degree		[IVX]+("dim")?|[iv]+("dim")?
 	/* Tipos de datos. */
 "note"								{ return TokenLexemeAction(NOTE_TYPE); }
 "interval"							{ return TokenLexemeAction(INTERVAL_TYPE); }
-"key"								{ return TokenLexemeAction(KEY); }
-"scale"								{ return TokenLexemeAction(SCALE); }
-"chord"								{ return TokenLexemeAction(CHORD); }
-"progression"						{ return TokenLexemeAction(PROGRESSION); }
-"voicing"							{ return TokenLexemeAction(VOICING); }
+"key"								{ return TokenLexemeAction(KEY_TYPE); }
+"scale"								{ return TokenLexemeAction(SCALE_TYPE); }
+"chord"								{ return TokenLexemeAction(CHORD_TYPE); }
+"progression"						{ return TokenLexemeAction(PROGRESSION_TYPE); }
+"voicing"							{ return TokenLexemeAction(VOICING_TYPE); }
 "integer"							{ return TokenLexemeAction(INTEGER_TYPE); }
 "boolean"							{ return TokenLexemeAction(BOOLEAN_TYPE); }
 "string"							{ return TokenLexemeAction(STRING_TYPE); }
@@ -106,7 +106,6 @@ invalid_degree		[IVX]+("dim")?|[iv]+("dim")?
 "locrian"							{ return TokenLexemeAction(LOCRIAN); }
 "strict"							{ return TokenLexemeAction(STRICT); }
 "diminished"						{ return TokenLexemeAction(DIMINISHED); }
-"augmented"							{ return TokenLexemeAction(AUGMENTED); }
 
 	/* Acordes y progresiones. */
 "triad"								{ return TokenLexemeAction(TRIAD); }
@@ -160,7 +159,7 @@ invalid_degree		[IVX]+("dim")?|[iv]+("dim")?
 "false"								{ return TokenLexemeAction(FALSE); }
 
 	/* Operadores relacionales y de asignación. */
-"=="								{ return TokenLexemeAction(EQUAL_EQUAL); }
+"=="								{ return TokenLexemeAction(EQUAL); }
 "!="								{ return TokenLexemeAction(NOT_EQUAL); }
 "<="								{ return TokenLexemeAction(LESS_EQUAL); }
 ">="								{ return TokenLexemeAction(GREATER_EQUAL); }

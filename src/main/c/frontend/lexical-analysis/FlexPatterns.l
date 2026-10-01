@@ -14,10 +14,12 @@
  * @see https://westes.github.io/flex/manual/Definitions-Section.html#Definitions-Section
  */
 
+extern CompilationStatus EnterContextLexemeAction(FlexContext context, TokenLabel label);
 extern CompilationStatus EnterMultilineCommentLexemeAction(FlexContext context);
 extern CompilationStatus EOFLexemeAction();
 extern CompilationStatus IgnoredLexemeAction();
 extern CompilationStatus IntegerLexemeAction();
+extern CompilationStatus LeaveContextLexemeAction(TokenLabel label);
 extern CompilationStatus LeaveMultilineCommentLexemeAction();
 extern CompilationStatus StringLexemeAction(TokenLabel label);
 extern CompilationStatus TokenLexemeAction(TokenLabel label);
@@ -31,6 +33,8 @@ extern CompilationStatus UnknownLexemeAction();
  * @see https://westes.github.io/flex/manual/Start-Conditions.html
  */
 %x MULTILINE_COMMENT
+%x STRING
+%x INTERPOLATION
 
 /**
  * Reusable patterns.
@@ -39,6 +43,7 @@ extern CompilationStatus UnknownLexemeAction();
  * @see https://westes.github.io/flex/manual/Patterns.html
  */
 whitespace			[[:space:]]+
+identifier			[a-zA-Z_][a-zA-Z0-9_]*
 
 /** Literales del dominio. */
 note				[A-G]("#"|b)?[0-8]?
@@ -67,6 +72,17 @@ invalid_degree		[IVX]+("dim")?|[iv]+("dim")?
 <MULTILINE_COMMENT>"*/"				{ return LeaveMultilineCommentLexemeAction(); }
 <MULTILINE_COMMENT>[^*]+			{ return IgnoredLexemeAction(); }
 <MULTILINE_COMMENT>.				{ return IgnoredLexemeAction(); }
+
+	/* Strings: cada fragmento de texto es un token, y {variable} son tres. */
+\"									{ return EnterContextLexemeAction(STRING, OPEN_STRING); }
+<STRING>\"								{ return LeaveContextLexemeAction(CLOSE_STRING); }
+<STRING>"{"							{ return EnterContextLexemeAction(INTERPOLATION, OPEN_INTERPOLATION); }
+<STRING>[^"{}\\\n]+					{ return StringLexemeAction(STRING_TEXT); }
+<STRING>\\["\\{}nt]					{ return StringLexemeAction(STRING_TEXT); }
+<STRING>.|\n						{ return UnknownLexemeAction(); }
+<INTERPOLATION>{identifier}			{ return StringLexemeAction(ID); }
+<INTERPOLATION>"}"					{ return LeaveContextLexemeAction(CLOSE_INTERPOLATION); }
+<INTERPOLATION>.|\n					{ return UnknownLexemeAction(); }
 
 	/* Tipos de datos. */
 "note"								{ return TokenLexemeAction(NOTE_TYPE); }
@@ -181,7 +197,7 @@ invalid_degree		[IVX]+("dim")?|[iv]+("dim")?
 {invalid_interval}					{ return UnknownLexemeAction(); }
 {invalid_degree}					{ return UnknownLexemeAction(); }
 
-[a-zA-Z_][a-zA-Z0-9_]*				{ return StringLexemeAction(ID); }
+{identifier}						{ return StringLexemeAction(ID); }
 [[:digit:]]+						{ return IntegerLexemeAction(); }
 
 {whitespace}						{ return IgnoredLexemeAction(); }

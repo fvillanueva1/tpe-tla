@@ -47,6 +47,20 @@ frontend. Si alguna cambia, se actualiza este documento.
     (`VIII`, `X`, `viii`, `vv`, `Vdim`).
 - Los grados en minúscula (`i`, `ii`, `v`, `vi`, ...) son tokens de grado, así
   que no pueden usarse como nombres de variable.
+- Strings (secuencia de tokens en `tokens.md`): las comillas emiten
+  `OPEN_STRING` y `CLOSE_STRING`, y `{nombre}` emite `OPEN_INTERPOLATION`,
+  `ID` y `CLOSE_INTERPOLATION`. El lexer usa dos contextos, `STRING` e
+  `INTERPOLATION`, uno dentro del otro.
+  - `STRING_TEXT` es texto literal o un escape (`\"`, `\\`, `\{`, `\}`, `\n`,
+    `\t`). El valor es el lexema tal cual; los escapes se decodifican en el
+    Stage III.
+  - Dentro de las llaves todo nombre es `ID`, aunque sea una palabra clave o
+    un literal fuera del string (`{key}`, `{v}`).
+- Son errores léxicos dentro de un string: una `}` suelta, un escape
+  desconocido (`\q`) y un salto de línea. Dentro de las llaves, cualquier cosa
+  que no sea un nombre (`{1}`, `{a+b}`, `{ a }`, `{a{b}}`). `{}` pasa el lexer
+  y lo rechaza la gramática. Un string o una interpolación sin cerrar fallan
+  al llegar al final del archivo.
 
 ## Proceso
 

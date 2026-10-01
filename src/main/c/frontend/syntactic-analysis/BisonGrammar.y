@@ -58,6 +58,7 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 %token <string> ID
 %token <string> INTERVAL
 %token <string> NOTE
+%token <string> STRING_TEXT
 %token <token> ADD
 %token <token> AND
 %token <token> ARPEGGIATE
@@ -74,7 +75,9 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 %token <token> CLOSE_BRACE
 %token <token> CLOSE_BRACKET
 %token <token> CLOSE_COMMENT
+%token <token> CLOSE_INTERPOLATION
 %token <token> CLOSE_PARENTHESIS
+%token <token> CLOSE_STRING
 %token <token> COMMA
 %token <token> DEFINE
 %token <token> DIMINISHED
@@ -115,7 +118,9 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 %token <token> OPEN_BRACE
 %token <token> OPEN_BRACKET
 %token <token> OPEN_COMMENT
+%token <token> OPEN_INTERPOLATION
 %token <token> OPEN_PARENTHESIS
+%token <token> OPEN_STRING
 %token <token> OR
 %token <token> PARALLEL_FIFTHS
 %token <token> PARALLEL_OCTAVES

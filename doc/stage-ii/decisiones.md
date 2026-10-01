@@ -88,6 +88,27 @@ que `not a == b` es `not (a == b)`. Los relacionales no son asociativos:
   `(invert c by 1) == d`. Estas formas no se encadenan sin paréntesis
   (`invert c by 1 by 2` se rechaza).
 
+## Control de flujo y procedimientos
+
+- Los bloques llevan llaves siempre, también con una sola sentencia. Así no
+  hay ambigüedad con `else` (*dangling else*). Un bloque puede estar vacío:
+  `{ }`.
+- `if (condición) { ... }`, con `else { ... }` o `else if (...) { ... }`
+  opcionales. La condición va entre paréntesis.
+- `while (condición) { ... }`, con la condición entre paréntesis.
+- `for variable = desde to hasta { ... }`. La variable no lleva tipo; que sea
+  un entero y que no choque con otra se valida en el Stage III. Como los grados
+  en minúscula son tokens, la variable no puede llamarse `i` ni `v`.
+- Procedimientos: `define nombre(tipo a, tipo[] b) -> tipo { ... }`. Los
+  parámetros pueden faltar (`define f() { ... }`) y el tipo de retorno es
+  opcional, con `[]` si devuelve un vector (`-> chord[]`).
+- `return expresión;` o `return;`.
+- Una llamada es una expresión (`progression p = cadencia(k);`) o una sentencia
+  (`cadencia(k);`). Los argumentos pueden faltar.
+- `define` y `return` se aceptan en cualquier lugar donde va una sentencia. Que
+  un `define` no esté anidado y que `return` esté dentro de un procedimiento se
+  valida en el Stage III.
+
 ## Lexer
 
 - Las notas sin octava (`C`, `G`, ...) son tokens de nota, así que no pueden

@@ -29,12 +29,21 @@ Expression * ListLiteralSemanticAction(ExpressionList * elements);
 Expression * NegationExpressionSemanticAction(Expression * operand);
 Expression * NoteLiteralSemanticAction(char * lexeme);
 Expression * NotesChordExpressionSemanticAction(ExpressionList * elements);
+Expression * ProcedureCallExpressionSemanticAction(char * name, ExpressionList * arguments);
 Expression * PropertyAccessSemanticAction(Expression * object, char * name);
 Expression * VariableExpressionSemanticAction(char * name);
 ExpressionList * ExpressionListSemanticAction(Expression * expression, ExpressionList * next);
+Parameter * ParameterSemanticAction(DataType dataType, const bool isVector, char * name);
+ParameterList * ParameterListSemanticAction(Parameter * parameter, ParameterList * next);
 Program * StatementsProgramSemanticAction(StatementList * statements);
 Statement * AssignmentStatementSemanticAction(char * name, Expression * expression);
 Statement * DeclarationStatementSemanticAction(DataType dataType, const bool isVector, char * name, Expression * expression);
+Statement * ForStatementSemanticAction(char * variable, Expression * from, Expression * to, StatementList * body);
+Statement * IfStatementSemanticAction(Expression * condition, StatementList * thenBlock, StatementList * elseBlock);
+Statement * ProcedureCallStatementSemanticAction(char * name, ExpressionList * arguments);
+Statement * ProcedureDefinitionSemanticAction(char * name, ParameterList * parameters, const bool hasReturnType, DataType returnType, const bool returnsVector, StatementList * body);
+Statement * ReturnStatementSemanticAction(Expression * value);
+Statement * WhileStatementSemanticAction(Expression * condition, StatementList * body);
 StatementList * StatementListSemanticAction(Statement * statement, StatementList * next);
 
 #endif

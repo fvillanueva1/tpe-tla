@@ -109,16 +109,26 @@ Existen:
 |------|-----------|
 | `Program` | La lista de sentencias |
 | `StatementList` | Una sentencia y la lista siguiente (no vacía, en orden) |
-| `Statement` | Declaración (`StatementType` `DECLARATION`, con `DataType` y si es vector) o asignación (`ASSIGNMENT`) |
-| `Expression` | Literal (entero, booleano, nota, intervalo, duración, grado, tonalidad), variable, operación binaria, negación, escala/relación tonal de una tonalidad, acorde (por grado o por notas), lista entre corchetes, `in`, acceso por índice, acceso a una propiedad, inversión, arpegio o modulación; el tipo es `ExpressionType` |
+| `Statement` | Declaración (`StatementType` `DECLARATION`, con `DataType` y si es vector), asignación (`ASSIGNMENT`), o una sentencia con nodo propio: `IF_STATEMENT`, `FOR_STATEMENT`, `WHILE_STATEMENT`, `RETURN_STATEMENT`, `PROCEDURE_DEFINITION`, `PROCEDURE_CALL_STATEMENT` |
+| `Expression` | Literal (entero, booleano, nota, intervalo, duración, grado, tonalidad), variable, operación binaria, negación, escala/relación tonal de una tonalidad, acorde (por grado o por notas), lista entre corchetes, `in`, acceso por índice, acceso a una propiedad, inversión, arpegio, modulación o llamada a un procedimiento (`PROCEDURE_CALL`); el tipo es `ExpressionType` |
 | `ExpressionList` | Una expresión y la lista siguiente (no vacía, en orden) |
+| `If` | Condición, bloque `then` y bloque `else` (`NULL` si no hay; un `else if` es un bloque con un único `if`) |
+| `For` | Variable, expresiones `from` y `to`, y el cuerpo |
+| `While` | Condición y cuerpo |
+| `Return` | El valor devuelto (`NULL` en `return;`) |
+| `ProcedureDefinition` | Nombre, parámetros (`NULL` si no hay), cuerpo y tipo de retorno opcional (`hasReturnType`, `returnType`, `returnsVector`) |
+| `ProcedureCall` | Nombre y argumentos (`NULL` si no hay); es el mismo nodo como sentencia y como expresión |
+| `Parameter` | Tipo, si es vector, y nombre |
+| `ParameterList` | Un parámetro y la lista siguiente (no vacía, en orden) |
 | `Mode` | Enumerado con los modos (`MODE_MAJOR`, `MODE_MINOR`, ...) |
 | `DataType` | Enumerado con los tipos del lenguaje (`TYPE_CHORD`, `TYPE_NOTE`, ...) |
+
+Los bloques entre llaves son un `StatementList`, que es `NULL` si el bloque
+está vacío.
 
 Se agregarán con estos nombres:
 
 | Grupo | Nodos |
 |-------|-------|
-| Sentencias | `If`, `For`, `While`, `Return`, `Log`, `Export`, `Check`, `ProcedureDefinition`, `ProcedureCall` |
-| Expresiones | llamada |
+| Sentencias | `Log`, `Export`, `Check` |
 | Dominio | `Voice` |

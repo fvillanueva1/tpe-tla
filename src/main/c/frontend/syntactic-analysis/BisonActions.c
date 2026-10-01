@@ -26,12 +26,30 @@ ModuleDestructor initializeBisonActionsModule(CompilerState * compilerState) {
 /* PRIVATE FUNCTIONS */
 
 static void _logSyntacticAnalyzerAction(const char * functionName);
+static ProcedureCall * _createProcedureCall(char * name, ExpressionList * arguments);
+static Statement * _createStatement(StatementType type);
 
 /**
  * Logs a syntactic-analyzer action in DEBUGGING level.
  */
 static void _logSyntacticAnalyzerAction(const char * functionName) {
 	logDebugging(_logger, "%s", functionName);
+}
+
+/**
+ * A procedure call is the same node as a statement and as an expression.
+ */
+static ProcedureCall * _createProcedureCall(char * name, ExpressionList * arguments) {
+	ProcedureCall * procedureCall = calloc(1, sizeof(ProcedureCall));
+	procedureCall->arguments = arguments;
+	procedureCall->name = name;
+	return procedureCall;
+}
+
+static Statement * _createStatement(StatementType type) {
+	Statement * statement = calloc(1, sizeof(Statement));
+	statement->type = type;
+	return statement;
 }
 
 /* PUBLIC FUNCTIONS */
@@ -142,6 +160,14 @@ Expression * NotesChordExpressionSemanticAction(ExpressionList * elements) {
 	return expression;
 }
 
+Expression * ProcedureCallExpressionSemanticAction(char * name, ExpressionList * arguments) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	Expression * expression = calloc(1, sizeof(Expression));
+	expression->call = _createProcedureCall(name, arguments);
+	expression->type = PROCEDURE_CALL;
+	return expression;
+}
+
 Expression * PropertyAccessSemanticAction(Expression * object, char * name) {
 	_logSyntacticAnalyzerAction(__FUNCTION__);
 	Expression * expression = calloc(1, sizeof(Expression));
@@ -165,6 +191,23 @@ ExpressionList * ExpressionListSemanticAction(Expression * expression, Expressio
 	expressionList->expression = expression;
 	expressionList->next = next;
 	return expressionList;
+}
+
+Parameter * ParameterSemanticAction(DataType dataType, const bool isVector, char * name) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	Parameter * parameter = calloc(1, sizeof(Parameter));
+	parameter->dataType = dataType;
+	parameter->isVector = isVector;
+	parameter->name = name;
+	return parameter;
+}
+
+ParameterList * ParameterListSemanticAction(Parameter * parameter, ParameterList * next) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	ParameterList * parameterList = calloc(1, sizeof(ParameterList));
+	parameterList->next = next;
+	parameterList->parameter = parameter;
+	return parameterList;
 }
 
 Program * StatementsProgramSemanticAction(StatementList * statements) {
@@ -192,6 +235,64 @@ Statement * DeclarationStatementSemanticAction(DataType dataType, const bool isV
 	statement->isVector = isVector;
 	statement->name = name;
 	statement->type = DECLARATION;
+	return statement;
+}
+
+Statement * ForStatementSemanticAction(char * variable, Expression * from, Expression * to, StatementList * body) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	Statement * statement = _createStatement(FOR_STATEMENT);
+	statement->forStatement = calloc(1, sizeof(For));
+	statement->forStatement->body = body;
+	statement->forStatement->from = from;
+	statement->forStatement->to = to;
+	statement->forStatement->variable = variable;
+	return statement;
+}
+
+Statement * IfStatementSemanticAction(Expression * condition, StatementList * thenBlock, StatementList * elseBlock) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	Statement * statement = _createStatement(IF_STATEMENT);
+	statement->ifStatement = calloc(1, sizeof(If));
+	statement->ifStatement->condition = condition;
+	statement->ifStatement->elseBlock = elseBlock;
+	statement->ifStatement->thenBlock = thenBlock;
+	return statement;
+}
+
+Statement * ProcedureCallStatementSemanticAction(char * name, ExpressionList * arguments) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	Statement * statement = _createStatement(PROCEDURE_CALL_STATEMENT);
+	statement->procedureCall = _createProcedureCall(name, arguments);
+	return statement;
+}
+
+Statement * ProcedureDefinitionSemanticAction(char * name, ParameterList * parameters, const bool hasReturnType, DataType returnType, const bool returnsVector, StatementList * body) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	Statement * statement = _createStatement(PROCEDURE_DEFINITION);
+	statement->procedureDefinition = calloc(1, sizeof(ProcedureDefinition));
+	statement->procedureDefinition->body = body;
+	statement->procedureDefinition->hasReturnType = hasReturnType;
+	statement->procedureDefinition->name = name;
+	statement->procedureDefinition->parameters = parameters;
+	statement->procedureDefinition->returnType = returnType;
+	statement->procedureDefinition->returnsVector = returnsVector;
+	return statement;
+}
+
+Statement * ReturnStatementSemanticAction(Expression * value) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	Statement * statement = _createStatement(RETURN_STATEMENT);
+	statement->returnStatement = calloc(1, sizeof(Return));
+	statement->returnStatement->value = value;
+	return statement;
+}
+
+Statement * WhileStatementSemanticAction(Expression * condition, StatementList * body) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	Statement * statement = _createStatement(WHILE_STATEMENT);
+	statement->whileStatement = calloc(1, sizeof(While));
+	statement->whileStatement->body = body;
+	statement->whileStatement->condition = condition;
 	return statement;
 }
 

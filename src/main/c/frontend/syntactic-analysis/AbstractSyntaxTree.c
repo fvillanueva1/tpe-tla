@@ -38,6 +38,9 @@ void destroyExpression(Expression * expression) {
 			case NOTES_CHORD:
 				destroyExpressionList(expression->elements);
 				break;
+			case PROCEDURE_CALL:
+				destroyProcedureCall(expression->call);
+				break;
 			case PROPERTY_ACCESS:
 				destroyExpression(expression->property.object);
 				free(expression->property.name);
@@ -90,6 +93,63 @@ void destroyExpressionList(ExpressionList * expressionList) {
 	}
 }
 
+void destroyFor(For * forStatement) {
+	logDebugging(_logger, "Executing destructor: %s", __FUNCTION__);
+	if (forStatement != NULL) {
+		free(forStatement->variable);
+		destroyExpression(forStatement->from);
+		destroyExpression(forStatement->to);
+		destroyStatementList(forStatement->body);
+		free(forStatement);
+	}
+}
+
+void destroyIf(If * ifStatement) {
+	logDebugging(_logger, "Executing destructor: %s", __FUNCTION__);
+	if (ifStatement != NULL) {
+		destroyExpression(ifStatement->condition);
+		destroyStatementList(ifStatement->thenBlock);
+		destroyStatementList(ifStatement->elseBlock);
+		free(ifStatement);
+	}
+}
+
+void destroyParameter(Parameter * parameter) {
+	logDebugging(_logger, "Executing destructor: %s", __FUNCTION__);
+	if (parameter != NULL) {
+		free(parameter->name);
+		free(parameter);
+	}
+}
+
+void destroyParameterList(ParameterList * parameterList) {
+	logDebugging(_logger, "Executing destructor: %s", __FUNCTION__);
+	if (parameterList != NULL) {
+		destroyParameter(parameterList->parameter);
+		destroyParameterList(parameterList->next);
+		free(parameterList);
+	}
+}
+
+void destroyProcedureCall(ProcedureCall * procedureCall) {
+	logDebugging(_logger, "Executing destructor: %s", __FUNCTION__);
+	if (procedureCall != NULL) {
+		free(procedureCall->name);
+		destroyExpressionList(procedureCall->arguments);
+		free(procedureCall);
+	}
+}
+
+void destroyProcedureDefinition(ProcedureDefinition * procedureDefinition) {
+	logDebugging(_logger, "Executing destructor: %s", __FUNCTION__);
+	if (procedureDefinition != NULL) {
+		free(procedureDefinition->name);
+		destroyParameterList(procedureDefinition->parameters);
+		destroyStatementList(procedureDefinition->body);
+		free(procedureDefinition);
+	}
+}
+
 void destroyProgram(Program * program) {
 	logDebugging(_logger, "Executing destructor: %s", __FUNCTION__);
 	if (program != NULL) {
@@ -98,11 +158,42 @@ void destroyProgram(Program * program) {
 	}
 }
 
+void destroyReturn(Return * returnStatement) {
+	logDebugging(_logger, "Executing destructor: %s", __FUNCTION__);
+	if (returnStatement != NULL) {
+		destroyExpression(returnStatement->value);
+		free(returnStatement);
+	}
+}
+
 void destroyStatement(Statement * statement) {
 	logDebugging(_logger, "Executing destructor: %s", __FUNCTION__);
 	if (statement != NULL) {
-		free(statement->name);
-		destroyExpression(statement->expression);
+		switch (statement->type) {
+			case ASSIGNMENT:
+			case DECLARATION:
+				free(statement->name);
+				destroyExpression(statement->expression);
+				break;
+			case FOR_STATEMENT:
+				destroyFor(statement->forStatement);
+				break;
+			case IF_STATEMENT:
+				destroyIf(statement->ifStatement);
+				break;
+			case PROCEDURE_CALL_STATEMENT:
+				destroyProcedureCall(statement->procedureCall);
+				break;
+			case PROCEDURE_DEFINITION:
+				destroyProcedureDefinition(statement->procedureDefinition);
+				break;
+			case RETURN_STATEMENT:
+				destroyReturn(statement->returnStatement);
+				break;
+			case WHILE_STATEMENT:
+				destroyWhile(statement->whileStatement);
+				break;
+		}
 		free(statement);
 	}
 }
@@ -113,5 +204,14 @@ void destroyStatementList(StatementList * statementList) {
 		destroyStatement(statementList->statement);
 		destroyStatementList(statementList->next);
 		free(statementList);
+	}
+}
+
+void destroyWhile(While * whileStatement) {
+	logDebugging(_logger, "Executing destructor: %s", __FUNCTION__);
+	if (whileStatement != NULL) {
+		destroyExpression(whileStatement->condition);
+		destroyStatementList(whileStatement->body);
+		free(whileStatement);
 	}
 }

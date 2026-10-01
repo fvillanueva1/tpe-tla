@@ -36,6 +36,8 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 	Expression * expression;
 	ExpressionList * expressionList;
 	Mode mode;
+	Parameter * parameter;
+	ParameterList * parameterList;
 	Program * program;
 	Statement * statement;
 	StatementList * statementList;
@@ -52,6 +54,8 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 %destructor { free($$); } <string>
 %destructor { destroyExpression($$); } <expression>
 %destructor { destroyExpressionList($$); } <expressionList>
+%destructor { destroyParameter($$); } <parameter>
+%destructor { destroyParameterList($$); } <parameterList>
 %destructor { destroyStatement($$); } <statement>
 %destructor { destroyStatementList($$); } <statementList>
 
@@ -175,10 +179,16 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 %token <token> UNKNOWN
 
 /** Non-terminals. */
+%type <expressionList> arguments
+%type <statementList> block
 %type <dataType> dataType
 %type <expression> expression
 %type <expressionList> expressionList
+%type <statement> ifStatement
 %type <mode> mode
+%type <parameter> parameter
+%type <parameterList> parameterList
+%type <parameterList> parameters
 %type <program> program
 %type <statement> statement
 %type <statementList> statementList
@@ -221,6 +231,41 @@ statementList: statement statementList						{ $$ = StatementListSemanticAction($
 statement: dataType ID ASSIGN expression SEMICOLON			{ $$ = DeclarationStatementSemanticAction($1, false, $2, $4); }
 	| dataType OPEN_BRACKET CLOSE_BRACKET ID ASSIGN expression SEMICOLON	{ $$ = DeclarationStatementSemanticAction($1, true, $4, $6); }
 	| ID ASSIGN expression SEMICOLON						{ $$ = AssignmentStatementSemanticAction($1, $3); }
+	| ifStatement											{ $$ = $1; }
+	| FOR ID ASSIGN expression[from] TO expression[to] block	{ $$ = ForStatementSemanticAction($2, $from, $to, $block); }
+	| WHILE OPEN_PARENTHESIS expression CLOSE_PARENTHESIS block	{ $$ = WhileStatementSemanticAction($3, $5); }
+	| DEFINE ID OPEN_PARENTHESIS parameters CLOSE_PARENTHESIS block	{ $$ = ProcedureDefinitionSemanticAction($2, $4, false, TYPE_INTEGER, false, $6); }
+	| DEFINE ID OPEN_PARENTHESIS parameters CLOSE_PARENTHESIS ARROW dataType block	{ $$ = ProcedureDefinitionSemanticAction($2, $4, true, $7, false, $8); }
+	| DEFINE ID OPEN_PARENTHESIS parameters CLOSE_PARENTHESIS ARROW dataType OPEN_BRACKET CLOSE_BRACKET block	{ $$ = ProcedureDefinitionSemanticAction($2, $4, true, $7, true, $10); }
+	| RETURN expression SEMICOLON							{ $$ = ReturnStatementSemanticAction($2); }
+	| RETURN SEMICOLON										{ $$ = ReturnStatementSemanticAction(NULL); }
+	| ID OPEN_PARENTHESIS arguments CLOSE_PARENTHESIS SEMICOLON	{ $$ = ProcedureCallStatementSemanticAction($1, $3); }
+	;
+
+// Las llaves son obligatorias, así que no hay ambigüedad con "else" (dangling else).
+ifStatement: IF OPEN_PARENTHESIS expression CLOSE_PARENTHESIS block[then]	{ $$ = IfStatementSemanticAction($3, $then, NULL); }
+	| IF OPEN_PARENTHESIS expression CLOSE_PARENTHESIS block[then] ELSE block[else]	{ $$ = IfStatementSemanticAction($3, $then, $else); }
+	| IF OPEN_PARENTHESIS expression CLOSE_PARENTHESIS block[then] ELSE ifStatement[elseIf]	{ $$ = IfStatementSemanticAction($3, $then, StatementListSemanticAction($elseIf, NULL)); }
+	;
+
+block: OPEN_BRACE CLOSE_BRACE								{ $$ = NULL; }
+	| OPEN_BRACE statementList CLOSE_BRACE					{ $$ = $2; }
+	;
+
+parameters: %empty											{ $$ = NULL; }
+	| parameterList											{ $$ = $1; }
+	;
+
+parameterList: parameter COMMA parameterList				{ $$ = ParameterListSemanticAction($1, $3); }
+	| parameter												{ $$ = ParameterListSemanticAction($1, NULL); }
+	;
+
+parameter: dataType ID										{ $$ = ParameterSemanticAction($1, false, $2); }
+	| dataType OPEN_BRACKET CLOSE_BRACKET ID				{ $$ = ParameterSemanticAction($1, true, $4); }
+	;
+
+arguments: %empty											{ $$ = NULL; }
+	| expressionList										{ $$ = $1; }
 	;
 
 dataType: BOOLEAN_TYPE										{ $$ = TYPE_BOOLEAN; }
@@ -255,6 +300,7 @@ expression: expression[left] ADD expression[right]			{ $$ = BinaryExpressionSema
 	| NOTE													{ $$ = NoteLiteralSemanticAction($1); }
 	| INTERVAL												{ $$ = IntervalLiteralSemanticAction($1); }
 	| ID													{ $$ = VariableExpressionSemanticAction($1); }
+	| ID OPEN_PARENTHESIS arguments CLOSE_PARENTHESIS		{ $$ = ProcedureCallExpressionSemanticAction($1, $3); }
 	| NOTE mode												{ $$ = KeyLiteralSemanticAction($1, $2, false); }
 	| NOTE mode STRICT										{ $$ = KeyLiteralSemanticAction($1, $2, true); }
 	| SCALE_TYPE OF expression[key]							{ $$ = KeyRelationExpressionSemanticAction($key, SCALE_OF_KEY); }

@@ -22,9 +22,17 @@ typedef enum StatementType StatementType;
 
 typedef struct Expression Expression;
 typedef struct ExpressionList ExpressionList;
+typedef struct For For;
+typedef struct If If;
+typedef struct Parameter Parameter;
+typedef struct ParameterList ParameterList;
+typedef struct ProcedureCall ProcedureCall;
+typedef struct ProcedureDefinition ProcedureDefinition;
 typedef struct Program Program;
+typedef struct Return Return;
 typedef struct Statement Statement;
 typedef struct StatementList StatementList;
+typedef struct While While;
 
 /**
  * Node types for the Abstract Syntax Tree (AST).
@@ -73,6 +81,7 @@ enum ExpressionType {
 	NINTH_CHORD,
 	NOTE_LITERAL,
 	NOTES_CHORD,
+	PROCEDURE_CALL,
 	PROPERTY_ACCESS,
 	RELATIVE_MINOR_OF_KEY,
 	SCALE_OF_KEY,
@@ -95,7 +104,13 @@ enum Mode {
 
 enum StatementType {
 	ASSIGNMENT,
-	DECLARATION
+	DECLARATION,
+	FOR_STATEMENT,
+	IF_STATEMENT,
+	PROCEDURE_CALL_STATEMENT,
+	PROCEDURE_DEFINITION,
+	RETURN_STATEMENT,
+	WHILE_STATEMENT
 };
 
 /**
@@ -111,7 +126,8 @@ enum StatementType {
  * note, and the semantic analysis tells them apart. The inversion of a
  * chord, its arpeggiation and the modulation of a progression use the left
  * expression for the chord or progression and the right one for the number of
- * inversions, the duration or the target key.
+ * inversions, the duration or the target key. A procedure call that returns a
+ * value uses "call".
  */
 struct Expression {
 	union {
@@ -120,6 +136,7 @@ struct Expression {
 		int integer;
 		Expression * operand;
 		ExpressionList * elements;
+		ProcedureCall * call;
 		struct {
 			char * tonic;
 			Mode mode;
@@ -145,13 +162,24 @@ struct ExpressionList {
 
 /**
  * A declaration ("dataType" and "isVector" are used) or an assignment to a
- * variable.
+ * variable use "name" and "expression". The control-flow statements and the
+ * procedures use their own node, according to "type".
  */
 struct Statement {
-	char * name;
-	Expression * expression;
-	DataType dataType;
-	bool isVector;
+	union {
+		struct {
+			char * name;
+			Expression * expression;
+			DataType dataType;
+			bool isVector;
+		};
+		For * forStatement;
+		If * ifStatement;
+		ProcedureCall * procedureCall;
+		ProcedureDefinition * procedureDefinition;
+		Return * returnStatement;
+		While * whileStatement;
+	};
 	StatementType type;
 };
 
@@ -159,6 +187,67 @@ struct Statement {
 struct StatementList {
 	Statement * statement;
 	StatementList * next;
+};
+
+/**
+ * The blocks between braces are statement lists, and NULL when the block is
+ * empty. An "else if" is an "elseBlock" with a single "if" statement, and
+ * "elseBlock" is NULL when there is no "else".
+ */
+struct If {
+	Expression * condition;
+	StatementList * thenBlock;
+	StatementList * elseBlock;
+};
+
+/** The loop "for variable = from to to { body }". */
+struct For {
+	char * variable;
+	Expression * from;
+	Expression * to;
+	StatementList * body;
+};
+
+struct While {
+	Expression * condition;
+	StatementList * body;
+};
+
+/** The returned value is NULL in a "return;" without a value. */
+struct Return {
+	Expression * value;
+};
+
+/** A parameter of a procedure, declared as "dataType name" or "dataType[] name". */
+struct Parameter {
+	char * name;
+	DataType dataType;
+	bool isVector;
+};
+
+/** A non-empty list of parameters, in program order. */
+struct ParameterList {
+	Parameter * parameter;
+	ParameterList * next;
+};
+
+/**
+ * A procedure definition. "parameters" is NULL when there are none, and
+ * "returnType" and "returnsVector" are used only when "hasReturnType" is true.
+ */
+struct ProcedureDefinition {
+	char * name;
+	ParameterList * parameters;
+	StatementList * body;
+	DataType returnType;
+	bool returnsVector;
+	bool hasReturnType;
+};
+
+/** A call to a procedure. "arguments" is NULL when there are none. */
+struct ProcedureCall {
+	char * name;
+	ExpressionList * arguments;
 };
 
 struct Program {
@@ -171,8 +260,16 @@ struct Program {
 
 void destroyExpression(Expression * expression);
 void destroyExpressionList(ExpressionList * expressionList);
+void destroyFor(For * forStatement);
+void destroyIf(If * ifStatement);
+void destroyParameter(Parameter * parameter);
+void destroyParameterList(ParameterList * parameterList);
+void destroyProcedureCall(ProcedureCall * procedureCall);
+void destroyProcedureDefinition(ProcedureDefinition * procedureDefinition);
 void destroyProgram(Program * program);
+void destroyReturn(Return * returnStatement);
 void destroyStatement(Statement * statement);
 void destroyStatementList(StatementList * statementList);
+void destroyWhile(While * whileStatement);
 
 #endif

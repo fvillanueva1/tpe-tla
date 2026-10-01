@@ -72,15 +72,6 @@ CompilationStatus EOFLexemeAction() {
 	return status;
 }
 
-CompilationStatus IdentifierLexemeAction() {
-	Token * token = createToken(_lexicalAnalyzer, ID);
-	token->semanticValue->string = strdup(token->lexeme);
-	_logTokenAction(__FUNCTION__, token);
-	CompilationStatus status = pushToken(_lexicalAnalyzer, token);
-	destroyToken(token);
-	return status;
-}
-
 CompilationStatus IgnoredLexemeAction() {
 	if (_logIgnoredLexemes) {
 		Token * token = createToken(_lexicalAnalyzer, IGNORED);
@@ -107,6 +98,15 @@ CompilationStatus LeaveMultilineCommentLexemeAction() {
 		destroyToken(token);
 	}
 	return IN_PROGRESS;
+}
+
+CompilationStatus StringLexemeAction(TokenLabel label) {
+	Token * token = createToken(_lexicalAnalyzer, label);
+	token->semanticValue->string = strdup(token->lexeme);
+	_logTokenAction(__FUNCTION__, token);
+	CompilationStatus status = pushToken(_lexicalAnalyzer, token);
+	destroyToken(token);
+	return status;
 }
 
 CompilationStatus TokenLexemeAction(TokenLabel label) {

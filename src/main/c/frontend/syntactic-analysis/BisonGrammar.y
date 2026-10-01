@@ -53,7 +53,11 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 
 /** Terminals. */
 %token <integer> INTEGER
+%token <string> DEGREE
+%token <string> DURATION
 %token <string> ID
+%token <string> INTERVAL
+%token <string> NOTE
 %token <token> ADD
 %token <token> AND
 %token <token> ARPEGGIATE

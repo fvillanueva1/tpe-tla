@@ -31,6 +31,22 @@ frontend. Si alguna cambia, se actualiza este documento.
 - Las listas cerradas (notas, grados, intervalos) van acompañadas de reglas de
   error que devuelven `UNKNOWN` para las formas inválidas (`H4`, `C#9`, `VIII`,
   `P3`). Van después de las válidas, porque a igual longitud gana la primera.
+- Literales del dominio y sus tokens (todos llevan el lexema como `string`):
+  - `NOTE`: `[A-G]`, alteración opcional `#` o `b`, octava opcional `0`–`8`
+    (`C`, `C#4`, `Bb`).
+  - `INTERVAL`: `P1 P4 P5 P8 m2 m3 m6 m7 M2 M3 M6 M7 d5 aug4`.
+  - `DEGREE`: `I`–`VII` en mayúscula, `i`–`vii` en minúscula, y las minúsculas
+    con sufijo `dim` (`iidim`).
+  - `DURATION`: `whole half quarter eighth sixteenth`.
+- Formas reservadas que el lexer rechaza aunque parezcan identificadores:
+  - Una letra `A`–`H`, `M` o `P`, alteración opcional y dígitos fuera de las
+    formas válidas (`H4`, `C9`, `C10`, `P3`, `M4`).
+  - `m` o `d` seguidos de dígitos, y `aug` seguido de dígitos, fuera de los
+    intervalos válidos (`m5`, `d4`, `aug5`).
+  - Secuencias de `I`, `V`, `X` o de `i`, `v` que no son un grado válido
+    (`VIII`, `X`, `viii`, `vv`, `Vdim`).
+- Los grados en minúscula (`i`, `ii`, `v`, `vi`, ...) son tokens de grado, así
+  que no pueden usarse como nombres de variable.
 
 ## Proceso
 

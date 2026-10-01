@@ -16,10 +16,10 @@
 
 extern CompilationStatus EnterMultilineCommentLexemeAction(FlexContext context);
 extern CompilationStatus EOFLexemeAction();
-extern CompilationStatus IdentifierLexemeAction();
 extern CompilationStatus IgnoredLexemeAction();
 extern CompilationStatus IntegerLexemeAction();
 extern CompilationStatus LeaveMultilineCommentLexemeAction();
+extern CompilationStatus StringLexemeAction(TokenLabel label);
 extern CompilationStatus TokenLexemeAction(TokenLabel label);
 extern CompilationStatus UnknownLexemeAction();
 
@@ -39,6 +39,17 @@ extern CompilationStatus UnknownLexemeAction();
  * @see https://westes.github.io/flex/manual/Patterns.html
  */
 whitespace			[[:space:]]+
+
+/** Literales del dominio. */
+note				[A-G]("#"|b)?[0-8]?
+interval			"P1"|"P4"|"P5"|"P8"|"m2"|"m3"|"m6"|"m7"|"M2"|"M3"|"M6"|"M7"|"d5"|"aug4"
+degree				"I"|"II"|"III"|"IV"|"V"|"VI"|"VII"|("i"|"ii"|"iii"|"iv"|"v"|"vi"|"vii")("dim")?
+duration			"whole"|"half"|"quarter"|"eighth"|"sixteenth"
+
+/** Formas parecidas a un literal del dominio, pero inválidas. */
+invalid_note		[A-HMP]("#"|b)?[0-9]+
+invalid_interval	[md][0-9]+|"aug"[0-9]+
+invalid_degree		[IVX]+("dim")?|[iv]+("dim")?
 
 %%
 
@@ -159,7 +170,18 @@ whitespace			[[:space:]]+
 "["									{ return TokenLexemeAction(OPEN_BRACKET); }
 "]"									{ return TokenLexemeAction(CLOSE_BRACKET); }
 
-[a-zA-Z_][a-zA-Z0-9_]*				{ return IdentifierLexemeAction(); }
+	/* Literales del dominio: van antes que los identificadores para ganar los empates. */
+{note}								{ return StringLexemeAction(NOTE); }
+{interval}							{ return StringLexemeAction(INTERVAL); }
+{degree}							{ return StringLexemeAction(DEGREE); }
+{duration}							{ return StringLexemeAction(DURATION); }
+
+	/* Formas inválidas: van después de las válidas y antes que los identificadores. */
+{invalid_note}						{ return UnknownLexemeAction(); }
+{invalid_interval}					{ return UnknownLexemeAction(); }
+{invalid_degree}					{ return UnknownLexemeAction(); }
+
+[a-zA-Z_][a-zA-Z0-9_]*				{ return StringLexemeAction(ID); }
 [[:digit:]]+						{ return IntegerLexemeAction(); }
 
 {whitespace}						{ return IgnoredLexemeAction(); }

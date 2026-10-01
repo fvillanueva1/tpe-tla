@@ -138,6 +138,9 @@ CompilationStatus TokenLexemeAction(TokenLabel label) {
 CompilationStatus UnknownLexemeAction() {
 	Token * token = createToken(_lexicalAnalyzer, UNKNOWN);
 	_logTokenAction(__FUNCTION__, token);
+	// Ninguna regla usa UNKNOWN: el parser lo rechaza y, al abortar, libera su
+	// pila con los %destructor. Sin esto, los valores ya recibidos se pierden.
+	pushToken(_lexicalAnalyzer, token);
 	destroyToken(token);
 	return FAILED;
 }

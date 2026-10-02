@@ -1,0 +1,1 @@
+boolean resultado = 1 < 2 < 3;

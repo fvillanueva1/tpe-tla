@@ -1,0 +1,3 @@
+// Candidato: Stage III debe fijar una realización con quintas paralelas.
+voicing voces = voice [{C4, E4, G4}, {D4, F#4, A4}] as SATB;
+check voces for parallel_fifths;

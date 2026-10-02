@@ -1,0 +1,3 @@
+// Candidato: el orden de las notas no fija las voces del resultado.
+voicing voces = voice [{G4, E4, C4, C3}, {C4, G4, E4, C3}] as SATB;
+check voces for voice_crossing;

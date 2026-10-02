@@ -1,0 +1,3 @@
+key tonalidad = C major;
+chord[] acordes = [triad on I of tonalidad, triad on V of tonalidad];
+chord primero = acordes[0];

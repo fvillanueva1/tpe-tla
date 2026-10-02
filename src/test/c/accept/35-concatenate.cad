@@ -1,0 +1,3 @@
+progression primera = [{C4, E4, G4}];
+progression segunda = [{G3, B3, D4}];
+progression tema = primera + segunda;

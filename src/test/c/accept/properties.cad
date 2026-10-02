@@ -1,0 +1,2 @@
+chord acorde = {C4, E4, G4};
+note raiz = acorde.root;

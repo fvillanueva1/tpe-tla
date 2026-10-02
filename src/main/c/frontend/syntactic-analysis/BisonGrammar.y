@@ -180,6 +180,8 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 
 /** Non-terminals. */
 %type <expressionList> arguments
+%type <integer> checkRule
+%type <integer> checkRules
 %type <statementList> block
 %type <dataType> dataType
 %type <expression> expression
@@ -229,6 +231,7 @@ statementList: statement statementList						{ $$ = StatementListSemanticAction($
 	;
 
 statement: dataType ID ASSIGN expression SEMICOLON			{ $$ = DeclarationStatementSemanticAction($1, false, $2, $4); }
+	| CHECK expression FOR checkRules SEMICOLON			{ $$ = CheckStatementSemanticAction($2, $4); }
 	| dataType OPEN_BRACKET CLOSE_BRACKET ID ASSIGN expression SEMICOLON	{ $$ = DeclarationStatementSemanticAction($1, true, $4, $6); }
 	| ID ASSIGN expression SEMICOLON						{ $$ = AssignmentStatementSemanticAction($1, $3); }
 	| ifStatement											{ $$ = $1; }
@@ -243,6 +246,15 @@ statement: dataType ID ASSIGN expression SEMICOLON			{ $$ = DeclarationStatement
 	;
 
 // Las llaves son obligatorias, así que no hay ambigüedad con "else" (dangling else).
+checkRules: checkRule										{ $$ = $1; }
+	| checkRule COMMA checkRules							{ $$ = $1 | $3; }
+	;
+
+checkRule: PARALLEL_FIFTHS								{ $$ = CHECK_PARALLEL_FIFTHS; }
+	| PARALLEL_OCTAVES										{ $$ = CHECK_PARALLEL_OCTAVES; }
+	| VOICE_CROSSING											{ $$ = CHECK_VOICE_CROSSING; }
+	;
+
 ifStatement: IF OPEN_PARENTHESIS expression CLOSE_PARENTHESIS block[then]	{ $$ = IfStatementSemanticAction($3, $then, NULL); }
 	| IF OPEN_PARENTHESIS expression CLOSE_PARENTHESIS block[then] ELSE block[else]	{ $$ = IfStatementSemanticAction($3, $then, $else); }
 	| IF OPEN_PARENTHESIS expression CLOSE_PARENTHESIS block[then] ELSE ifStatement[elseIf]	{ $$ = IfStatementSemanticAction($3, $then, StatementListSemanticAction($elseIf, NULL)); }

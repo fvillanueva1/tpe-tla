@@ -122,6 +122,7 @@ Existen:
 | `ParameterList` | Un parámetro y la lista siguiente (no vacía, en orden) |
 | `Mode` | Enumerado con los modos (`MODE_MAJOR`, `MODE_MINOR`, ...) |
 | `Voice` | Expresión de progresión; `Expression` usa `VOICE_EXPRESSION` y el campo `voice`. La disposición es SATB fija. |
+| `Check` | Expresión de voicing y conjunto de reglas (`CheckRule`, máscara de bits). `Statement` usa `CHECK_STATEMENT`. |
 | `DataType` | Enumerado con los tipos del lenguaje (`TYPE_CHORD`, `TYPE_NOTE`, ...) |
 
 Los bloques entre llaves son un `StatementList`, que es `NULL` si el bloque
@@ -131,4 +132,4 @@ Se agregarán con estos nombres:
 
 | Grupo | Nodos |
 |-------|-------|
-| Sentencias | `Log`, `Export`, `Check` |
+| Sentencias | `Log`, `Export` |

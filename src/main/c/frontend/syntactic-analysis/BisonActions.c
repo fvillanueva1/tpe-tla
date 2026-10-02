@@ -54,6 +54,16 @@ static Statement * _createStatement(StatementType type) {
 
 /* PUBLIC FUNCTIONS */
 
+Statement * CheckStatementSemanticAction(Expression * voicing, unsigned int rules) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	Check * check = calloc(1, sizeof(Check));
+	check->voicing = voicing;
+	check->rules = rules;
+	Statement * statement = _createStatement(CHECK_STATEMENT);
+	statement->check = check;
+	return statement;
+}
+
 Expression * VoiceExpressionSemanticAction(Expression * progression) {
 	_logSyntacticAnalyzerAction(__FUNCTION__);
 	Voice * voice = calloc(1, sizeof(Voice));

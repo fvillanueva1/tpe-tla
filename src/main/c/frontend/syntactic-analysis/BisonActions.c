@@ -1,4 +1,5 @@
 #include "BisonActions.h"
+#include "../../support/language/String.h"
 
 /* MODULE INTERNAL STATE */
 
@@ -53,6 +54,27 @@ static Statement * _createStatement(StatementType type) {
 }
 
 /* PUBLIC FUNCTIONS */
+
+char * AppendTextSemanticAction(char * text, char * fragment) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	char * result = concatenate(2, text, fragment);
+	free(text);
+	free(fragment);
+	return result;
+}
+
+Statement * ExportStatementSemanticAction(Expression * value, ExportFormat format, char * path, Expression * tempo, char * instrument) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	Export * export = calloc(1, sizeof(Export));
+	export->value = value;
+	export->format = format;
+	export->path = path;
+	export->tempo = tempo;
+	export->instrument = instrument;
+	Statement * statement = _createStatement(EXPORT_STATEMENT);
+	statement->export = export;
+	return statement;
+}
 
 Statement * CheckStatementSemanticAction(Expression * voicing, unsigned int rules) {
 	_logSyntacticAnalyzerAction(__FUNCTION__);

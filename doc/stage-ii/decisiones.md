@@ -88,6 +88,16 @@ que `not a == b` es `not (a == b)`. Los relacionales no son asociativos:
   `(invert c by 1) == d`. Estas formas no se encadenan sin paréntesis
   (`invert c by 1 by 2` se rechaza).
 
+## Exportación
+
+- `export expresión as midi|sheet to "ruta" [at expresión bpm] [with ID];`.
+  Tempo e instrumento son opcionales para ambos formatos; `with` va después
+  de `at` cuando aparecen juntos. Una ruta es un string literal sin
+  interpolación, con los escapes preservados para Stage III.
+- El AST conserva el formato, valor, ruta, tempo (`NULL` si falta) e
+  instrumento (`NULL` si falta). Tipos, rangos y validez del instrumento
+  se comprueban en Stage III. Stage II no escribe archivos musicales.
+
 ## Conducción de voces
 
 - `check expresión for regla[, regla...];` exige al menos una regla de la

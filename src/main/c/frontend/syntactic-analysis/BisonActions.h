@@ -39,6 +39,8 @@ ParameterList * ParameterListSemanticAction(Parameter * parameter, ParameterList
 Program * StatementsProgramSemanticAction(StatementList * statements);
 Statement * AssignmentStatementSemanticAction(char * name, Expression * expression);
 Statement * CheckStatementSemanticAction(Expression * voicing, unsigned int rules);
+Statement * ExportStatementSemanticAction(Expression * value, ExportFormat format, char * path, Expression * tempo, char * instrument);
+char * AppendTextSemanticAction(char * text, char * fragment);
 Statement * DeclarationStatementSemanticAction(DataType dataType, const bool isVector, char * name, Expression * expression);
 Statement * ForStatementSemanticAction(char * variable, Expression * from, Expression * to, StatementList * body);
 Statement * IfStatementSemanticAction(Expression * condition, StatementList * thenBlock, StatementList * elseBlock);

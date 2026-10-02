@@ -1,0 +1,2 @@
+integer grado = 1;
+string mensaje = "grado {grado}";

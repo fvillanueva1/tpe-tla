@@ -1,0 +1,4 @@
+key tonalidad = C major;
+for grado = 1 to 7 {
+    chord acorde = triad on grado of tonalidad;
+}

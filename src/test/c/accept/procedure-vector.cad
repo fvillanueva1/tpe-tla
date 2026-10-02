@@ -1,0 +1,2 @@
+define primero(chord[] acordes) -> chord { return acordes[0]; }
+chord acorde = primero([{C4, E4, G4}]);

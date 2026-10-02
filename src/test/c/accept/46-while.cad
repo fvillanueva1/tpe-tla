@@ -1,0 +1,2 @@
+note nota = C4;
+while (nota < C5) { nota = nota + M2; }

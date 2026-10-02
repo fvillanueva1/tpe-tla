@@ -1,0 +1,2 @@
+define saludar() { return; }
+saludar();

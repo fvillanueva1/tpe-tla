@@ -1,0 +1,2 @@
+progression tema = [{C4, E4, G4}];
+export tema as sheet to "tema.ly" at 90 bpm with piano;

@@ -1,0 +1,3 @@
+key tonalidad = C major;
+voicing voces = voice ([I, IV, V, I] in tonalidad) as SATB;
+check voces for parallel_fifths, parallel_octaves, voice_crossing;

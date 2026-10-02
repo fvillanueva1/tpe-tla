@@ -1,0 +1,2 @@
+integer grado = 2;
+log "Se descartó el grado {grado}";

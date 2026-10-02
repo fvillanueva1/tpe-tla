@@ -1,0 +1,2 @@
+key tonalidad = C major;
+export scale of tonalidad as midi to "escala.mid" at 120 bpm;

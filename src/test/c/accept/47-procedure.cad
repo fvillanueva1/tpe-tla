@@ -1,0 +1,5 @@
+define cadencia(key tonalidad) -> progression {
+    return [V, I] in tonalidad;
+}
+key tonalidad = C major;
+progression tema = cadencia(tonalidad);

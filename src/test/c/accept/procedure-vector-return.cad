@@ -1,0 +1,2 @@
+define acordes() -> chord[] { return [{C4, E4, G4}]; }
+chord[] resultado = acordes();

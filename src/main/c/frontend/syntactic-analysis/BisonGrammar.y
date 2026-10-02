@@ -33,6 +33,7 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 	/** Non-terminals. */
 
 	DataType dataType;
+	ExportFormat exportFormat;
 	Expression * expression;
 	ExpressionList * expressionList;
 	Mode mode;
@@ -182,6 +183,11 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 %type <expressionList> arguments
 %type <integer> checkRule
 %type <integer> checkRules
+%type <exportFormat> exportFormat
+%type <string> exportPath
+%type <string> pathText
+%type <string> optionalInstrument
+%type <expression> optionalTempo
 %type <statementList> block
 %type <dataType> dataType
 %type <expression> expression
@@ -232,6 +238,7 @@ statementList: statement statementList						{ $$ = StatementListSemanticAction($
 
 statement: dataType ID ASSIGN expression SEMICOLON			{ $$ = DeclarationStatementSemanticAction($1, false, $2, $4); }
 	| CHECK expression FOR checkRules SEMICOLON			{ $$ = CheckStatementSemanticAction($2, $4); }
+	| EXPORT expression AS exportFormat TO exportPath optionalTempo optionalInstrument SEMICOLON	{ $$ = ExportStatementSemanticAction($2, $4, $6, $7, $8); }
 	| dataType OPEN_BRACKET CLOSE_BRACKET ID ASSIGN expression SEMICOLON	{ $$ = DeclarationStatementSemanticAction($1, true, $4, $6); }
 	| ID ASSIGN expression SEMICOLON						{ $$ = AssignmentStatementSemanticAction($1, $3); }
 	| ifStatement											{ $$ = $1; }
@@ -248,6 +255,25 @@ statement: dataType ID ASSIGN expression SEMICOLON			{ $$ = DeclarationStatement
 // Las llaves son obligatorias, así que no hay ambigüedad con "else" (dangling else).
 checkRules: checkRule										{ $$ = $1; }
 	| checkRule COMMA checkRules							{ $$ = $1 | $3; }
+	;
+
+exportFormat: MIDI											{ $$ = EXPORT_MIDI; }
+	| SHEET													{ $$ = EXPORT_SHEET; }
+	;
+
+exportPath: OPEN_STRING pathText CLOSE_STRING				{ $$ = $2; }
+	;
+
+pathText: %empty												{ $$ = calloc(1, sizeof(char)); }
+	| pathText STRING_TEXT									{ $$ = AppendTextSemanticAction($1, $2); }
+	;
+
+optionalTempo: %empty										{ $$ = NULL; }
+	| AT expression BPM										{ $$ = $2; }
+	;
+
+optionalInstrument: %empty									{ $$ = NULL; }
+	| WITH ID													{ $$ = $2; }
 	;
 
 checkRule: PARALLEL_FIFTHS								{ $$ = CHECK_PARALLEL_FIFTHS; }

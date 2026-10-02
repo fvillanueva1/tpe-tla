@@ -35,6 +35,12 @@ typedef struct StatementList StatementList;
 typedef struct While While;
 typedef struct Voice Voice;
 typedef struct Check Check;
+typedef struct Export Export;
+
+typedef enum {
+	EXPORT_MIDI,
+	EXPORT_SHEET
+} ExportFormat;
 
 /** A set of contrapuntal rules requested by check. */
 typedef enum {
@@ -115,6 +121,7 @@ enum Mode {
 enum StatementType {
 	ASSIGNMENT,
 	CHECK_STATEMENT,
+	EXPORT_STATEMENT,
 	DECLARATION,
 	FOR_STATEMENT,
 	IF_STATEMENT,
@@ -187,6 +194,7 @@ struct Statement {
 		};
 		For * forStatement;
 		Check * check;
+		Export * export;
 		If * ifStatement;
 		ProcedureCall * procedureCall;
 		ProcedureDefinition * procedureDefinition;
@@ -277,6 +285,15 @@ struct Check {
 	unsigned int rules;
 };
 
+/** Tempo and instrument are NULL when omitted; path preserves lexer escapes. */
+struct Export {
+	Expression * value;
+	ExportFormat format;
+	char * path;
+	Expression * tempo;
+	char * instrument;
+};
+
 /**
  * Node recursive super-duper-trambolik-destructors.
  */
@@ -284,6 +301,7 @@ struct Check {
 void destroyExpression(Expression * expression);
 void destroyVoice(Voice * voice);
 void destroyCheck(Check * check);
+void destroyExport(Export * export);
 void destroyExpressionList(ExpressionList * expressionList);
 void destroyFor(For * forStatement);
 void destroyIf(If * ifStatement);

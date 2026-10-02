@@ -112,6 +112,17 @@ void destroyCheck(Check * check) {
 	}
 }
 
+void destroyExport(Export * export) {
+	logDebugging(_logger, "Executing destructor: %s", __FUNCTION__);
+	if (export != NULL) {
+		destroyExpression(export->value);
+		destroyExpression(export->tempo);
+		free(export->path);
+		free(export->instrument);
+		free(export);
+	}
+}
+
 void destroyFor(For * forStatement) {
 	logDebugging(_logger, "Executing destructor: %s", __FUNCTION__);
 	if (forStatement != NULL) {
@@ -196,6 +207,9 @@ void destroyStatement(Statement * statement) {
 				break;
 			case CHECK_STATEMENT:
 				destroyCheck(statement->check);
+				break;
+			case EXPORT_STATEMENT:
+				destroyExport(statement->export);
 				break;
 			case FOR_STATEMENT:
 				destroyFor(statement->forStatement);

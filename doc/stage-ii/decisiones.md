@@ -88,6 +88,12 @@ que `not a == b` es `not (a == b)`. Los relacionales no son asociativos:
   `(invert c by 1) == d`. Estas formas no se encadenan sin paréntesis
   (`invert c by 1 by 2` se rechaza).
 
+## Conducción de voces
+
+- `voice expresión as SATB` es una expresión con nodo `Voice` propio.
+  `as` conserva su precedencia baja. La distribución efectiva, la minimización
+  de movimientos y los rangos fijos de las voces se validan en Stage III.
+
 ## Control de flujo y procedimientos
 
 - Los bloques llevan llaves siempre, también con una sola sentencia. Así no

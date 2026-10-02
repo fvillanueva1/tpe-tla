@@ -42,6 +42,7 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 	Program * program;
 	Statement * statement;
 	StatementList * statementList;
+	StringPart * stringPart;
 }
 
 /**
@@ -59,6 +60,7 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 %destructor { destroyParameterList($$); } <parameterList>
 %destructor { destroyStatement($$); } <statement>
 %destructor { destroyStatementList($$); } <statementList>
+%destructor { destroyStringPart($$); } <stringPart>
 
 /** Terminals. */
 
@@ -188,6 +190,8 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 %type <string> pathText
 %type <string> optionalInstrument
 %type <expression> optionalTempo
+%type <stringPart> stringLiteral
+%type <stringPart> stringParts
 %type <statementList> block
 %type <dataType> dataType
 %type <expression> expression
@@ -238,6 +242,7 @@ statementList: statement statementList						{ $$ = StatementListSemanticAction($
 
 statement: dataType ID ASSIGN expression SEMICOLON			{ $$ = DeclarationStatementSemanticAction($1, false, $2, $4); }
 	| CHECK expression FOR checkRules SEMICOLON			{ $$ = CheckStatementSemanticAction($2, $4); }
+	| LOG stringLiteral SEMICOLON							{ $$ = LogStatementSemanticAction($2); }
 	| EXPORT expression AS exportFormat TO exportPath optionalTempo optionalInstrument SEMICOLON	{ $$ = ExportStatementSemanticAction($2, $4, $6, $7, $8); }
 	| dataType OPEN_BRACKET CLOSE_BRACKET ID ASSIGN expression SEMICOLON	{ $$ = DeclarationStatementSemanticAction($1, true, $4, $6); }
 	| ID ASSIGN expression SEMICOLON						{ $$ = AssignmentStatementSemanticAction($1, $3); }
@@ -252,7 +257,6 @@ statement: dataType ID ASSIGN expression SEMICOLON			{ $$ = DeclarationStatement
 	| ID OPEN_PARENTHESIS arguments CLOSE_PARENTHESIS SEMICOLON	{ $$ = ProcedureCallStatementSemanticAction($1, $3); }
 	;
 
-// Las llaves son obligatorias, así que no hay ambigüedad con "else" (dangling else).
 checkRules: checkRule										{ $$ = $1; }
 	| checkRule COMMA checkRules							{ $$ = $1 | $3; }
 	;
@@ -281,6 +285,7 @@ checkRule: PARALLEL_FIFTHS								{ $$ = CHECK_PARALLEL_FIFTHS; }
 	| VOICE_CROSSING											{ $$ = CHECK_VOICE_CROSSING; }
 	;
 
+// Las llaves son obligatorias, así que no hay ambigüedad con "else" (dangling else).
 ifStatement: IF OPEN_PARENTHESIS expression CLOSE_PARENTHESIS block[then]	{ $$ = IfStatementSemanticAction($3, $then, NULL); }
 	| IF OPEN_PARENTHESIS expression CLOSE_PARENTHESIS block[then] ELSE block[else]	{ $$ = IfStatementSemanticAction($3, $then, $else); }
 	| IF OPEN_PARENTHESIS expression CLOSE_PARENTHESIS block[then] ELSE ifStatement[elseIf]	{ $$ = IfStatementSemanticAction($3, $then, StatementListSemanticAction($elseIf, NULL)); }
@@ -319,6 +324,7 @@ dataType: BOOLEAN_TYPE										{ $$ = TYPE_BOOLEAN; }
 	;
 
 expression: expression[left] ADD expression[right]			{ $$ = BinaryExpressionSemanticAction($left, $right, ADDITION); }
+	| stringLiteral											{ $$ = StringLiteralSemanticAction($1); }
 	| VOICE expression[progression] AS SATB %prec AS		{ $$ = VoiceExpressionSemanticAction($progression); }
 	| expression[left] SUB expression[right]				{ $$ = BinaryExpressionSemanticAction($left, $right, SUBTRACTION); }
 	| expression[left] MUL expression[right]				{ $$ = BinaryExpressionSemanticAction($left, $right, MULTIPLICATION); }
@@ -365,6 +371,14 @@ expression: expression[left] ADD expression[right]			{ $$ = BinaryExpressionSema
 
 expressionList: expression COMMA expressionList				{ $$ = ExpressionListSemanticAction($1, $3); }
 	| expression											{ $$ = ExpressionListSemanticAction($1, NULL); }
+	;
+
+stringLiteral: OPEN_STRING stringParts CLOSE_STRING		{ $$ = $2; }
+	;
+
+stringParts: %empty											{ $$ = NULL; }
+	| STRING_TEXT stringParts								{ $$ = StringPartSemanticAction($1, STRING_PART_TEXT, $2); }
+	| OPEN_INTERPOLATION ID CLOSE_INTERPOLATION stringParts	{ $$ = StringPartSemanticAction($2, STRING_PART_VARIABLE, $4); }
 	;
 
 mode: DORIAN												{ $$ = MODE_DORIAN; }

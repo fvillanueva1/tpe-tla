@@ -36,6 +36,13 @@ typedef struct While While;
 typedef struct Voice Voice;
 typedef struct Check Check;
 typedef struct Export Export;
+typedef struct Log Log;
+typedef struct StringPart StringPart;
+
+typedef enum {
+	STRING_PART_TEXT,
+	STRING_PART_VARIABLE
+} StringPartType;
 
 typedef enum {
 	EXPORT_MIDI,
@@ -101,6 +108,7 @@ enum ExpressionType {
 	RELATIVE_MINOR_OF_KEY,
 	SCALE_OF_KEY,
 	SEVENTH_CHORD,
+	STRING_LITERAL,
 	SUBDOMINANT_OF_KEY,
 	SUBTRACTION,
 	TRIAD_CHORD,
@@ -125,6 +133,7 @@ enum StatementType {
 	DECLARATION,
 	FOR_STATEMENT,
 	IF_STATEMENT,
+	LOG_STATEMENT,
 	PROCEDURE_CALL_STATEMENT,
 	PROCEDURE_DEFINITION,
 	RETURN_STATEMENT,
@@ -156,6 +165,7 @@ struct Expression {
 		ExpressionList * elements;
 		ProcedureCall * call;
 		Voice * voice;
+		StringPart * stringParts;
 		struct {
 			char * tonic;
 			Mode mode;
@@ -195,6 +205,7 @@ struct Statement {
 		For * forStatement;
 		Check * check;
 		Export * export;
+		Log * log;
 		If * ifStatement;
 		ProcedureCall * procedureCall;
 		ProcedureDefinition * procedureDefinition;
@@ -294,6 +305,17 @@ struct Export {
 	char * instrument;
 };
 
+/** One literal fragment or variable name; NULL represents an empty string. */
+struct StringPart {
+	StringPartType type;
+	char * text;
+	StringPart * next;
+};
+
+struct Log {
+	StringPart * message;
+};
+
 /**
  * Node recursive super-duper-trambolik-destructors.
  */
@@ -302,6 +324,8 @@ void destroyExpression(Expression * expression);
 void destroyVoice(Voice * voice);
 void destroyCheck(Check * check);
 void destroyExport(Export * export);
+void destroyLog(Log * log);
+void destroyStringPart(StringPart * part);
 void destroyExpressionList(ExpressionList * expressionList);
 void destroyFor(For * forStatement);
 void destroyIf(If * ifStatement);

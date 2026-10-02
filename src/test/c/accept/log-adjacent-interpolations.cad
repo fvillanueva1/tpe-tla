@@ -1,0 +1,3 @@
+integer primero = 1;
+integer segundo = 2;
+log "{primero}{segundo}";

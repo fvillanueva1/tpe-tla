@@ -41,6 +41,9 @@ Statement * AssignmentStatementSemanticAction(char * name, Expression * expressi
 Statement * CheckStatementSemanticAction(Expression * voicing, unsigned int rules);
 Statement * ExportStatementSemanticAction(Expression * value, ExportFormat format, char * path, Expression * tempo, char * instrument);
 char * AppendTextSemanticAction(char * text, char * fragment);
+StringPart * StringPartSemanticAction(char * text, StringPartType type, StringPart * next);
+Expression * StringLiteralSemanticAction(StringPart * parts);
+Statement * LogStatementSemanticAction(StringPart * message);
 Statement * DeclarationStatementSemanticAction(DataType dataType, const bool isVector, char * name, Expression * expression);
 Statement * ForStatementSemanticAction(char * variable, Expression * from, Expression * to, StatementList * body);
 Statement * IfStatementSemanticAction(Expression * condition, StatementList * thenBlock, StatementList * elseBlock);

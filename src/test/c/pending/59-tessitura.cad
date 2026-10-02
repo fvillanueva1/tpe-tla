@@ -1,0 +1,2 @@
+// Candidato: la realización y los rangos fijos se definen en Stage III.
+voicing voces = voice [{C0, E0, G0}] as SATB;

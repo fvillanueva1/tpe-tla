@@ -20,3 +20,19 @@ cada commit de implementación mueve sus casos a `accept/` o `reject/`.
 Esta carpeta temporal no contiene errores semánticos y debe desaparecer al
 terminar Stage II. `pending/` se reserva para análisis semántico de Stage III.
 El caso 45 comprueba la sintaxis de check, no demuestra validez musical.
+
+## Rechazos y pendientes
+
+`reject/` cubre 49–53 y errores adicionales de sintaxis. `pending/` contiene
+54–63 y otros errores que requieren tipos, tabla MIDI, rangos o símbolos.
+Los rechazos de voces, check, exportación y log también se preparan en
+`planned/` y se activan con sus reglas: un rechazo no debe pasar simplemente
+porque el parser todavía no reconozca la construcción que pretende probar.
+`test.sh` no recorre `pending/`. Solo se moverán esos archivos a `reject/`
+cuando Stage III implemente y verifique el diagnóstico correspondiente.
+
+Los casos 56–59 son candidatos, no regresiones semánticas concluyentes:
+la sintaxis actual no permite asignar notas directamente a voces SATB, y
+`voice` puede elegir inversiones y octavas diferentes. Stage III deberá
+fijar la realización o seleccionar entradas que obliguen al error antes
+de activar esos cuatro casos. No se inventa sintaxis de tesitura.

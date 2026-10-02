@@ -1,0 +1,2 @@
+integer[] numeros = [1];
+numeros[0] = 2;

@@ -88,6 +88,17 @@ que `not a == b` es `not (a == b)`. Los relacionales no son asociativos:
   `(invert c by 1) == d`. Estas formas no se encadenan sin paréntesis
   (`invert c by 1 by 2` se rechaza).
 
+## Mensajes y strings
+
+- `log "texto {variable}";` construye un nodo `Log` con una lista de
+  `StringPart` en el orden original. Cada parte distingue texto de nombre de
+  variable. Un string vacío se representa con una lista `NULL`.
+- La misma representación sirve para literales string en expresiones y
+  declaraciones. Los escapes conservan su lexema; su interpretación y la
+  existencia de las variables se resuelven en Stage III.
+- Se consumen los tokens de Felipe sin cambiar el lexer. No se aceptan
+  expresiones entre llaves ni la sintaxis antigua `"{1}", variable`.
+
 ## Exportación
 
 - `export expresión as midi|sheet to "ruta" [at expresión bpm] [with ID];`.

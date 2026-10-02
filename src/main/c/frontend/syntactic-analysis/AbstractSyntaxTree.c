@@ -44,6 +44,9 @@ void destroyExpression(Expression * expression) {
 			case VOICE_EXPRESSION:
 				destroyVoice(expression->voice);
 				break;
+			case STRING_LITERAL:
+				destroyStringPart(expression->stringParts);
+				break;
 			case PROPERTY_ACCESS:
 				destroyExpression(expression->property.object);
 				free(expression->property.name);
@@ -120,6 +123,23 @@ void destroyExport(Export * export) {
 		free(export->path);
 		free(export->instrument);
 		free(export);
+	}
+}
+
+void destroyStringPart(StringPart * part) {
+	logDebugging(_logger, "Executing destructor: %s", __FUNCTION__);
+	if (part != NULL) {
+		free(part->text);
+		destroyStringPart(part->next);
+		free(part);
+	}
+}
+
+void destroyLog(Log * log) {
+	logDebugging(_logger, "Executing destructor: %s", __FUNCTION__);
+	if (log != NULL) {
+		destroyStringPart(log->message);
+		free(log);
 	}
 }
 
@@ -210,6 +230,9 @@ void destroyStatement(Statement * statement) {
 				break;
 			case EXPORT_STATEMENT:
 				destroyExport(statement->export);
+				break;
+			case LOG_STATEMENT:
+				destroyLog(statement->log);
 				break;
 			case FOR_STATEMENT:
 				destroyFor(statement->forStatement);

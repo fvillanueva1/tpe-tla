@@ -55,6 +55,32 @@ static Statement * _createStatement(StatementType type) {
 
 /* PUBLIC FUNCTIONS */
 
+StringPart * StringPartSemanticAction(char * text, StringPartType type, StringPart * next) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	StringPart * part = calloc(1, sizeof(StringPart));
+	part->text = text;
+	part->type = type;
+	part->next = next;
+	return part;
+}
+
+Expression * StringLiteralSemanticAction(StringPart * parts) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	Expression * expression = calloc(1, sizeof(Expression));
+	expression->type = STRING_LITERAL;
+	expression->stringParts = parts;
+	return expression;
+}
+
+Statement * LogStatementSemanticAction(StringPart * message) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	Log * log = calloc(1, sizeof(Log));
+	log->message = message;
+	Statement * statement = _createStatement(LOG_STATEMENT);
+	statement->log = log;
+	return statement;
+}
+
 char * AppendTextSemanticAction(char * text, char * fragment) {
 	_logSyntacticAnalyzerAction(__FUNCTION__);
 	char * result = concatenate(2, text, fragment);

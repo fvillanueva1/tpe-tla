@@ -109,8 +109,8 @@ Existen:
 |------|-----------|
 | `Program` | La lista de sentencias |
 | `StatementList` | Una sentencia y la lista siguiente (no vacía, en orden) |
-| `Statement` | Declaración (`StatementType` `DECLARATION`, con `DataType` y si es vector), asignación (`ASSIGNMENT`), o una sentencia con nodo propio: `IF_STATEMENT`, `FOR_STATEMENT`, `WHILE_STATEMENT`, `RETURN_STATEMENT`, `PROCEDURE_DEFINITION`, `PROCEDURE_CALL_STATEMENT` |
-| `Expression` | Literal (entero, booleano, nota, intervalo, duración, grado, tonalidad), variable, operación binaria, negación, escala/relación tonal de una tonalidad, acorde (por grado o por notas), lista entre corchetes, `in`, acceso por índice, acceso a una propiedad, inversión, arpegio, modulación o llamada a un procedimiento (`PROCEDURE_CALL`); el tipo es `ExpressionType` |
+| `Statement` | Declaración (`StatementType` `DECLARATION`, con `DataType` y si es vector), asignación (`ASSIGNMENT`), o una sentencia con nodo propio: `IF_STATEMENT`, `FOR_STATEMENT`, `WHILE_STATEMENT`, `RETURN_STATEMENT`, `PROCEDURE_DEFINITION`, `PROCEDURE_CALL_STATEMENT`, `CHECK_STATEMENT`, `EXPORT_STATEMENT`, `LOG_STATEMENT` |
+| `Expression` | Literal (entero, booleano, nota, intervalo, duración, grado, tonalidad, string), variable, operación binaria, negación, escala/relación tonal de una tonalidad, acorde (por grado o por notas), lista entre corchetes, `in`, acceso por índice, acceso a una propiedad, inversión, arpegio, modulación, voz SATB o llamada a un procedimiento (`PROCEDURE_CALL`); el tipo es `ExpressionType` |
 | `ExpressionList` | Una expresión y la lista siguiente (no vacía, en orden) |
 | `If` | Condición, bloque `then` y bloque `else` (`NULL` si no hay; un `else if` es un bloque con un único `if`) |
 | `For` | Variable, expresiones `from` y `to`, y el cuerpo |
@@ -124,13 +124,9 @@ Existen:
 | `Voice` | Expresión de progresión; `Expression` usa `VOICE_EXPRESSION` y el campo `voice`. La disposición es SATB fija. |
 | `Check` | Expresión de voicing y conjunto de reglas (`CheckRule`, máscara de bits). `Statement` usa `CHECK_STATEMENT`. |
 | `Export` | Valor, formato (`ExportFormat` MIDI/sheet), ruta literal, tempo e instrumento opcionales. `Statement` usa `EXPORT_STATEMENT`. |
+| `Log` | Lista de partes del mensaje; `Statement` usa `LOG_STATEMENT`. |
+| `StringPart` | Texto literal o nombre de variable (`StringPartType`) y siguiente parte; los strings vacíos son `NULL`. `Expression` usa `STRING_LITERAL` para strings en expresiones. |
 | `DataType` | Enumerado con los tipos del lenguaje (`TYPE_CHORD`, `TYPE_NOTE`, ...) |
 
 Los bloques entre llaves son un `StatementList`, que es `NULL` si el bloque
 está vacío.
-
-Se agregarán con estos nombres:
-
-| Grupo | Nodos |
-|-------|-------|
-| Sentencias | `Log` |

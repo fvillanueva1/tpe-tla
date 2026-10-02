@@ -33,6 +33,7 @@ typedef struct Return Return;
 typedef struct Statement Statement;
 typedef struct StatementList StatementList;
 typedef struct While While;
+typedef struct Voice Voice;
 
 /**
  * Node types for the Abstract Syntax Tree (AST).
@@ -89,7 +90,8 @@ enum ExpressionType {
 	SUBDOMINANT_OF_KEY,
 	SUBTRACTION,
 	TRIAD_CHORD,
-	VARIABLE
+	VARIABLE,
+	VOICE_EXPRESSION
 };
 
 enum Mode {
@@ -137,6 +139,7 @@ struct Expression {
 		Expression * operand;
 		ExpressionList * elements;
 		ProcedureCall * call;
+		Voice * voice;
 		struct {
 			char * tonic;
 			Mode mode;
@@ -254,11 +257,17 @@ struct Program {
 	StatementList * statements;
 };
 
+/** A progression distributed into the fixed SATB arrangement. */
+struct Voice {
+	Expression * progression;
+};
+
 /**
  * Node recursive super-duper-trambolik-destructors.
  */
 
 void destroyExpression(Expression * expression);
+void destroyVoice(Voice * voice);
 void destroyExpressionList(ExpressionList * expressionList);
 void destroyFor(For * forStatement);
 void destroyIf(If * ifStatement);

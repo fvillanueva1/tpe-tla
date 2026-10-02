@@ -281,6 +281,7 @@ dataType: BOOLEAN_TYPE										{ $$ = TYPE_BOOLEAN; }
 	;
 
 expression: expression[left] ADD expression[right]			{ $$ = BinaryExpressionSemanticAction($left, $right, ADDITION); }
+	| VOICE expression[progression] AS SATB %prec AS		{ $$ = VoiceExpressionSemanticAction($progression); }
 	| expression[left] SUB expression[right]				{ $$ = BinaryExpressionSemanticAction($left, $right, SUBTRACTION); }
 	| expression[left] MUL expression[right]				{ $$ = BinaryExpressionSemanticAction($left, $right, MULTIPLICATION); }
 	| expression[left] DIV expression[right]				{ $$ = BinaryExpressionSemanticAction($left, $right, DIVISION); }

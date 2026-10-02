@@ -54,6 +54,16 @@ static Statement * _createStatement(StatementType type) {
 
 /* PUBLIC FUNCTIONS */
 
+Expression * VoiceExpressionSemanticAction(Expression * progression) {
+	_logSyntacticAnalyzerAction(__FUNCTION__);
+	Voice * voice = calloc(1, sizeof(Voice));
+	voice->progression = progression;
+	Expression * expression = calloc(1, sizeof(Expression));
+	expression->voice = voice;
+	expression->type = VOICE_EXPRESSION;
+	return expression;
+}
+
 Expression * BinaryExpressionSemanticAction(Expression * leftExpression, Expression * rightExpression, ExpressionType type) {
 	_logSyntacticAnalyzerAction(__FUNCTION__);
 	Expression * expression = calloc(1, sizeof(Expression));

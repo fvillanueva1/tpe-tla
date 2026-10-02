@@ -41,6 +41,9 @@ void destroyExpression(Expression * expression) {
 			case PROCEDURE_CALL:
 				destroyProcedureCall(expression->call);
 				break;
+			case VOICE_EXPRESSION:
+				destroyVoice(expression->voice);
+				break;
 			case PROPERTY_ACCESS:
 				destroyExpression(expression->property.object);
 				free(expression->property.name);
@@ -90,6 +93,14 @@ void destroyExpressionList(ExpressionList * expressionList) {
 		destroyExpression(expressionList->expression);
 		destroyExpressionList(expressionList->next);
 		free(expressionList);
+	}
+}
+
+void destroyVoice(Voice * voice) {
+	logDebugging(_logger, "Executing destructor: %s", __FUNCTION__);
+	if (voice != NULL) {
+		destroyExpression(voice->progression);
+		free(voice);
 	}
 }
 

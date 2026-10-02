@@ -32,6 +32,7 @@ Expression * NotesChordExpressionSemanticAction(ExpressionList * elements);
 Expression * ProcedureCallExpressionSemanticAction(char * name, ExpressionList * arguments);
 Expression * PropertyAccessSemanticAction(Expression * object, char * name);
 Expression * VariableExpressionSemanticAction(char * name);
+Expression * VoiceExpressionSemanticAction(Expression * progression);
 ExpressionList * ExpressionListSemanticAction(Expression * expression, ExpressionList * next);
 Parameter * ParameterSemanticAction(DataType dataType, const bool isVector, char * name);
 ParameterList * ParameterListSemanticAction(Parameter * parameter, ParameterList * next);

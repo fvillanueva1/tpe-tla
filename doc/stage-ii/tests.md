@@ -36,3 +36,37 @@ la sintaxis actual no permite asignar notas directamente a voces SATB, y
 `voice` puede elegir inversiones y octavas diferentes. Stage III deberá
 fijar la realización o seleccionar entradas que obliguen al error antes
 de activar esos cuatro casos. No se inventa sintaxis de tesitura.
+
+## Cobertura respecto de Stage I
+
+| Casos | Situación |
+|-------|-----------|
+| 30–48 | Programas activos que prueban la sintaxis; no verifican resultados musicales |
+| 49–53 | Rechazos activos del frontend; el 49 tiene dos variantes |
+| 54–55 y 60–63 | Casos semánticos excluidos hasta Stage III |
+| 56–59 | Escenarios por concretar con el algoritmo de realización y los rangos vocales |
+
+Hay un archivo por cada número 30–63, pero **tener el archivo no demuestra
+cobertura efectiva de los cuatro errores musicales pendientes**. Tampoco un
+código de salida 0 demuestra que el AST se haya evaluado o que un archivo MIDI
+se haya generado. En Stage II solo se construye y libera el árbol.
+
+## Verificación por commit
+
+Cada snapshot se compiló en una copia aislada con la imagen Docker del repo,
+GCC, Flex, Bison y los scripts originales. No hubo warnings ni conflictos.
+Todos los rechazos activos terminaron con código 1, sin errores de AddressSanitizer.
+
+| Commit de Eduardo | Aceptaciones activas | Rechazos activos |
+|-------------------|----------------------|------------------|
+| 1: armonía y operadores | 28 | 1 |
+| 2: control y tests preparados | 39 | 1 |
+| 3: reject y pending | 39 | 13 |
+| 4: voice y activación de sus tests | 40 | 14 |
+| 5: check y activación de sus tests | 41 | 16 |
+| 6: export y activación de sus tests | 46 | 19 |
+| 7: log y activación de sus tests | 53 | 27 |
+| 8: documentación | 53 | 27 |
+
+Al finalizar no quedan archivos en `planned/`. `pending/` contiene 13 archivos:
+nueve casos semánticos y cuatro escenarios musicales por concretar.

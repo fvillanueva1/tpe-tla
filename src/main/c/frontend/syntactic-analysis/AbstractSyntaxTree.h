@@ -34,6 +34,14 @@ typedef struct Statement Statement;
 typedef struct StatementList StatementList;
 typedef struct While While;
 typedef struct Voice Voice;
+typedef struct Check Check;
+
+/** A set of contrapuntal rules requested by check. */
+typedef enum {
+	CHECK_PARALLEL_FIFTHS = 1,
+	CHECK_PARALLEL_OCTAVES = 2,
+	CHECK_VOICE_CROSSING = 4
+} CheckRule;
 
 /**
  * Node types for the Abstract Syntax Tree (AST).
@@ -106,6 +114,7 @@ enum Mode {
 
 enum StatementType {
 	ASSIGNMENT,
+	CHECK_STATEMENT,
 	DECLARATION,
 	FOR_STATEMENT,
 	IF_STATEMENT,
@@ -177,6 +186,7 @@ struct Statement {
 			bool isVector;
 		};
 		For * forStatement;
+		Check * check;
 		If * ifStatement;
 		ProcedureCall * procedureCall;
 		ProcedureDefinition * procedureDefinition;
@@ -262,12 +272,18 @@ struct Voice {
 	Expression * progression;
 };
 
+struct Check {
+	Expression * voicing;
+	unsigned int rules;
+};
+
 /**
  * Node recursive super-duper-trambolik-destructors.
  */
 
 void destroyExpression(Expression * expression);
 void destroyVoice(Voice * voice);
+void destroyCheck(Check * check);
 void destroyExpressionList(ExpressionList * expressionList);
 void destroyFor(For * forStatement);
 void destroyIf(If * ifStatement);

@@ -104,6 +104,14 @@ void destroyVoice(Voice * voice) {
 	}
 }
 
+void destroyCheck(Check * check) {
+	logDebugging(_logger, "Executing destructor: %s", __FUNCTION__);
+	if (check != NULL) {
+		destroyExpression(check->voicing);
+		free(check);
+	}
+}
+
 void destroyFor(For * forStatement) {
 	logDebugging(_logger, "Executing destructor: %s", __FUNCTION__);
 	if (forStatement != NULL) {
@@ -185,6 +193,9 @@ void destroyStatement(Statement * statement) {
 			case DECLARATION:
 				free(statement->name);
 				destroyExpression(statement->expression);
+				break;
+			case CHECK_STATEMENT:
+				destroyCheck(statement->check);
 				break;
 			case FOR_STATEMENT:
 				destroyFor(statement->forStatement);

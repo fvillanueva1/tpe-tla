@@ -90,6 +90,11 @@ que `not a == b` es `not (a == b)`. Los relacionales no son asociativos:
 
 ## Conducción de voces
 
+- `check expresión for regla[, regla...];` exige al menos una regla de la
+  lista cerrada `parallel_fifths`, `parallel_octaves`, `voice_crossing`.
+  El AST guarda un conjunto: repetir una regla no cambia el resultado.
+  La detección de violaciones corresponde al Stage III.
+
 - `voice expresión as SATB` es una expresión con nodo `Voice` propio.
   `as` conserva su precedencia baja. La distribución efectiva, la minimización
   de movimientos y los rangos fijos de las voces se validan en Stage III.

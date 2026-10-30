@@ -1,4 +1,5 @@
 #include "Semantic.h"
+#include "MusicValidation.h"
 #include <stdio.h>
 #include <limits.h>
 #include <stdint.h>
@@ -7,7 +8,7 @@
 enum { TYPE_DEGREE = 11, TYPE_QUALITY, TYPE_MODE, TYPE_EMPTY_LIST, TYPE_CHORD_LIST, TYPE_DEGREE_LIST, TYPE_VECTOR = 20, TYPE_INVALID = -2 };
 
 typedef struct Symbol { const char *name; int type; struct Symbol *next; } Symbol;
-typedef struct Scope { Symbol *symbols; struct Scope *parent; Program *program; ProcedureDefinition *procedure; CompilationStatus *failure; } Scope;
+typedef struct Scope { Symbol *symbols; struct Scope *parent; Program *program; ProcedureDefinition *procedure; CompilationStatus *failure; const Expression *keyContext; bool hasKeyContext; } Scope;
 
 static bool declare(Scope *scope, const char *name, int type) {
     for (Symbol *s = scope->symbols; s; s = s->next)
@@ -44,7 +45,12 @@ static ProcedureDefinition *findProcedure(Scope *scope, const char *name) {
             return item->statement->procedureDefinition;
     return NULL;
 }
+static void forgetKeyContext(Scope *scope) {
+    scope->hasKeyContext = true;
+    scope->keyContext = NULL;
+}
 static bool call(Scope *scope, ProcedureCall *call, bool needsValue) {
+    forgetKeyContext(scope);
     ProcedureDefinition *p = findProcedure(scope, call->name);
     if (!p) { fprintf(stderr, "Semantic error: unknown procedure '%s'.\n", call->name); return false; }
     if (needsValue && !p->hasReturnType) { fprintf(stderr, "Semantic error: procedure '%s' has no return value.\n", call->name); return false; }
@@ -151,10 +157,29 @@ static int typeOf(Scope *scope, Expression *e) {
         if (literalPitch(e->key.tonic) != -10000) { fprintf(stderr, "Semantic error: key tonic cannot have an octave.\n"); return TYPE_INVALID; }
         return TYPE_KEY;
     case STRING_LITERAL: return TYPE_STRING;
-    case NOTES_CHORD:
-        for (ExpressionList *item = e->elements; item; item = item->next)
-            if (!compatible(scope, item->expression, TYPE_NOTE)) return -2;
+    case NOTES_CHORD: {
+        Scope *owner = scope;
+        while (owner && !owner->hasKeyContext) owner = owner->parent;
+        const Expression *key = owner ? owner->keyContext : NULL;
+        static const int pitchClass[] = {9, 11, 0, 2, 4, 5, 7};
+        int tonic = 0;
+        if (key && key->key.strict) {
+            tonic = pitchClass[key->key.tonic[0] - 'A'];
+            if (key->key.tonic[1] == '#') ++tonic;
+            else if (key->key.tonic[1] == 'b') --tonic;
+            tonic = (tonic + 12) % 12;
+        }
+        for (ExpressionList *item = e->elements; item; item = item->next) {
+            if (!compatible(scope, item->expression, TYPE_NOTE)) return TYPE_INVALID;
+            if (key && key->key.strict && item->expression->type == NOTE_LITERAL) {
+                int pitch = literalPitch(item->expression->text) + 12;
+                if (!musicInKey(&pitch, 1, tonic, key->key.mode)) {
+                    fprintf(stderr, "Semantic error: chord contains a note outside the strict key.\n"); return TYPE_INVALID;
+                }
+            }
+        }
         return TYPE_CHORD;
+    }
     case TRIAD_CHORD: case SEVENTH_CHORD: case NINTH_CHORD:
         if (!compatible(scope, e->rightExpression, TYPE_KEY)) return -2;
         int degree = typeOf(scope, e->leftExpression);
@@ -365,9 +390,16 @@ static bool returnsOnEveryPath(StatementList *list) {
 static bool statement(Scope *scope, Statement *s) {
     switch (s->type) {
     case DECLARATION:
-        return expression(scope, s->expression) && compatible(scope, s->expression, s->dataType + (s->isVector ? 20 : 0)) && declare(scope, s->name, s->dataType + (s->isVector ? 20 : 0));
+        if (!expression(scope, s->expression) || !compatible(scope, s->expression, s->dataType + (s->isVector ? 20 : 0)) || !declare(scope, s->name, s->dataType + (s->isVector ? 20 : 0))) return false;
+        if (s->dataType == TYPE_KEY && !s->isVector) {
+            scope->hasKeyContext = true;
+            scope->keyContext = s->expression->type == KEY_LITERAL ? s->expression : NULL;
+        }
+        return true;
     case ASSIGNMENT:
-        return lookup(scope, s->name) && expression(scope, s->expression) && compatible(scope, s->expression, symbolType(scope, s->name));
+        if (!lookup(scope, s->name) || !expression(scope, s->expression) || !compatible(scope, s->expression, symbolType(scope, s->name))) return false;
+        if (symbolType(scope, s->name) == TYPE_KEY) forgetKeyContext(scope);
+        return true;
     case LOG_STATEMENT: return parts(scope, s->log->message);
     case EXPORT_STATEMENT: return exportStatement(scope, s->export);
     case CHECK_STATEMENT: return expression(scope, s->check->voicing) && compatible(scope, s->check->voicing, TYPE_VOICING);
@@ -377,15 +409,18 @@ static bool statement(Scope *scope, Statement *s) {
         if (scope->procedure->hasReturnType != (s->returnStatement->value != NULL)) { fprintf(stderr, "Semantic error: incorrect return value.\n"); return false; }
         return expression(scope, s->returnStatement->value) && (!s->returnStatement->value || compatible(scope, s->returnStatement->value, scope->procedure->returnType + (scope->procedure->returnsVector ? 20 : 0)));
     case IF_STATEMENT:
+        forgetKeyContext(scope);
         return expression(scope, s->ifStatement->condition) && compatible(scope, s->ifStatement->condition, TYPE_BOOLEAN) && block(scope, s->ifStatement->thenBlock) && block(scope, s->ifStatement->elseBlock);
-    case WHILE_STATEMENT: return expression(scope, s->whileStatement->condition) && compatible(scope, s->whileStatement->condition, TYPE_BOOLEAN) && block(scope, s->whileStatement->body);
+    case WHILE_STATEMENT: forgetKeyContext(scope); return expression(scope, s->whileStatement->condition) && compatible(scope, s->whileStatement->condition, TYPE_BOOLEAN) && block(scope, s->whileStatement->body);
     case FOR_STATEMENT: {
+        forgetKeyContext(scope);
         For *f = s->forStatement; Scope local = {NULL, scope, scope->program, scope->procedure, scope->failure};
         bool ok = expression(scope, f->from) && expression(scope, f->to) && compatible(scope, f->from, TYPE_INTEGER) && compatible(scope, f->to, TYPE_INTEGER) && declare(&local, f->variable, TYPE_INTEGER) && statements(&local, f->body);
         clear(&local); return ok;
     }
     case PROCEDURE_DEFINITION: {
         ProcedureDefinition *p = s->procedureDefinition; Scope local = {NULL, scope, scope->program, p, scope->failure}; bool ok = true;
+        forgetKeyContext(&local);
         if (scope->parent) { fprintf(stderr, "Semantic error: nested procedure definition.\n"); return false; }
         for (StatementList *item = scope->program->statements; item; item = item->next)
             if (item->statement != s && item->statement->type == PROCEDURE_DEFINITION && !strcmp(item->statement->procedureDefinition->name, p->name)) { fprintf(stderr, "Semantic error: duplicate procedure '%s'.\n", p->name); return false; }

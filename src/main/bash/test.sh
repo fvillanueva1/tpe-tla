@@ -29,9 +29,17 @@ echo "Compiler should reject..."
 echo ""
 
 for test in $(ls src/test/c/reject/); do
-	cat "src/test/c/reject/$test" | ".build/Flex-Bison-Compiler" >/dev/null 2>&1
+	OUTPUT=$(".build/Flex-Bison-Compiler" < "src/test/c/reject/$test" 2>&1)
 	RESULT="$?"
-	if [ "$RESULT" != "0" ]; then
+	case "$test" in
+		54-*|60-*|61-*|62-*|63-*|log-undeclared-*|scope-outside*|type-*|procedure-*|return-outside*|export-invalid-*)
+			if [[ "$OUTPUT" != *"Semantic error:"* || "$OUTPUT" == *"Code generation is not implemented yet."* ]]; then
+				echo -e "    $test, ${RED}missing semantic diagnostic or generation was invoked${OFF}"
+				STATUS=1
+				continue
+			fi ;;
+	esac
+	if [ "$RESULT" == "1" ]; then
 		echo -e "    $test, ${GREEN}and it does${OFF} (status $RESULT)"
 	else
 		STATUS=1
@@ -40,5 +48,19 @@ for test in $(ls src/test/c/reject/); do
 done
 echo ""
 
+echo "Checking instrument mapping..."
+INSTRUMENT_TEST=$(mktemp)
+if ! cc -std=gnu99 src/test/c/semantic-instrument.c src/main/c/backend/semantic-analysis/Semantic.c -o "$INSTRUMENT_TEST" || ! "$INSTRUMENT_TEST"; then
+    echo -e "    instrument mapping, ${RED}failed${OFF}"
+    STATUS=1
+fi
+rm -f "$INSTRUMENT_TEST"
+echo "Checking allocation failure..."
+OOM_TEST=$(mktemp)
+if ! cc -std=gnu99 src/test/c/semantic-oom.c src/main/c/backend/semantic-analysis/Semantic.c -Wl,--wrap=malloc -o "$OOM_TEST" || ! "$OOM_TEST"; then
+    echo -e "    allocation failure, ${RED}failed${OFF}"
+    STATUS=1
+fi
+rm -f "$OOM_TEST"
 echo "All done."
 exit $STATUS

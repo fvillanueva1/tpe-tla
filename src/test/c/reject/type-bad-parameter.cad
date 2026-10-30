@@ -1,0 +1,2 @@
+define doblar(integer numero) -> integer { return numero + numero; }
+integer resultado = doblar(C4);

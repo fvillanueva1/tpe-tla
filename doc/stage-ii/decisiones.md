@@ -78,7 +78,7 @@ que `not a == b` es `not (a == b)`. Los relacionales no son asociativos:
 
 - Inversión: `invert c by 1`.
 - Arpegio: `arpeggiate c as eighth`. Las duraciones son literales de
-  expresión, así que también puede ser una variable (`arpeggiate c as d`).
+  expresión y se pueden declarar con `duration`, así que también puede ser una variable (`arpeggiate c as d`).
 - Modulación: `modulate p to G major`, `modulate p to dominant of k`,
   `modulate p to relative minor of k`. El destino es cualquier expresión de
   tonalidad.
@@ -188,3 +188,5 @@ que `not a == b` es `not (a == b)`. Los relacionales no son asociativos:
   Stage III. Así el CI se mantiene verde.
 - Los nombres de tokens y de nodos del AST se acuerdan al inicio y se
   registran en un documento junto con los `%token`.
+
+En Stage III, `duration` es una palabra reservada de tipo; ya no puede usarse como identificador.

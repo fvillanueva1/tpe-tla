@@ -76,6 +76,7 @@ void yyerror(const YYLTYPE * location, const char * message) {}
 // Types.
 %token <token> BOOLEAN_TYPE
 %token <token> CHORD_TYPE
+%token <token> DURATION_TYPE
 %token <token> INTEGER_TYPE
 %token <token> INTERVAL_TYPE
 %token <token> KEY_TYPE
@@ -320,6 +321,7 @@ dataType: BOOLEAN_TYPE										{ $$ = TYPE_BOOLEAN; }
 	| PROGRESSION_TYPE										{ $$ = TYPE_PROGRESSION; }
 	| SCALE_TYPE											{ $$ = TYPE_SCALE; }
 	| STRING_TYPE											{ $$ = TYPE_STRING; }
+	| DURATION_TYPE											{ $$ = TYPE_DURATION; }
 	| VOICING_TYPE											{ $$ = TYPE_VOICING; }
 	;
 

@@ -8,6 +8,8 @@
 /* MIDI pitches, ordered soprano, alto, tenor, bass. */
 enum { VOICE_SOPRANO, VOICE_ALTO, VOICE_TENOR, VOICE_BASS, VOICE_COUNT };
 
+/* Compute seven ascending MIDI pitches starting at the given tonic. */
+bool musicScale(int tonic, Mode mode, int notes[7]);
 bool musicInKey(const int *pitches, size_t count, int tonic, Mode mode);
 bool musicInTessitura(const int voices[VOICE_COUNT]);
 bool musicWithoutVoiceCrossing(const int voices[VOICE_COUNT]);

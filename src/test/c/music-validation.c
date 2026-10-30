@@ -1,6 +1,28 @@
 #include "../../main/c/backend/semantic-analysis/MusicValidation.h"
 #include <assert.h>
 int main(void) {
+    int scale[7];
+    const int expectedC[] = {60, 62, 64, 65, 67, 69, 71};
+    const int expectedB[] = {71, 73, 75, 76, 78, 80, 82};
+    assert(musicScale(60, MODE_MAJOR, scale));
+    for (int i = 0; i < 7; ++i) assert(scale[i] == expectedC[i]);
+    assert(musicScale(71, MODE_MAJOR, scale));
+    for (int i = 0; i < 7; ++i) assert(scale[i] == expectedB[i]);
+    const int offsets[][7] = {
+        [MODE_DORIAN] = {0, 2, 3, 5, 7, 9, 10}, [MODE_LOCRIAN] = {0, 1, 3, 5, 6, 8, 10},
+        [MODE_LYDIAN] = {0, 2, 4, 6, 7, 9, 11}, [MODE_MAJOR] = {0, 2, 4, 5, 7, 9, 11},
+        [MODE_MINOR] = {0, 2, 3, 5, 7, 8, 10}, [MODE_MIXOLYDIAN] = {0, 2, 4, 5, 7, 9, 10},
+        [MODE_PHRYGIAN] = {0, 1, 3, 5, 7, 8, 10}
+    };
+    for (int mode = MODE_DORIAN; mode <= MODE_PHRYGIAN; ++mode) {
+        assert(musicScale(60, (Mode)mode, scale));
+        for (int i = 0; i < 7; ++i) assert(scale[i] == 60 + offsets[mode][i]);
+    }
+    scale[0] = -42;
+    assert(!musicScale(119, MODE_MAJOR, scale));
+    assert(scale[0] == -42);
+    assert(!musicScale(60, MODE_MAJOR, NULL));
+    assert(!musicScale(60, (Mode)99, scale));
     int c_major[] = {60, 64, 67};
     int outside[] = {60, 66, 67};
     assert(musicInKey(c_major, 3, 0, MODE_MAJOR));

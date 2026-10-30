@@ -1,21 +1,29 @@
 #include "MusicValidation.h"
 
+static const int scaleOffsets[][7] = {
+    [MODE_DORIAN] = {0, 2, 3, 5, 7, 9, 10},
+    [MODE_LOCRIAN] = {0, 1, 3, 5, 6, 8, 10},
+    [MODE_LYDIAN] = {0, 2, 4, 6, 7, 9, 11},
+    [MODE_MAJOR] = {0, 2, 4, 5, 7, 9, 11},
+    [MODE_MINOR] = {0, 2, 3, 5, 7, 8, 10},
+    [MODE_MIXOLYDIAN] = {0, 2, 4, 5, 7, 9, 10},
+    [MODE_PHRYGIAN] = {0, 1, 3, 5, 7, 8, 10}
+};
+
+bool musicScale(int tonic, Mode mode, int notes[7]) {
+    if (!notes || mode < MODE_DORIAN || mode > MODE_PHRYGIAN || tonic < 12 || tonic > 119 ||
+        tonic + scaleOffsets[mode][6] > 119) return false;
+    for (size_t i = 0; i < 7; ++i) notes[i] = tonic + scaleOffsets[mode][i];
+    return true;
+}
+
 bool musicInKey(const int *pitches, size_t count, int tonic, Mode mode) {
-    static const int offsets[][7] = {
-        [MODE_DORIAN] = {0, 2, 3, 5, 7, 9, 10},
-        [MODE_LOCRIAN] = {0, 1, 3, 5, 6, 8, 10},
-        [MODE_LYDIAN] = {0, 2, 4, 6, 7, 9, 11},
-        [MODE_MAJOR] = {0, 2, 4, 5, 7, 9, 11},
-        [MODE_MINOR] = {0, 2, 3, 5, 7, 8, 10},
-        [MODE_MIXOLYDIAN] = {0, 2, 4, 5, 7, 9, 10},
-        [MODE_PHRYGIAN] = {0, 1, 3, 5, 7, 8, 10}
-    };
-    if ((!pitches && count) || tonic < 0 || tonic > 11 || mode < MODE_DORIAN || mode > MODE_PHRYGIAN) return false;
+    int scale[7];
+    if ((!pitches && count) || tonic < 0 || tonic > 11 || !musicScale(tonic + 12, mode, scale)) return false;
     for (size_t i = 0; i < count; ++i) {
         if (pitches[i] < 12 || pitches[i] > 119) return false;
-        int pitchClass = (pitches[i] - tonic) % 12;
         bool found = false;
-        for (size_t j = 0; j < 7; ++j) if (offsets[mode][j] == pitchClass) { found = true; break; }
+        for (size_t j = 0; j < 7; ++j) if (scale[j] % 12 == pitches[i] % 12) { found = true; break; }
         if (!found) return false;
     }
     return true;

@@ -8,7 +8,7 @@
 
 enum { TYPE_DEGREE = 11, TYPE_QUALITY, TYPE_MODE, TYPE_EMPTY_LIST, TYPE_CHORD_LIST, TYPE_DEGREE_LIST, TYPE_VECTOR = 20, TYPE_INVALID = -2 };
 
-typedef struct Symbol { const char *name; int type; struct Symbol *next; const Expression *literal; } Symbol;
+typedef struct Symbol { const char *name; int type; struct Symbol *next; const Expression *literal, *currentLiteral; } Symbol;
 typedef struct Scope { Symbol *symbols; struct Scope *parent; Program *program; ProcedureDefinition *procedure; CompilationStatus *failure; const Expression *keyContext; bool hasKeyContext; } Scope;
 
 static bool nameAssigned(StatementList *list, const char *name) {
@@ -33,12 +33,28 @@ static Symbol *findSymbol(Scope *scope, const char *name) {
             if (!strcmp(s->name, name)) return s;
     return NULL;
 }
+static const Expression *knownScalar(Scope *scope, const Expression *expression) {
+    if (!expression) return NULL;
+    if (expression->type == VARIABLE) {
+        Symbol *symbol = findSymbol(scope, expression->text);
+        return symbol ? symbol->currentLiteral : NULL;
+    }
+    switch (expression->type) {
+    case INTEGER_LITERAL: case NOTE_LITERAL: case INTERVAL_LITERAL: case KEY_LITERAL:
+        return expression;
+    default: return NULL;
+    }
+}
+static void forgetCurrentValues(Scope *scope) {
+    for (; scope; scope = scope->parent)
+        for (Symbol *symbol = scope->symbols; symbol; symbol = symbol->next) symbol->currentLiteral = NULL;
+}
 static bool declare(Scope *scope, const char *name, int type) {
     for (Symbol *s = scope->symbols; s; s = s->next)
         if (!strcmp(s->name, name)) { fprintf(stderr, "Semantic error: '%s' is already declared in this scope.\n", name); return false; }
     Symbol *s = malloc(sizeof(*s));
     if (!s) { fprintf(stderr, "Semantic analysis: out of memory.\n"); *scope->failure = OUT_OF_MEMORY; return false; }
-    *s = (Symbol){name, type, scope->symbols, NULL}; scope->symbols = s; return true;
+    *s = (Symbol){name, type, scope->symbols, NULL, NULL}; scope->symbols = s; return true;
 }
 static bool lookup(Scope *scope, const char *name) {
     for (; scope; scope = scope->parent)
@@ -74,6 +90,7 @@ static void forgetKeyContext(Scope *scope) {
 }
 static bool call(Scope *scope, ProcedureCall *call, bool needsValue) {
     forgetKeyContext(scope);
+    forgetCurrentValues(scope);
     ProcedureDefinition *p = findProcedure(scope, call->name);
     if (!p) { fprintf(stderr, "Semantic error: unknown procedure '%s'.\n", call->name); return false; }
     if (needsValue && !p->hasReturnType) { fprintf(stderr, "Semantic error: procedure '%s' has no return value.\n", call->name); return false; }
@@ -131,8 +148,8 @@ static int literalInterval(const char *interval) {
 static bool constantInteger(Scope *scope, Expression *e, int *result) {
     if (e->type == VARIABLE) {
         Symbol *symbol = findSymbol(scope, e->text);
-        if (!symbol || !symbol->literal || symbol->literal->type != INTEGER_LITERAL) return false;
-        *result = symbol->literal->integer; return true;
+        if (!symbol || !symbol->currentLiteral || symbol->currentLiteral->type != INTEGER_LITERAL) return false;
+        *result = symbol->currentLiteral->integer; return true;
     }
     if (e->type == INTEGER_LITERAL) { *result = e->integer; return true; }
     if (e->type != ADDITION && e->type != SUBTRACTION && e->type != MULTIPLICATION && e->type != DIVISION) return false;
@@ -202,7 +219,7 @@ static int typeOf(Scope *scope, Expression *e) {
             const Expression *note = item->expression;
             if (note->type == VARIABLE) {
                 Symbol *symbol = findSymbol(scope, note->text);
-                note = symbol ? symbol->literal : NULL;
+                note = symbol ? symbol->currentLiteral : NULL;
             }
             if (key && key->key.strict && note && note->type == NOTE_LITERAL) {
                 int pitch = literalPitch(note->text) + 12;
@@ -335,8 +352,8 @@ static int typeOf(Scope *scope, Expression *e) {
         if ((e->type == ADDITION || e->type == SUBTRACTION) && b == TYPE_INTERVAL &&
             (a == TYPE_NOTE || a == TYPE_CHORD || a == TYPE_PROGRESSION)) {
             const Expression *note = e->leftExpression, *intervalExpression = e->rightExpression;
-            if (note->type == VARIABLE) { Symbol *symbol = findSymbol(scope, note->text); note = symbol ? symbol->literal : NULL; }
-            if (intervalExpression->type == VARIABLE) { Symbol *symbol = findSymbol(scope, intervalExpression->text); intervalExpression = symbol ? symbol->literal : NULL; }
+            if (note->type == VARIABLE) { Symbol *symbol = findSymbol(scope, note->text); note = symbol ? symbol->currentLiteral : NULL; }
+            if (intervalExpression->type == VARIABLE) { Symbol *symbol = findSymbol(scope, intervalExpression->text); intervalExpression = symbol ? symbol->currentLiteral : NULL; }
             if (a == TYPE_NOTE && note && intervalExpression && note->type == NOTE_LITERAL && intervalExpression->type == INTERVAL_LITERAL) {
                 int pitch = literalPitch(note->text), interval = literalInterval(intervalExpression->text);
                 if (pitch >= 0 && interval >= 0) {
@@ -538,8 +555,11 @@ static bool returnsOnEveryPath(StatementList *list) {
 }
 static bool statement(Scope *scope, Statement *s) {
     switch (s->type) {
-    case DECLARATION:
-        if (!expression(scope, s->expression) || !compatible(scope, s->expression, s->dataType + (s->isVector ? 20 : 0)) || !declare(scope, s->name, s->dataType + (s->isVector ? 20 : 0))) return false;
+    case DECLARATION: {
+        if (!expression(scope, s->expression) || !compatible(scope, s->expression, s->dataType + (s->isVector ? 20 : 0))) return false;
+        const Expression *value = s->isVector ? NULL : knownScalar(scope, s->expression);
+        if (!declare(scope, s->name, s->dataType + (s->isVector ? 20 : 0))) return false;
+        scope->symbols->currentLiteral = value;
         if (!s->isVector && !nameAssigned(scope->program->statements, s->name) &&
             ((s->dataType == TYPE_NOTE && s->expression->type == NOTE_LITERAL) ||
              (s->dataType == TYPE_INTEGER && s->expression->type == INTEGER_LITERAL) ||
@@ -554,10 +574,14 @@ static bool statement(Scope *scope, Statement *s) {
             scope->keyContext = s->expression->type == KEY_LITERAL ? s->expression : NULL;
         }
         return true;
-    case ASSIGNMENT:
+    }
+    case ASSIGNMENT: {
         if (!lookup(scope, s->name) || !expression(scope, s->expression) || !compatible(scope, s->expression, symbolType(scope, s->name))) return false;
-        if (symbolType(scope, s->name) == TYPE_KEY) forgetKeyContext(scope);
+        Symbol *symbol = findSymbol(scope, s->name);
+        symbol->currentLiteral = symbol->type >= TYPE_VECTOR ? NULL : knownScalar(scope, s->expression);
+        if (symbol->type == TYPE_KEY) forgetKeyContext(scope);
         return true;
+    }
     case LOG_STATEMENT: return parts(scope, s->log->message);
     case EXPORT_STATEMENT: return exportStatement(scope, s->export);
     case CHECK_STATEMENT: return expression(scope, s->check->voicing) && compatible(scope, s->check->voicing, TYPE_VOICING) && checkKnownVoicing(scope, s->check->voicing, s->check->rules);
@@ -566,19 +590,27 @@ static bool statement(Scope *scope, Statement *s) {
         if (!scope->procedure) { fprintf(stderr, "Semantic error: return outside procedure.\n"); return false; }
         if (scope->procedure->hasReturnType != (s->returnStatement->value != NULL)) { fprintf(stderr, "Semantic error: incorrect return value.\n"); return false; }
         return expression(scope, s->returnStatement->value) && (!s->returnStatement->value || compatible(scope, s->returnStatement->value, scope->procedure->returnType + (scope->procedure->returnsVector ? 20 : 0)));
-    case IF_STATEMENT:
-        forgetKeyContext(scope);
-        return expression(scope, s->ifStatement->condition) && compatible(scope, s->ifStatement->condition, TYPE_BOOLEAN) && block(scope, s->ifStatement->thenBlock) && block(scope, s->ifStatement->elseBlock);
-    case WHILE_STATEMENT: forgetKeyContext(scope); return expression(scope, s->whileStatement->condition) && compatible(scope, s->whileStatement->condition, TYPE_BOOLEAN) && block(scope, s->whileStatement->body);
+    case IF_STATEMENT: {
+        forgetKeyContext(scope); forgetCurrentValues(scope);
+        bool ok = expression(scope, s->ifStatement->condition) && compatible(scope, s->ifStatement->condition, TYPE_BOOLEAN) && block(scope, s->ifStatement->thenBlock);
+        forgetCurrentValues(scope);
+        if (ok) ok = block(scope, s->ifStatement->elseBlock);
+        forgetCurrentValues(scope); return ok;
+    }
+    case WHILE_STATEMENT: {
+        forgetKeyContext(scope); forgetCurrentValues(scope);
+        bool ok = expression(scope, s->whileStatement->condition) && compatible(scope, s->whileStatement->condition, TYPE_BOOLEAN) && block(scope, s->whileStatement->body);
+        forgetCurrentValues(scope); return ok;
+    }
     case FOR_STATEMENT: {
-        forgetKeyContext(scope);
+        forgetKeyContext(scope); forgetCurrentValues(scope);
         For *f = s->forStatement; Scope local = {NULL, scope, scope->program, scope->procedure, scope->failure};
         bool ok = expression(scope, f->from) && expression(scope, f->to) && compatible(scope, f->from, TYPE_INTEGER) && compatible(scope, f->to, TYPE_INTEGER) && declare(&local, f->variable, TYPE_INTEGER) && statements(&local, f->body);
-        clear(&local); return ok;
+        clear(&local); forgetCurrentValues(scope); return ok;
     }
     case PROCEDURE_DEFINITION: {
         ProcedureDefinition *p = s->procedureDefinition; Scope local = {NULL, scope, scope->program, p, scope->failure}; bool ok = true;
-        forgetKeyContext(&local);
+        forgetKeyContext(&local); forgetCurrentValues(scope);
         if (scope->parent) { fprintf(stderr, "Semantic error: nested procedure definition.\n"); return false; }
         for (StatementList *item = scope->program->statements; item; item = item->next)
             if (item->statement != s && item->statement->type == PROCEDURE_DEFINITION && !strcmp(item->statement->procedureDefinition->name, p->name)) { fprintf(stderr, "Semantic error: duplicate procedure '%s'.\n", p->name); return false; }
@@ -587,7 +619,7 @@ static bool statement(Scope *scope, Statement *s) {
         if (ok && p->hasReturnType && !returnsOnEveryPath(p->body)) {
             fprintf(stderr, "Semantic error: procedure '%s' can finish without returning a value.\n", p->name); ok = false;
         }
-        clear(&local); return ok;
+        clear(&local); forgetCurrentValues(scope); return ok;
     }
     }
     return false;

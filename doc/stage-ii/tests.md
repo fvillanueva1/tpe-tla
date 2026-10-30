@@ -106,3 +106,5 @@ Se verifica la conduccion y el contrapunto de progresiones por grados conocidas,
 Los casos SATB cubren ademas acordes por grado y septimas con tonalidades y grados inmutables conocidos.
 
 Grados, tempos, inversiones y transposiciones tambien se prueban con variables inmutables conocidas; las variables asignadas en el programa permanecen desconocidas para estos controles estaticos.
+
+Las pruebas cubren valores escalares asignados en linea recta y olvidados despues de una rama, para evitar rechazos basados en un camino que podria no ejecutarse.

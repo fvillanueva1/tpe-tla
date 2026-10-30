@@ -1,0 +1,4 @@
+integer grado = 1;
+grado = 8;
+key tonalidad = C major;
+chord acorde = triad on grado of tonalidad;

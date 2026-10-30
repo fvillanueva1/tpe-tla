@@ -1,0 +1,4 @@
+note nota = C4;
+if (false) { nota = B8; }
+interval intervalo = M2;
+note resultado = nota + intervalo;

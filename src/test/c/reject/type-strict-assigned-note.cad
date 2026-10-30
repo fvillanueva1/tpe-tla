@@ -1,0 +1,4 @@
+key tonalidad = C major strict;
+note nota = E4;
+nota = F#4;
+chord acorde = {C4, nota, G4};

@@ -21,3 +21,9 @@ La compilacion con avisos estrictos de `Semantic.c` no produce avisos propios; `
 El tipo `duration` permite declarar duraciones, vectores de duraciones y parametros o retornos de procedimientos; `arpeggiate` exige una duracion.
 
 Si no se puede reservar memoria para un simbolo, el analizador devuelve `OUT_OF_MEMORY` (codigo 2), distinto de un rechazo semantico (codigo 1).
+
+## Validaciones musicales para integracion
+
+`MusicValidation.h` ofrece funciones puras sobre alturas MIDI (C4 = 60) para pertenencia a tonalidad/modo, tesitura, cruce de voces y quintas u octavas paralelas. Los vectores SATB se ordenan soprano, contralto, tenor y bajo. Los rangos inclusivos elegidos son soprano C4-A5, contralto F3-D5, tenor C3-A4 y bajo E2-E4. Voces en unisono no se consideran cruzadas. Para paralelas, ambas voces deben moverse en el mismo sentido; se consideran intervalos compuestos equivalentes y las octavas requieren distancia minima de una octava en ambos acordes.
+
+Estas funciones ya se prueban con datos conocidos, pero aun no se invocan desde programas Cadence: falta la evaluacion musical y la realizacion SATB. Los casos `pending/55` a `59` siguen sin activarse. `musicInKey` recibe notas MIDI de C0 a B8, tonica como clase de altura de 0 a 11 y un modo; admite alteraciones enarmonicas por clase de altura.

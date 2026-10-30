@@ -2,15 +2,15 @@
 #include <stdio.h>
 #include <string.h>
 
-typedef struct Symbol { const char *name; struct Symbol *next; } Symbol;
+typedef struct Symbol { const char *name; int type; struct Symbol *next; } Symbol;
 typedef struct Scope { Symbol *symbols; struct Scope *parent; } Scope;
 
-static bool declare(Scope *scope, const char *name) {
+static bool declare(Scope *scope, const char *name, int type) {
     for (Symbol *s = scope->symbols; s; s = s->next)
         if (!strcmp(s->name, name)) { fprintf(stderr, "Semantic error: '%s' is already declared in this scope.\n", name); return false; }
     Symbol *s = malloc(sizeof(*s));
     if (!s) { fprintf(stderr, "Semantic error: out of memory.\n"); return false; }
-    *s = (Symbol){name, scope->symbols}; scope->symbols = s; return true;
+    *s = (Symbol){name, type, scope->symbols}; scope->symbols = s; return true;
 }
 static bool lookup(Scope *scope, const char *name) {
     for (; scope; scope = scope->parent)
@@ -55,12 +55,58 @@ static bool expression(Scope *scope, Expression *e) {
 static bool block(Scope *parent, StatementList *list) {
     Scope local = {NULL, parent}; bool ok = statements(&local, list); clear(&local); return ok;
 }
+/* shortcut: unsupported expression types remain unchecked, expand as their rules are implemented. */
+static int typeOf(Scope *scope, Expression *e) {
+    if (!e) return -1;
+    switch (e->type) {
+    case INTEGER_LITERAL: return TYPE_INTEGER;
+    case BOOLEAN_LITERAL: return TYPE_BOOLEAN;
+    case NOTE_LITERAL: return TYPE_NOTE;
+    case INTERVAL_LITERAL: return TYPE_INTERVAL;
+    case KEY_LITERAL: return TYPE_KEY;
+    case STRING_LITERAL: return TYPE_STRING;
+    case NOTES_CHORD: case TRIAD_CHORD: case SEVENTH_CHORD: case NINTH_CHORD: return TYPE_CHORD;
+    case SCALE_OF_KEY: return TYPE_SCALE;
+    case VOICE_EXPRESSION: return TYPE_VOICING;
+    case VARIABLE:
+        for (Scope *p = scope; p; p = p->parent)
+            for (Symbol *symbol = p->symbols; symbol; symbol = symbol->next)
+                if (!strcmp(symbol->name, e->text)) return symbol->type;
+        return -1;
+    case ADDITION: case SUBTRACTION: case MULTIPLICATION: case DIVISION: {
+        int a = typeOf(scope, e->leftExpression), b = typeOf(scope, e->rightExpression);
+        if (a == -2 || b == -2) return -2;
+        if (a == -1 || b == -1) return -1;
+        if (a == TYPE_INTEGER && b == TYPE_INTEGER) return TYPE_INTEGER;
+        if ((e->type == ADDITION || e->type == SUBTRACTION) && b == TYPE_INTERVAL &&
+            (a == TYPE_NOTE || a == TYPE_CHORD || a == TYPE_PROGRESSION)) return a;
+        if (e->type == ADDITION && a == TYPE_PROGRESSION && (b == TYPE_PROGRESSION || b == TYPE_CHORD)) return TYPE_PROGRESSION;
+        if (e->type == MULTIPLICATION && a == TYPE_PROGRESSION && b == TYPE_INTEGER) return TYPE_PROGRESSION;
+        fprintf(stderr, "Semantic error: incompatible operand types.\n"); return -2;
+    }
+    default: return -1;
+    }
+}
+static bool compatible(Scope *scope, Expression *e, int expected) {
+    int actual = typeOf(scope, e);
+    if (actual == -2) return false;
+    if (actual != -1 && actual != expected) {
+        fprintf(stderr, "Semantic error: expression type does not match declaration or assignment.\n"); return false;
+    }
+    return true;
+}
+static int symbolType(Scope *scope, const char *name) {
+    for (; scope; scope = scope->parent)
+        for (Symbol *s = scope->symbols; s; s = s->next)
+            if (!strcmp(s->name, name)) return s->type;
+    return -1;
+}
 static bool statement(Scope *scope, Statement *s) {
     switch (s->type) {
     case DECLARATION:
-        return expression(scope, s->expression) && declare(scope, s->name);
+        return expression(scope, s->expression) && compatible(scope, s->expression, s->dataType + (s->isVector ? 20 : 0)) && declare(scope, s->name, s->dataType + (s->isVector ? 20 : 0));
     case ASSIGNMENT:
-        return lookup(scope, s->name) && expression(scope, s->expression);
+        return lookup(scope, s->name) && expression(scope, s->expression) && compatible(scope, s->expression, symbolType(scope, s->name));
     case LOG_STATEMENT: return parts(scope, s->log->message);
     case EXPORT_STATEMENT: return expression(scope, s->export->value) && expression(scope, s->export->tempo);
     case CHECK_STATEMENT: return expression(scope, s->check->voicing);
@@ -71,12 +117,12 @@ static bool statement(Scope *scope, Statement *s) {
     case WHILE_STATEMENT: return expression(scope, s->whileStatement->condition) && block(scope, s->whileStatement->body);
     case FOR_STATEMENT: {
         For *f = s->forStatement; Scope local = {NULL, scope};
-        bool ok = expression(scope, f->from) && expression(scope, f->to) && declare(&local, f->variable) && statements(&local, f->body);
+        bool ok = expression(scope, f->from) && expression(scope, f->to) && declare(&local, f->variable, TYPE_INTEGER) && statements(&local, f->body);
         clear(&local); return ok;
     }
     case PROCEDURE_DEFINITION: {
         ProcedureDefinition *p = s->procedureDefinition; Scope local = {NULL, scope}; bool ok = true;
-        for (ParameterList *item = p->parameters; item && ok; item = item->next) ok = declare(&local, item->parameter->name);
+        for (ParameterList *item = p->parameters; item && ok; item = item->next) ok = declare(&local, item->parameter->name, item->parameter->dataType + (item->parameter->isVector ? 20 : 0));
         if (ok) ok = statements(&local, p->body);
         clear(&local); return ok;
     }

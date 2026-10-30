@@ -70,3 +70,7 @@ Todos los rechazos activos terminaron con código 1, sin errores de AddressSanit
 
 Al finalizar no quedan archivos en `planned/`. `pending/` contiene 13 archivos:
 nueve casos semánticos y cuatro escenarios musicales por concretar.
+
+## Actualizacion de Stage III
+
+La suite incluye rechazos semanticos activos y exige el mensaje `Semantic error:` para ellos, ademas del codigo 1. Los casos 54 y 60 a 63, instrumento y tempo invalidos ya son activos. Los casos 55 a 59 permanecen en `pending/`: dependen del modelo musical, y los casos SATB necesitan entradas concluyentes. Las tablas anteriores describen los snapshots historicos de Stage II.

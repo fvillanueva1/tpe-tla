@@ -137,6 +137,9 @@ static int typeOf(Scope *scope, Expression *e) {
         if (!compatible(scope, e->rightExpression, TYPE_KEY)) return -2;
         int degree = typeOf(scope, e->leftExpression);
         if (degree != TYPE_DEGREE && degree != TYPE_INTEGER) { fprintf(stderr, "Semantic error: chord degree must be a degree or integer.\n"); return TYPE_INVALID; }
+        if (e->leftExpression->type == INTEGER_LITERAL && (e->leftExpression->integer < 1 || e->leftExpression->integer > 7)) {
+            fprintf(stderr, "Semantic error: chord degree must be between 1 and 7.\n"); return TYPE_INVALID;
+        }
         return TYPE_CHORD;
     case SCALE_OF_KEY:
         return compatible(scope, e->operand, TYPE_KEY) ? TYPE_SCALE : -2;
@@ -262,7 +265,7 @@ static int symbolType(Scope *scope, const char *name) {
             if (!strcmp(s->name, name)) return s->type;
     return -1;
 }
-static bool validInstrument(const char *name) {
+int semanticInstrumentProgram(const char *name) {
     static const char *names[] = {
         "piano", "bright_acoustic_piano", "electric_grand_piano", "honky_tonk_piano", "electric_piano_1", "electric_piano_2", "harpsichord", "clavinet",
         "celesta", "glockenspiel", "music_box", "vibraphone", "marimba", "xylophone", "tubular_bells", "dulcimer",
@@ -281,8 +284,9 @@ static bool validInstrument(const char *name) {
         "tinkle_bell", "agogo", "steel_drums", "woodblock", "taiko_drum", "melodic_tom", "synth_drum", "reverse_cymbal",
         "guitar_fret_noise", "breath_noise", "seashore", "bird_tweet", "telephone_ring", "helicopter", "applause", "gunshot"
     };
-    for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i) if (!strcmp(name, names[i])) return true;
-    fprintf(stderr, "Semantic error: unknown instrument '%s'.\n", name); return false;
+    if (!name) return -1;
+    for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i) if (!strcmp(name, names[i])) return (int)i;
+    return -1;
 }
 static bool exportStatement(Scope *scope, Export *export) {
     if (!expression(scope, export->value) || !expression(scope, export->tempo)) return false;
@@ -291,10 +295,15 @@ static bool exportStatement(Scope *scope, Export *export) {
         fprintf(stderr, "Semantic error: value is not exportable.\n"); return false;
     }
     if (export->tempo && !compatible(scope, export->tempo, TYPE_INTEGER)) return false;
-    if (export->tempo && export->tempo->type == INTEGER_LITERAL && (export->tempo->integer < 1 || export->tempo->integer > 1000)) {
-        fprintf(stderr, "Semantic error: tempo must be between 1 and 1000 BPM.\n"); return false;
+    if (export->tempo && export->tempo->type == INTEGER_LITERAL &&
+        (export->tempo->integer < (export->format == EXPORT_MIDI ? 4 : 1) ||
+         (export->format == EXPORT_MIDI && export->tempo->integer > 60000000))) {
+        fprintf(stderr, "Semantic error: tempo is outside the export format's range.\n"); return false;
     }
-    return !export->instrument || validInstrument(export->instrument);
+    if (export->instrument && semanticInstrumentProgram(export->instrument) < 0) {
+        fprintf(stderr, "Semantic error: unknown instrument '%s'.\n", export->instrument); return false;
+    }
+    return true;
 }
 static bool returnsOnEveryPath(StatementList *list) {
     for (; list; list = list->next) {

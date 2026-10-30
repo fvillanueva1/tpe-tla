@@ -33,8 +33,8 @@ for test in $(ls src/test/c/reject/); do
 	RESULT="$?"
 	case "$test" in
 		54-*|60-*|61-*|62-*|63-*|log-undeclared-*|scope-outside*|type-*|procedure-*|return-outside*|export-invalid-*)
-			if [[ "$OUTPUT" != *"Semantic error:"* ]]; then
-				echo -e "    $test, ${RED}missing semantic diagnostic${OFF}"
+			if [[ "$OUTPUT" != *"Semantic error:"* || "$OUTPUT" == *"Code generation is not implemented yet."* ]]; then
+				echo -e "    $test, ${RED}missing semantic diagnostic or generation was invoked${OFF}"
 				STATUS=1
 				continue
 			fi ;;
@@ -48,5 +48,12 @@ for test in $(ls src/test/c/reject/); do
 done
 echo ""
 
+echo "Checking instrument mapping..."
+INSTRUMENT_TEST=$(mktemp)
+if ! cc -std=gnu99 src/test/c/semantic-instrument.c src/main/c/backend/semantic-analysis/Semantic.c -o "$INSTRUMENT_TEST" || ! "$INSTRUMENT_TEST"; then
+    echo -e "    instrument mapping, ${RED}failed${OFF}"
+    STATUS=1
+fi
+rm -f "$INSTRUMENT_TEST"
 echo "All done."
 exit $STATUS

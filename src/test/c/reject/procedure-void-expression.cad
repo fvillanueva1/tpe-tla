@@ -1,0 +1,2 @@
+define funcion() { return; }
+integer resultado = funcion();

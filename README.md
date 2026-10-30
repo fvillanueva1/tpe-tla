@@ -20,10 +20,7 @@ escalas, acordes, progresiones, vectores e índices, propiedades, operadores,
 transformaciones, control de flujo, procedimientos, `voice ... as SATB`,
 `check`, `export` a MIDI/sheet y `log` con interpolación por nombre.
 
-Stage II comprueba la sintaxis y construye el AST. Todavía no evalúa programas,
-resuelve variables, valida tipos o contrapunto, distribuye voces ni genera
-archivos MIDI/partituras. `log` tampoco imprime el mensaje del programa.
-Los nodos conservan esa información para las siguientes etapas.
+El frontend construye el AST y el analizador semantico verifica nombres, alcances y tipos. La evaluacion musical, la realizacion SATB y la generacion de MIDI o partituras siguen pendientes. El detalle y las limitaciones estan en [analisis semantico](doc/stage-ii/semantica.md).
 
 ## Documentación
 
@@ -68,19 +65,13 @@ Cada test es un programa pequeño enfocado en una construcción. Los prefijos
 numéricos mantienen la correspondencia con Stage I; los demás prueban decisiones
 como `==`, `aug4`, instrumentos e interpolación.
 
-| Carpeta | Contenido | Resultado esperado en Stage II |
-|---------|-----------|--------------------------------|
-| `src/test/c/accept/` | 53 programas de sintaxis válida | Código de salida 0 |
-| `src/test/c/reject/` | 27 errores léxicos o sintácticos | Código distinto de 0 |
-| `src/test/c/pending/` | 13 archivos semánticos pendientes | No se ejecutan en la suite |
+| Carpeta | Contenido | Resultado esperado |
+|---------|-----------|-------------------|
+| `src/test/c/accept/` | Programas aceptados | Codigo 0 |
+| `src/test/c/reject/` | Errores lexicos, sintacticos y semanticos | Codigo 1 |
+| `src/test/c/pending/` | Escenarios musicales pendientes | No se ejecutan en la suite |
 
-`test.sh` recorre exclusivamente `accept/` y `reject/` y compara códigos de
-salida: no verifica resultados musicales ni el contenido de archivos.
-
-`pending/` reúne tipos incompatibles, variables no declaradas o redeclaradas,
-`strict`, contrapunto, tesitura y rangos, además de instrumentos y tempos
-inválidos. La exclusión evita exigir análisis semántico al frontend. Los casos
-concretos se moverán a `reject/` cuando Stage III implemente su diagnóstico.
+`test.sh` ejecuta `accept/` y `reject/` y exige el diagnostico semantico en los casos correspondientes. No comprueba todavia resultados musicales ni archivos generados. Los casos 55 a 59 siguen pendientes del modelo musical.
 
 Los archivos 56–59 son **escenarios por concretar**, no pruebas que ya
 garanticen quintas u octavas paralelas, cruce de voces o errores de tesitura.
@@ -135,7 +126,7 @@ Stage I están registrados en `decisiones.md`: interpolación por nombre,
 comparación entre enteros e instrumento opcional como identificador común.
 
 Cada exportación admite un instrumento opcional; no hay sintaxis de pistas.
-La tabla MIDI, los tipos permitidos por operador y las validaciones musicales
+La tabla MIDI y los tipos por operador tienen una implementacion inicial. Las validaciones musicales
 se implementarán en Stage III. Los escapes se conservan sin decodificar en
 el AST. Los cambios de presentación del informe (fecha, índice, justificación,
 paginación y figuras) corresponden al informe final: no se reentrega el PDF de
@@ -145,8 +136,3 @@ Las entregas se integran en `development` mediante PRs revisados por otro
 integrante. La entrega a la cátedra debe identificar el grupo, los integrantes
 y el hash completo del commit de `development` después de integrar la revisión.
 
-## Avance de Stage III
-
-La primera pasada semántica valida nombres, redeclaraciones y alcances antes de invocar el generador. Su alcance y las validaciones pendientes se detallan en [análisis semántico](doc/stage-ii/semantica.md). La generación y el chequeo de tipos todavía no están implementados.
-
-La comprobaci?n de tipos de Stage III es parcial; ver [sem?ntica](doc/stage-ii/semantica.md).

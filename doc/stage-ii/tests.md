@@ -104,3 +104,5 @@ Los casos 56 y 57 verifican tambien el nombre de la regla y el numero del acorde
 Se verifica la conduccion y el contrapunto de progresiones por grados conocidas, ademas de acordes explicitos.
 
 Los casos SATB cubren ademas acordes por grado y septimas con tonalidades y grados inmutables conocidos.
+
+Grados, tempos, inversiones y transposiciones tambien se prueban con variables inmutables conocidas; las variables asignadas en el programa permanecen desconocidas para estos controles estaticos.

@@ -1,0 +1,3 @@
+note nota = B8;
+interval intervalo = M2;
+note resultado = nota + intervalo;

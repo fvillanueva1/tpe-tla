@@ -128,11 +128,16 @@ static int literalInterval(const char *interval) {
     return -1;
 }
 /* Evaluate only side-effect-free integer literals; runtime values remain unknown. */
-static bool constantInteger(Expression *e, int *result) {
+static bool constantInteger(Scope *scope, Expression *e, int *result) {
+    if (e->type == VARIABLE) {
+        Symbol *symbol = findSymbol(scope, e->text);
+        if (!symbol || !symbol->literal || symbol->literal->type != INTEGER_LITERAL) return false;
+        *result = symbol->literal->integer; return true;
+    }
     if (e->type == INTEGER_LITERAL) { *result = e->integer; return true; }
     if (e->type != ADDITION && e->type != SUBTRACTION && e->type != MULTIPLICATION && e->type != DIVISION) return false;
     int left, right;
-    if (!constantInteger(e->leftExpression, &left) || !constantInteger(e->rightExpression, &right)) return false;
+    if (!constantInteger(scope, e->leftExpression, &left) || !constantInteger(scope, e->rightExpression, &right)) return false;
     int64_t value;
     switch (e->type) {
     case ADDITION: value = (int64_t)left + right; break;
@@ -213,7 +218,7 @@ static int typeOf(Scope *scope, Expression *e) {
         int degree = typeOf(scope, e->leftExpression);
         if (degree != TYPE_DEGREE && degree != TYPE_INTEGER) { fprintf(stderr, "Semantic error: chord degree must be a degree or integer.\n"); return TYPE_INVALID; }
         int degreeValue;
-        if (degree == TYPE_INTEGER && constantInteger(e->leftExpression, &degreeValue) && (degreeValue < 1 || degreeValue > 7)) {
+        if (degree == TYPE_INTEGER && constantInteger(scope, e->leftExpression, &degreeValue) && (degreeValue < 1 || degreeValue > 7)) {
             fprintf(stderr, "Semantic error: chord degree must be between 1 and 7.\n"); return TYPE_INVALID;
         }
         return TYPE_CHORD;
@@ -224,9 +229,11 @@ static int typeOf(Scope *scope, Expression *e) {
     case INVERSION:
         if (!compatible(scope, e->leftExpression, TYPE_CHORD) || !compatible(scope, e->rightExpression, TYPE_INTEGER)) return TYPE_INVALID;
         int inversions;
-        if (e->leftExpression->type == NOTES_CHORD && constantInteger(e->rightExpression, &inversions)) {
+        const Expression *chord = e->leftExpression;
+        if (chord->type == VARIABLE) { Symbol *symbol = findSymbol(scope, chord->text); chord = symbol ? symbol->literal : NULL; }
+        if (chord && chord->type == NOTES_CHORD && constantInteger(scope, e->rightExpression, &inversions)) {
             int count = 0;
-            for (ExpressionList *item = e->leftExpression->elements; item; item = item->next) ++count;
+            for (ExpressionList *item = chord->elements; item; item = item->next) ++count;
             if (inversions < 0 || inversions > count) {
                 fprintf(stderr, "Semantic error: inversion is outside the chord range.\n"); return TYPE_INVALID;
             }
@@ -243,7 +250,7 @@ static int typeOf(Scope *scope, Expression *e) {
         if (index != -1 && index != TYPE_INTEGER) { fprintf(stderr, "Semantic error: index must be an integer.\n"); return -2; }
         if (object == -1) return -1;
         int indexValue;
-        if (constantInteger(e->rightExpression, &indexValue)) {
+        if (constantInteger(scope, e->rightExpression, &indexValue)) {
             int length = object == TYPE_SCALE ? 7 : -1;
             if (e->leftExpression->type == LIST_LITERAL) {
                 length = 0;
@@ -320,15 +327,18 @@ static int typeOf(Scope *scope, Expression *e) {
         if (b == TYPE_CHORD_LIST || b == TYPE_EMPTY_LIST) b = TYPE_PROGRESSION;
         if (a == TYPE_INTEGER && b == TYPE_INTEGER) {
             int divisor;
-            if (e->type == DIVISION && constantInteger(e->rightExpression, &divisor) && divisor == 0) {
+            if (e->type == DIVISION && constantInteger(scope, e->rightExpression, &divisor) && divisor == 0) {
                 fprintf(stderr, "Semantic error: division by zero.\n"); return TYPE_INVALID;
             }
             return TYPE_INTEGER;
         }
         if ((e->type == ADDITION || e->type == SUBTRACTION) && b == TYPE_INTERVAL &&
             (a == TYPE_NOTE || a == TYPE_CHORD || a == TYPE_PROGRESSION)) {
-            if (a == TYPE_NOTE && e->leftExpression->type == NOTE_LITERAL && e->rightExpression->type == INTERVAL_LITERAL) {
-                int pitch = literalPitch(e->leftExpression->text), interval = literalInterval(e->rightExpression->text);
+            const Expression *note = e->leftExpression, *intervalExpression = e->rightExpression;
+            if (note->type == VARIABLE) { Symbol *symbol = findSymbol(scope, note->text); note = symbol ? symbol->literal : NULL; }
+            if (intervalExpression->type == VARIABLE) { Symbol *symbol = findSymbol(scope, intervalExpression->text); intervalExpression = symbol ? symbol->literal : NULL; }
+            if (a == TYPE_NOTE && note && intervalExpression && note->type == NOTE_LITERAL && intervalExpression->type == INTERVAL_LITERAL) {
+                int pitch = literalPitch(note->text), interval = literalInterval(intervalExpression->text);
                 if (pitch >= 0 && interval >= 0) {
                     int result = pitch + (e->type == ADDITION ? interval : -interval);
                     if (result < 0 || result > 107) { fprintf(stderr, "Semantic error: transposed note is out of range.\n"); return TYPE_INVALID; }
@@ -339,7 +349,7 @@ static int typeOf(Scope *scope, Expression *e) {
         if (e->type == ADDITION && a == TYPE_PROGRESSION && (b == TYPE_PROGRESSION || b == TYPE_CHORD)) return TYPE_PROGRESSION;
         if (e->type == MULTIPLICATION && a == TYPE_PROGRESSION && b == TYPE_INTEGER) {
             int repetitions;
-            if (constantInteger(e->rightExpression, &repetitions) && repetitions < 0) {
+            if (constantInteger(scope, e->rightExpression, &repetitions) && repetitions < 0) {
                 fprintf(stderr, "Semantic error: repetition count cannot be negative.\n"); return TYPE_INVALID;
             }
             return TYPE_PROGRESSION;
@@ -396,7 +406,7 @@ static bool exportStatement(Scope *scope, Export *export) {
     }
     if (export->tempo && !compatible(scope, export->tempo, TYPE_INTEGER)) return false;
     int tempo;
-    if (export->tempo && constantInteger(export->tempo, &tempo) &&
+    if (export->tempo && constantInteger(scope, export->tempo, &tempo) &&
         (tempo < (export->format == EXPORT_MIDI ? 4 : 1) ||
          (export->format == EXPORT_MIDI && tempo > 60000000))) {
         fprintf(stderr, "Semantic error: tempo is outside the export format's range.\n"); return false;
@@ -533,6 +543,7 @@ static bool statement(Scope *scope, Statement *s) {
         if (!s->isVector && !nameAssigned(scope->program->statements, s->name) &&
             ((s->dataType == TYPE_NOTE && s->expression->type == NOTE_LITERAL) ||
              (s->dataType == TYPE_INTEGER && s->expression->type == INTEGER_LITERAL) ||
+             (s->dataType == TYPE_INTERVAL && s->expression->type == INTERVAL_LITERAL) ||
              (s->dataType == TYPE_CHORD && (s->expression->type == NOTES_CHORD || s->expression->type == TRIAD_CHORD || s->expression->type == SEVENTH_CHORD)) ||
              (s->dataType == TYPE_KEY && s->expression->type == KEY_LITERAL) ||
              (s->dataType == TYPE_PROGRESSION && (s->expression->type == LIST_LITERAL || s->expression->type == IN_EXPRESSION)) ||

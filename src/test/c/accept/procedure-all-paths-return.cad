@@ -1,0 +1,2 @@
+define funcion(boolean condicion) -> integer { if (condicion) { return 1; } else { return 2; } }
+integer resultado = funcion(true);

@@ -1,15 +1,17 @@
-# Analisis semantico: estado actual
+# Analisis semantico de Cadence
 
-El compilador valida nombres y alcances tras el parser, y detiene la generacion si encuentra un error. Las declaraciones son visibles despues de su inicializacion. Los bloques permiten ocultar nombres exteriores y rechazan redeclaraciones en el mismo alcance; los parametros y la variable de for pertenecen al alcance de su cuerpo.
+El compilador ejecuta `analyzeSemantics` despues del parser y no invoca el generador cuando falla. Los nombres se resuelven desde el alcance mas interno: los bloques permiten ocultar nombres exteriores, pero rechazan redeclaraciones en el mismo alcance. La declaracion es visible despues de su inicializador; los parametros y la variable `for` pertenecen al alcance de su cuerpo.
 
-Se comprueban parcialmente tipos de declaraciones, asignaciones, aritmetica, condiciones, comparaciones, check y tempo. Las expresiones cuyo tipo aun no se calcula quedan pendientes de validacion.
+Los procedimientos se definen solo a nivel global y se pueden llamar antes de su definicion. Se comprueban firma, argumentos, retornos y que todo camino de una funcion con retorno produzca un valor; los bucles no garantizan retorno. Las variables globales visibles dentro del cuerpo son las declaradas antes de la definicion.
 
-Los procedimientos se registran a nivel global y pueden llamarse antes o despues de su definicion. Se rechazan definiciones duplicadas o anidadas, llamadas a nombres inexistentes, cantidad incorrecta de argumentos y tipos incompatibles conocidos. Un return debe estar dentro de un procedimiento y coincidir con su tipo de retorno cuando se conoce el tipo de la expresion. No se garantiza aun que todos los caminos devuelvan un valor.
+## Tipos
 
-Faltan reglas de tipos y validaciones musicales. El AST no conserva ubicaciones de origen para diagnosticos con linea. Aceptar un programa no garantiza aun su validez semantica completa.
+Las expresiones tienen tipos explicitos, incluidos grado, duracion y calidad internos. Las listas homogeneas de acordes se aceptan como progresion o vector de acordes segun contexto; una lista vacia necesita contexto. `in` acepta nota en escala/acorde o lista de grados en tonalidad. Las propiedades e indices requieren tipos compatibles. Los operadores aritmeticos admiten enteros, transposicion por intervalo, concatenacion de progresiones y repeticion de progresion por entero. La comparacion se admite entre enteros, notas o intervalos del mismo tipo; igualdad y desigualdad tambien admiten calidades y modos.
 
-Se comprueban indices y propiedades de tipo conocido y relaciones tonales. Las listas y algunos tipos de dominio siguen pendientes.
+Se comprueban tipos de condiciones, argumentos, retornos, construcciones musicales y `check`. `export` admite nota, escala, acorde, progresion o voicing; tempo entero de 1 a 1000 BPM y los instrumentos nombrados en la tabla de `validInstrument`, cuyo orden es el de General MIDI; `piano` identifica el primer programa. Tempo e instrumento pueden omitirse. Se validan rangos de transposicion de nota literal y de inversion de un acorde literal cuando sus operandos son literales.
 
-Las listas usadas directamente en declaraciones, asignaciones, argumentos o retornos se validan segun el tipo esperado de vector o progresion.
+## Limites e integracion
 
-Se comprueban operandos conocidos de acordes, escalas, inversion, modulacion, arpegio y voice; las duraciones todavia no tienen un tipo declarado.
+Los valores calculados mediante variables, procedimientos o ciclos no se conocen en esta fase: el runtime debera verificar rangos, incluyendo tempo, inversion y transposicion. La validacion `strict`, realizacion SATB, tesituras y contrapunto necesitan el modelo musical y se mantienen pendientes, junto con sus casos en `src/test/c/pending/`. El generador aun no emite artefactos: no hay integracion de escala a archivo en este estado. El AST no conserva posiciones para informar numeros de linea.
+
+El rechazo semantico usa codigo de salida 1 y un mensaje `Semantic error:`. La suite verifica ese diagnostico para los casos semanticos, evitando que un error sintactico o un fallo del proceso cuente como rechazo correcto.

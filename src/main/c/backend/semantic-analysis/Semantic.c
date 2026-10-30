@@ -131,8 +131,8 @@ static bool statement(Scope *scope, Statement *s) {
     case ASSIGNMENT:
         return lookup(scope, s->name) && expression(scope, s->expression) && compatible(scope, s->expression, symbolType(scope, s->name));
     case LOG_STATEMENT: return parts(scope, s->log->message);
-    case EXPORT_STATEMENT: return expression(scope, s->export->value) && expression(scope, s->export->tempo);
-    case CHECK_STATEMENT: return expression(scope, s->check->voicing);
+    case EXPORT_STATEMENT: return expression(scope, s->export->value) && expression(scope, s->export->tempo) && (!s->export->tempo || compatible(scope, s->export->tempo, TYPE_INTEGER));
+    case CHECK_STATEMENT: return expression(scope, s->check->voicing) && compatible(scope, s->check->voicing, TYPE_VOICING);
     case PROCEDURE_CALL_STATEMENT: return expressions(scope, s->procedureCall->arguments);
     case RETURN_STATEMENT: return expression(scope, s->returnStatement->value);
     case IF_STATEMENT:

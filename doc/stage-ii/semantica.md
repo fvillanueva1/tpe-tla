@@ -5,3 +5,5 @@ El compilador recorre el AST después del análisis sintáctico y detiene la gen
 Esta primera fase todavía no comprueba tipos, firmas de procedimientos ni las reglas musicales; aceptar un programa no garantiza su validez semántica completa. Las ubicaciones de origen no están disponibles en los nodos del AST, por lo que los errores aún no indican línea.
 
 Se validan adem?s condiciones booleanas conocidas, l?mites enteros de `for`, operaciones l?gicas y comparaciones de enteros, notas e intervalos.
+
+Se comprueba que el tempo, cuando aparece, sea entero y que `check` reciba un `voicing`, siempre que se conozca el tipo de la expresi?n.

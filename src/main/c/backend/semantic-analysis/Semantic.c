@@ -230,7 +230,12 @@ static int typeOf(Scope *scope, Expression *e) {
         if (a == -1 || b == -1) return -1;
         if (a == TYPE_CHORD_LIST || a == TYPE_EMPTY_LIST) a = TYPE_PROGRESSION;
         if (b == TYPE_CHORD_LIST || b == TYPE_EMPTY_LIST) b = TYPE_PROGRESSION;
-        if (a == TYPE_INTEGER && b == TYPE_INTEGER) return TYPE_INTEGER;
+        if (a == TYPE_INTEGER && b == TYPE_INTEGER) {
+            if (e->type == DIVISION && e->rightExpression->type == INTEGER_LITERAL && e->rightExpression->integer == 0) {
+                fprintf(stderr, "Semantic error: division by zero.\n"); return TYPE_INVALID;
+            }
+            return TYPE_INTEGER;
+        }
         if ((e->type == ADDITION || e->type == SUBTRACTION) && b == TYPE_INTERVAL &&
             (a == TYPE_NOTE || a == TYPE_CHORD || a == TYPE_PROGRESSION)) {
             if (a == TYPE_NOTE && e->leftExpression->type == NOTE_LITERAL && e->rightExpression->type == INTERVAL_LITERAL) {

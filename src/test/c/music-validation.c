@@ -32,5 +32,17 @@ int main(void) {
     assert(musicWithoutParallelOctaves(unison_first, unison_second));
     assert(!musicInTessitura(NULL));
     assert(!musicWithoutParallelFifths(NULL, second));
+    size_t failed = 99;
+    const int sequence[][VOICE_COUNT] = {{72, 67, 60, 48}, {74, 69, 62, 50}};
+    assert(musicCheckVoicing(sequence, 2, CHECK_PARALLEL_FIFTHS, &failed) == MUSIC_PARALLEL_FIFTHS_ERROR && failed == 1);
+    assert(musicCheckVoicing(sequence, 2, CHECK_PARALLEL_OCTAVES, &failed) == MUSIC_PARALLEL_OCTAVES_ERROR && failed == 1);
+    assert(musicCheckVoicing(sequence, 2, CHECK_VOICE_CROSSING, NULL) == MUSIC_VALID);
+    const int crossing[][VOICE_COUNT] = {{60, 67, 60, 48}};
+    assert(musicCheckVoicing(crossing, 1, CHECK_VOICE_CROSSING, &failed) == MUSIC_VOICE_CROSSING_ERROR && failed == 0);
+    const int range[][VOICE_COUNT] = {{59, 67, 60, 48}};
+    assert(musicCheckVoicing(range, 1, 0, &failed) == MUSIC_TESSITURA_ERROR && failed == 0);
+    assert(musicCheckVoicing(NULL, 1, 0, NULL) == MUSIC_INVALID_INPUT);
+    assert(musicCheckVoicing(NULL, 0, 0, NULL) == MUSIC_VALID);
+    assert(musicCheckVoicing(sequence, 2, 8, NULL) == MUSIC_INVALID_INPUT);
     return 0;
 }

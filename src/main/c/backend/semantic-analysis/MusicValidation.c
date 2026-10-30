@@ -60,3 +60,18 @@ bool musicWithoutParallelFifths(const int first[VOICE_COUNT], const int second[V
 bool musicWithoutParallelOctaves(const int first[VOICE_COUNT], const int second[VOICE_COUNT]) {
     return withoutParallels(first, second, 0);
 }
+
+MusicValidationResult musicCheckVoicing(const int (*chords)[VOICE_COUNT], size_t count,
+                                        unsigned int rules, size_t *failedChord) {
+    const unsigned int supported = CHECK_PARALLEL_FIFTHS | CHECK_PARALLEL_OCTAVES | CHECK_VOICE_CROSSING;
+    if ((!chords && count) || (rules & ~supported)) return MUSIC_INVALID_INPUT;
+    for (size_t i = 0; i < count; ++i) {
+        MusicValidationResult result = MUSIC_VALID;
+        if (!musicInTessitura(chords[i])) result = MUSIC_TESSITURA_ERROR;
+        else if ((rules & CHECK_VOICE_CROSSING) && !musicWithoutVoiceCrossing(chords[i])) result = MUSIC_VOICE_CROSSING_ERROR;
+        else if (i && (rules & CHECK_PARALLEL_FIFTHS) && !musicWithoutParallelFifths(chords[i - 1], chords[i])) result = MUSIC_PARALLEL_FIFTHS_ERROR;
+        else if (i && (rules & CHECK_PARALLEL_OCTAVES) && !musicWithoutParallelOctaves(chords[i - 1], chords[i])) result = MUSIC_PARALLEL_OCTAVES_ERROR;
+        if (result != MUSIC_VALID) { if (failedChord) *failedChord = i; return result; }
+    }
+    return MUSIC_VALID;
+}

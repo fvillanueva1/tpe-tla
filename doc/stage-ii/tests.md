@@ -80,3 +80,5 @@ Los casos de rangos cubren literales y expresiones constantes; `semantic-dynamic
 Los rechazos de tipos tambien cubren parametros, limites de for, voice, check, duracion de arpegio, inversion, modulacion, relaciones tonales y vectores heterogeneos.
 
 Los casos de `duration` verifican declaracion, arpegio, vectores, parametros y retornos, y el rechazo de valores incompatibles.
+
+La prueba `semantic-oom.c` fuerza un fallo de reserva para verificar el codigo `OUT_OF_MEMORY` y se ejecuta desde `test.sh`.

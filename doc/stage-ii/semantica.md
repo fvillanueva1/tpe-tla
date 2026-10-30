@@ -19,3 +19,5 @@ El rechazo semantico usa codigo de salida 1 y un mensaje `Semantic error:`. La s
 La compilacion con avisos estrictos de `Semantic.c` no produce avisos propios; `Environment.h` conserva un aviso preexistente por un calificador en el tipo de retorno.
 
 El tipo `duration` permite declarar duraciones, vectores de duraciones y parametros o retornos de procedimientos; `arpeggiate` exige una duracion.
+
+Si no se puede reservar memoria para un simbolo, el analizador devuelve `OUT_OF_MEMORY` (codigo 2), distinto de un rechazo semantico (codigo 1).

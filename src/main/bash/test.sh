@@ -55,5 +55,12 @@ if ! cc -std=gnu99 src/test/c/semantic-instrument.c src/main/c/backend/semantic-
     STATUS=1
 fi
 rm -f "$INSTRUMENT_TEST"
+echo "Checking allocation failure..."
+OOM_TEST=$(mktemp)
+if ! cc -std=gnu99 src/test/c/semantic-oom.c src/main/c/backend/semantic-analysis/Semantic.c -Wl,--wrap=malloc -o "$OOM_TEST" || ! "$OOM_TEST"; then
+    echo -e "    allocation failure, ${RED}failed${OFF}"
+    STATUS=1
+fi
+rm -f "$OOM_TEST"
 echo "All done."
 exit $STATUS

@@ -7,13 +7,13 @@
 enum { TYPE_DEGREE = 11, TYPE_QUALITY, TYPE_MODE, TYPE_EMPTY_LIST, TYPE_CHORD_LIST, TYPE_DEGREE_LIST, TYPE_VECTOR = 20, TYPE_INVALID = -2 };
 
 typedef struct Symbol { const char *name; int type; struct Symbol *next; } Symbol;
-typedef struct Scope { Symbol *symbols; struct Scope *parent; Program *program; ProcedureDefinition *procedure; } Scope;
+typedef struct Scope { Symbol *symbols; struct Scope *parent; Program *program; ProcedureDefinition *procedure; CompilationStatus *failure; } Scope;
 
 static bool declare(Scope *scope, const char *name, int type) {
     for (Symbol *s = scope->symbols; s; s = s->next)
         if (!strcmp(s->name, name)) { fprintf(stderr, "Semantic error: '%s' is already declared in this scope.\n", name); return false; }
     Symbol *s = malloc(sizeof(*s));
-    if (!s) { fprintf(stderr, "Semantic error: out of memory.\n"); return false; }
+    if (!s) { fprintf(stderr, "Semantic analysis: out of memory.\n"); *scope->failure = OUT_OF_MEMORY; return false; }
     *s = (Symbol){name, type, scope->symbols}; scope->symbols = s; return true;
 }
 static bool lookup(Scope *scope, const char *name) {
@@ -77,7 +77,7 @@ static bool expression(Scope *scope, Expression *e) {
     }
 }
 static bool block(Scope *parent, StatementList *list) {
-    Scope local = {NULL, parent, parent->program, parent->procedure}; bool ok = statements(&local, list); clear(&local); return ok;
+    Scope local = {NULL, parent, parent->program, parent->procedure, parent->failure}; bool ok = statements(&local, list); clear(&local); return ok;
 }
 /* List literals keep their ambiguity until an expected type is available. */
 static int literalPitch(const char *note) {
@@ -380,12 +380,12 @@ static bool statement(Scope *scope, Statement *s) {
         return expression(scope, s->ifStatement->condition) && compatible(scope, s->ifStatement->condition, TYPE_BOOLEAN) && block(scope, s->ifStatement->thenBlock) && block(scope, s->ifStatement->elseBlock);
     case WHILE_STATEMENT: return expression(scope, s->whileStatement->condition) && compatible(scope, s->whileStatement->condition, TYPE_BOOLEAN) && block(scope, s->whileStatement->body);
     case FOR_STATEMENT: {
-        For *f = s->forStatement; Scope local = {NULL, scope, scope->program, scope->procedure};
+        For *f = s->forStatement; Scope local = {NULL, scope, scope->program, scope->procedure, scope->failure};
         bool ok = expression(scope, f->from) && expression(scope, f->to) && compatible(scope, f->from, TYPE_INTEGER) && compatible(scope, f->to, TYPE_INTEGER) && declare(&local, f->variable, TYPE_INTEGER) && statements(&local, f->body);
         clear(&local); return ok;
     }
     case PROCEDURE_DEFINITION: {
-        ProcedureDefinition *p = s->procedureDefinition; Scope local = {NULL, scope, scope->program, p}; bool ok = true;
+        ProcedureDefinition *p = s->procedureDefinition; Scope local = {NULL, scope, scope->program, p, scope->failure}; bool ok = true;
         if (scope->parent) { fprintf(stderr, "Semantic error: nested procedure definition.\n"); return false; }
         for (StatementList *item = scope->program->statements; item; item = item->next)
             if (item->statement != s && item->statement->type == PROCEDURE_DEFINITION && !strcmp(item->statement->procedureDefinition->name, p->name)) { fprintf(stderr, "Semantic error: duplicate procedure '%s'.\n", p->name); return false; }
@@ -404,6 +404,7 @@ static bool statements(Scope *scope, StatementList *list) {
     return true;
 }
 CompilationStatus analyzeSemantics(Program *program) {
-    Scope global = {NULL, NULL, program, NULL}; bool ok = statements(&global, program->statements); clear(&global);
-    return ok ? SUCCEEDED : FAILED;
+    CompilationStatus failure = FAILED;
+    Scope global = {NULL, NULL, program, NULL, &failure}; bool ok = statements(&global, program->statements); clear(&global);
+    return ok ? SUCCEEDED : failure;
 }

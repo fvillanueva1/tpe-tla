@@ -94,3 +94,5 @@ La suite ejecuta cada aceptacion en un directorio temporal y comprueba bytes MID
 El caso 55 comprueba `strict` con una tonalidad y un acorde literales. Casos adicionales cubren un acorde diatonico, otro modo, reemplazo de contexto y valores que requieren evaluacion en ejecucion.
 
 `strict` tambien verifica notas variables de valor literal inmutable; si hay alguna asignacion al mismo nombre en el programa, su valor se considera desconocido y queda para ejecucion.
+
+Las pruebas de realizacion SATB comprueban cobertura de notas, tesituras, ausencia de cruce, minimo de movimiento conocido, acordes imposibles y fallos de reserva.

@@ -37,7 +37,7 @@ for test in $(ls src/test/c/reject/); do
 	OUTPUT=$(".build/Flex-Bison-Compiler" < "src/test/c/reject/$test" 2>&1)
 	RESULT="$?"
 	case "$test" in
-		54-*|55-*|60-*|61-*|62-*|63-*|log-undeclared-*|scope-outside*|type-*|procedure-*|return-outside*|export-invalid-*)
+		54-*|55-*|56-*|57-*|60-*|61-*|62-*|63-*|log-undeclared-*|scope-outside*|type-*|procedure-*|return-outside*|export-invalid-*)
 			if [[ "$OUTPUT" != *"Semantic error:"* || "$OUTPUT" == *"Code generation is not implemented"* ]]; then
 				echo -e "    $test, ${RED}missing semantic diagnostic or generation was invoked${OFF}"
 				STATUS=1
@@ -81,14 +81,14 @@ fi
 
 echo "Checking instrument mapping..."
 INSTRUMENT_TEST=$(mktemp)
-if ! cc -std=gnu99 src/test/c/semantic-instrument.c src/main/c/backend/semantic-analysis/Semantic.c src/main/c/backend/semantic-analysis/MusicValidation.c -o "$INSTRUMENT_TEST" || ! "$INSTRUMENT_TEST"; then
+if ! cc -std=gnu99 src/test/c/semantic-instrument.c src/main/c/backend/semantic-analysis/Semantic.c src/main/c/backend/semantic-analysis/MusicValidation.c src/main/c/backend/semantic-analysis/VoiceLeading.c -o "$INSTRUMENT_TEST" || ! "$INSTRUMENT_TEST"; then
     echo -e "    instrument mapping, ${RED}failed${OFF}"
     STATUS=1
 fi
 rm -f "$INSTRUMENT_TEST"
 echo "Checking allocation failure..."
 OOM_TEST=$(mktemp)
-if ! cc -std=gnu99 src/test/c/semantic-oom.c src/main/c/backend/semantic-analysis/Semantic.c src/main/c/backend/semantic-analysis/MusicValidation.c -Wl,--wrap=malloc -o "$OOM_TEST" || ! "$OOM_TEST"; then
+if ! cc -std=gnu99 src/test/c/semantic-oom.c src/main/c/backend/semantic-analysis/Semantic.c src/main/c/backend/semantic-analysis/MusicValidation.c src/main/c/backend/semantic-analysis/VoiceLeading.c -Wl,--wrap=malloc -o "$OOM_TEST" || ! "$OOM_TEST"; then
     echo -e "    allocation failure, ${RED}failed${OFF}"
     STATUS=1
 fi

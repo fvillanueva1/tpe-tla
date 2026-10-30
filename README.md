@@ -71,7 +71,7 @@ como `==`, `aug4`, instrumentos e interpolación.
 | `src/test/c/reject/` | Errores lexicos, sintacticos y semanticos | Codigo 1 |
 | `src/test/c/pending/` | Escenarios musicales pendientes | No se ejecutan en la suite |
 
-`test.sh` ejecuta `accept/` y `reject/` y exige el diagnostico semantico en los casos correspondientes. Comprueba el contenido MIDI de la primera exportacion de escala y las funciones de validacion musical; la evaluacion general sigue pendiente. El caso 55 valida una construccion literal `strict`; los casos 56 a 59 siguen pendientes del modelo musical.
+`test.sh` ejecuta `accept/` y `reject/` y exige el diagnostico semantico en los casos correspondientes. Comprueba el contenido MIDI de la primera exportacion de escala y las funciones de validacion musical; la evaluacion general sigue pendiente. Los casos 55 a 57 validan `strict` y paralelas con valores conocidos; los casos 58 y 59 siguen pendientes.
 
 Los archivos 56–59 son **escenarios por concretar**, no pruebas que ya
 garanticen quintas u octavas paralelas, cruce de voces o errores de tesitura.

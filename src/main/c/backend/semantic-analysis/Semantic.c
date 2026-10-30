@@ -405,6 +405,65 @@ static bool exportStatement(Scope *scope, Export *export) {
     }
     return true;
 }
+/* Only evaluate immutable, literal voice inputs; other cases belong to runtime. */
+static const Expression *knownExpression(Scope *scope, const Expression *e) {
+    if (e && e->type == VARIABLE) {
+        Symbol *symbol = findSymbol(scope, e->text);
+        return symbol ? symbol->literal : NULL;
+    }
+    return e;
+}
+static bool checkKnownVoicing(Scope *scope, const Expression *expression, unsigned int rules) {
+    if (scope->parent) return true;
+    expression = knownExpression(scope, expression);
+    if (!expression || expression->type != VOICE_EXPRESSION) return true;
+    const Expression *progression = knownExpression(scope, expression->voice->progression);
+    if (!progression || progression->type != LIST_LITERAL) return true;
+    size_t count = 0;
+    for (ExpressionList *item = progression->elements; item; item = item->next) ++count;
+    if (!count) return true;
+    if (count > SIZE_MAX / sizeof(unsigned short) || count > SIZE_MAX / sizeof(int[VOICE_COUNT])) {
+        *scope->failure = OUT_OF_MEMORY; return false;
+    }
+    unsigned short *masks = calloc(count, sizeof(*masks));
+    int (*voices)[VOICE_COUNT] = calloc(count, sizeof(*voices));
+    if (!masks || !voices) {
+        free(masks); free(voices); *scope->failure = OUT_OF_MEMORY;
+        fprintf(stderr, "Semantic analysis: out of memory.\n"); return false;
+    }
+    size_t index = 0;
+    bool known = true;
+    for (ExpressionList *item = progression->elements; item && known; item = item->next, ++index) {
+        const Expression *chord = knownExpression(scope, item->expression);
+        if (!chord || chord->type != NOTES_CHORD) { known = false; break; }
+        for (ExpressionList *note = chord->elements; note; note = note->next) {
+            const Expression *value = knownExpression(scope, note->expression);
+            if (!value || value->type != NOTE_LITERAL) { known = false; break; }
+            int pitch = literalPitch(value->text);
+            if (pitch < 0 || pitch > 107) { known = false; break; }
+            masks[index] |= 1u << (pitch % 12);
+        }
+        unsigned int classes = 0;
+        for (int bit = 0; bit < 12; ++bit) if (masks[index] & (1u << bit)) ++classes;
+        if (classes > VOICE_COUNT) known = false;
+    }
+    bool ok = true;
+    if (known) {
+        MusicVoiceResult realization = musicRealizeSATB(masks, count, voices);
+        if (realization == MUSIC_VOICE_NO_MEMORY) {
+            *scope->failure = OUT_OF_MEMORY; fprintf(stderr, "Semantic analysis: out of memory.\n"); ok = false;
+        } else if (realization != MUSIC_VOICE_SUCCESS) {
+            fprintf(stderr, "Semantic error: cannot realize progression as SATB.\n"); ok = false;
+        } else {
+            size_t failed = 0;
+            MusicValidationResult result = musicCheckVoicing((const int (*)[VOICE_COUNT])voices, count, rules, &failed);
+            if (result != MUSIC_VALID) {
+                fprintf(stderr, "Semantic error: SATB rule %d failed at chord %zu.\n", result, failed + 1); ok = false;
+            }
+        }
+    }
+    free(masks); free(voices); return ok;
+}
 static bool returnsOnEveryPath(StatementList *list) {
     for (; list; list = list->next) {
         Statement *s = list->statement;
@@ -418,8 +477,12 @@ static bool statement(Scope *scope, Statement *s) {
     switch (s->type) {
     case DECLARATION:
         if (!expression(scope, s->expression) || !compatible(scope, s->expression, s->dataType + (s->isVector ? 20 : 0)) || !declare(scope, s->name, s->dataType + (s->isVector ? 20 : 0))) return false;
-        if (s->dataType == TYPE_NOTE && !s->isVector && s->expression->type == NOTE_LITERAL &&
-            !nameAssigned(scope->program->statements, s->name)) scope->symbols->literal = s->expression;
+        if (!s->isVector && !nameAssigned(scope->program->statements, s->name) &&
+            ((s->dataType == TYPE_NOTE && s->expression->type == NOTE_LITERAL) ||
+             (s->dataType == TYPE_CHORD && s->expression->type == NOTES_CHORD) ||
+             (s->dataType == TYPE_PROGRESSION && s->expression->type == LIST_LITERAL) ||
+             (s->dataType == TYPE_VOICING && s->expression->type == VOICE_EXPRESSION))) scope->symbols->literal = s->expression;
+        if (s->dataType == TYPE_VOICING && !s->isVector && !checkKnownVoicing(scope, s->expression, 0)) return false;
         if (s->dataType == TYPE_KEY && !s->isVector) {
             scope->hasKeyContext = true;
             scope->keyContext = s->expression->type == KEY_LITERAL ? s->expression : NULL;
@@ -431,7 +494,7 @@ static bool statement(Scope *scope, Statement *s) {
         return true;
     case LOG_STATEMENT: return parts(scope, s->log->message);
     case EXPORT_STATEMENT: return exportStatement(scope, s->export);
-    case CHECK_STATEMENT: return expression(scope, s->check->voicing) && compatible(scope, s->check->voicing, TYPE_VOICING);
+    case CHECK_STATEMENT: return expression(scope, s->check->voicing) && compatible(scope, s->check->voicing, TYPE_VOICING) && checkKnownVoicing(scope, s->check->voicing, s->check->rules);
     case PROCEDURE_CALL_STATEMENT: return call(scope, s->procedureCall, false);
     case RETURN_STATEMENT:
         if (!scope->procedure) { fprintf(stderr, "Semantic error: return outside procedure.\n"); return false; }

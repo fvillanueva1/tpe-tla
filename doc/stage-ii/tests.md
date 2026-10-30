@@ -73,7 +73,7 @@ nueve casos semánticos y cuatro escenarios musicales por concretar.
 
 ## Actualizacion de Stage III
 
-La suite incluye rechazos semanticos activos y exige el mensaje `Semantic error:` para ellos, ademas del codigo 1. Los casos 54, 55 y 60 a 63, instrumento y tempo invalidos ya son activos. Los casos 56 a 59 permanecen en `pending/`: dependen del modelo musical, y los casos SATB necesitan entradas concluyentes. Las tablas anteriores describen los snapshots historicos de Stage II.
+La suite incluye rechazos semanticos activos y exige el mensaje `Semantic error:` para ellos, ademas del codigo 1. Los casos 54 a 57 y 60 a 63, instrumento y tempo invalidos ya son activos. Los casos 58 y 59 permanecen en `pending/`: necesitan escenarios concluyentes o una forma de fijar las voces. Las tablas anteriores describen los snapshots historicos de Stage II.
 
 Los casos de rangos cubren literales y expresiones constantes; `semantic-dynamic-values.cad` verifica que las expresiones dependientes de variables sigan siendo aceptadas estaticamente.
 
@@ -96,3 +96,5 @@ El caso 55 comprueba `strict` con una tonalidad y un acorde literales. Casos adi
 `strict` tambien verifica notas variables de valor literal inmutable; si hay alguna asignacion al mismo nombre en el programa, su valor se considera desconocido y queda para ejecucion.
 
 Las pruebas de realizacion SATB comprueban cobertura de notas, tesituras, ausencia de cruce, minimo de movimiento conocido, acordes imposibles y fallos de reserva.
+
+Los casos 56 y 57 usan progresiones que fuerzan las paralelas bajo la realizacion de minimo movimiento. Se comprueba tambien una progresion referida por variables inmutables y la seleccion de reglas de `check`.

@@ -1,6 +1,7 @@
 #include "Semantic.h"
 #include "MusicValidation.h"
 #include <stdio.h>
+#include <ctype.h>
 #include <limits.h>
 #include <stdint.h>
 #include <string.h>
@@ -413,12 +414,34 @@ static const Expression *knownExpression(Scope *scope, const Expression *e) {
     }
     return e;
 }
+static int literalDegree(const char *text) {
+    static const char *names[] = {"I", "II", "III", "IV", "V", "VI", "VII"};
+    char roman[4]; size_t length = 0;
+    while (text[length] && text[length] != 'd' && length < sizeof(roman) - 1) {
+        roman[length] = (char)toupper((unsigned char)text[length]); ++length;
+    }
+    roman[length] = '\0';
+    for (int i = 0; i < 7; ++i) if (!strcmp(roman, names[i])) return i;
+    return -1;
+}
 static bool checkKnownVoicing(Scope *scope, const Expression *expression, unsigned int rules) {
     if (scope->parent) return true;
     expression = knownExpression(scope, expression);
     if (!expression || expression->type != VOICE_EXPRESSION) return true;
     const Expression *progression = knownExpression(scope, expression->voice->progression);
-    if (!progression || progression->type != LIST_LITERAL) return true;
+    if (!progression) return true;
+    int scale[7]; bool degrees = progression->type == IN_EXPRESSION;
+    if (degrees) {
+        const Expression *key = knownExpression(scope, progression->rightExpression);
+        if (!key || key->type != KEY_LITERAL || progression->leftExpression->type != LIST_LITERAL) return true;
+        static const int pitchClass[] = {9, 11, 0, 2, 4, 5, 7};
+        int tonic = 60 + pitchClass[key->key.tonic[0] - 'A'];
+        if (key->key.tonic[1] == '#') ++tonic;
+        else if (key->key.tonic[1] == 'b') --tonic;
+        if (!musicScale(tonic, key->key.mode, scale)) return true;
+        progression = progression->leftExpression;
+    }
+    if (progression->type != LIST_LITERAL) return true;
     size_t count = 0;
     for (ExpressionList *item = progression->elements; item; item = item->next) ++count;
     if (!count) return true;
@@ -435,6 +458,13 @@ static bool checkKnownVoicing(Scope *scope, const Expression *expression, unsign
     bool known = true;
     for (ExpressionList *item = progression->elements; item && known; item = item->next, ++index) {
         const Expression *chord = knownExpression(scope, item->expression);
+        if (degrees) {
+            if (!chord || chord->type != DEGREE_LITERAL) { known = false; break; }
+            int degree = literalDegree(chord->text);
+            if (degree < 0) { known = false; break; }
+            for (int step = 0; step < 3; ++step) masks[index] |= 1u << (scale[(degree + 2 * step) % 7] % 12);
+            continue;
+        }
         if (!chord || chord->type != NOTES_CHORD) { known = false; break; }
         for (ExpressionList *note = chord->elements; note; note = note->next) {
             const Expression *value = knownExpression(scope, note->expression);
@@ -484,7 +514,8 @@ static bool statement(Scope *scope, Statement *s) {
         if (!s->isVector && !nameAssigned(scope->program->statements, s->name) &&
             ((s->dataType == TYPE_NOTE && s->expression->type == NOTE_LITERAL) ||
              (s->dataType == TYPE_CHORD && s->expression->type == NOTES_CHORD) ||
-             (s->dataType == TYPE_PROGRESSION && s->expression->type == LIST_LITERAL) ||
+             (s->dataType == TYPE_KEY && s->expression->type == KEY_LITERAL) ||
+             (s->dataType == TYPE_PROGRESSION && (s->expression->type == LIST_LITERAL || s->expression->type == IN_EXPRESSION)) ||
              (s->dataType == TYPE_VOICING && s->expression->type == VOICE_EXPRESSION))) scope->symbols->literal = s->expression;
         if (s->dataType == TYPE_VOICING && !s->isVector && !checkKnownVoicing(scope, s->expression, 0)) return false;
         if (s->dataType == TYPE_KEY && !s->isVector) {

@@ -100,3 +100,5 @@ Las pruebas de realizacion SATB comprueban cobertura de notas, tesituras, ausenc
 Los casos 56 y 57 usan progresiones que fuerzan las paralelas bajo la realizacion de minimo movimiento. Se comprueba tambien una progresion referida por variables inmutables y la seleccion de reglas de `check`.
 
 Los casos 56 y 57 verifican tambien el nombre de la regla y el numero del acorde en el diagnostico.
+
+Se verifica la conduccion y el contrapunto de progresiones por grados conocidas, ademas de acordes explicitos.

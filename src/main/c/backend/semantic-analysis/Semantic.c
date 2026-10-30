@@ -73,6 +73,29 @@ static int typeOf(Scope *scope, Expression *e) {
             for (Symbol *symbol = p->symbols; symbol; symbol = symbol->next)
                 if (!strcmp(symbol->name, e->text)) return symbol->type;
         return -1;
+    case NEGATION: {
+        int t = typeOf(scope, e->operand);
+        if (t == -1 || t == -2) return t;
+        if (t == TYPE_BOOLEAN) return TYPE_BOOLEAN;
+        fprintf(stderr, "Semantic error: not requires a boolean.\n"); return -2;
+    }
+    case CONJUNCTION: case DISJUNCTION: {
+        int a = typeOf(scope, e->leftExpression), b = typeOf(scope, e->rightExpression);
+        if (a == -2 || b == -2) return -2;
+        if ((a != -1 && a != TYPE_BOOLEAN) || (b != -1 && b != TYPE_BOOLEAN)) {
+            fprintf(stderr, "Semantic error: logical operators require booleans.\n"); return -2;
+        }
+        return TYPE_BOOLEAN;
+    }
+    case EQUALITY: case INEQUALITY: case GREATER_THAN: case GREATER_THAN_OR_EQUAL:
+    case LESS_THAN: case LESS_THAN_OR_EQUAL: {
+        int a = typeOf(scope, e->leftExpression), b = typeOf(scope, e->rightExpression);
+        if (a == -2 || b == -2) return -2;
+        if (a != -1 && b != -1 && (a != b || (a != TYPE_INTEGER && a != TYPE_NOTE && a != TYPE_INTERVAL))) {
+            fprintf(stderr, "Semantic error: incompatible comparison types.\n"); return -2;
+        }
+        return TYPE_BOOLEAN;
+    }
     case ADDITION: case SUBTRACTION: case MULTIPLICATION: case DIVISION: {
         int a = typeOf(scope, e->leftExpression), b = typeOf(scope, e->rightExpression);
         if (a == -2 || b == -2) return -2;
@@ -113,11 +136,11 @@ static bool statement(Scope *scope, Statement *s) {
     case PROCEDURE_CALL_STATEMENT: return expressions(scope, s->procedureCall->arguments);
     case RETURN_STATEMENT: return expression(scope, s->returnStatement->value);
     case IF_STATEMENT:
-        return expression(scope, s->ifStatement->condition) && block(scope, s->ifStatement->thenBlock) && block(scope, s->ifStatement->elseBlock);
-    case WHILE_STATEMENT: return expression(scope, s->whileStatement->condition) && block(scope, s->whileStatement->body);
+        return expression(scope, s->ifStatement->condition) && compatible(scope, s->ifStatement->condition, TYPE_BOOLEAN) && block(scope, s->ifStatement->thenBlock) && block(scope, s->ifStatement->elseBlock);
+    case WHILE_STATEMENT: return expression(scope, s->whileStatement->condition) && compatible(scope, s->whileStatement->condition, TYPE_BOOLEAN) && block(scope, s->whileStatement->body);
     case FOR_STATEMENT: {
         For *f = s->forStatement; Scope local = {NULL, scope};
-        bool ok = expression(scope, f->from) && expression(scope, f->to) && declare(&local, f->variable, TYPE_INTEGER) && statements(&local, f->body);
+        bool ok = expression(scope, f->from) && expression(scope, f->to) && compatible(scope, f->from, TYPE_INTEGER) && compatible(scope, f->to, TYPE_INTEGER) && declare(&local, f->variable, TYPE_INTEGER) && statements(&local, f->body);
         clear(&local); return ok;
     }
     case PROCEDURE_DEFINITION: {

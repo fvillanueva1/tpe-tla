@@ -86,6 +86,7 @@ invalid_degree		[IVX]+("dim")?|[iv]+("dim")?
 
 	/* Tipos de datos. */
 "note"								{ return TokenLexemeAction(NOTE_TYPE); }
+"duration"							{ return TokenLexemeAction(DURATION_TYPE); }
 "interval"							{ return TokenLexemeAction(INTERVAL_TYPE); }
 "key"								{ return TokenLexemeAction(KEY_TYPE); }
 "scale"								{ return TokenLexemeAction(SCALE_TYPE); }

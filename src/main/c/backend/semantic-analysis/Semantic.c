@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <string.h>
 
-enum { TYPE_DEGREE = 10, TYPE_DURATION, TYPE_QUALITY, TYPE_MODE, TYPE_EMPTY_LIST, TYPE_CHORD_LIST, TYPE_DEGREE_LIST, TYPE_VECTOR = 20, TYPE_INVALID = -2 };
+enum { TYPE_DEGREE = 11, TYPE_QUALITY, TYPE_MODE, TYPE_EMPTY_LIST, TYPE_CHORD_LIST, TYPE_DEGREE_LIST, TYPE_VECTOR = 20, TYPE_INVALID = -2 };
 
 typedef struct Symbol { const char *name; int type; struct Symbol *next; } Symbol;
 typedef struct Scope { Symbol *symbols; struct Scope *parent; Program *program; ProcedureDefinition *procedure; } Scope;
@@ -203,7 +203,7 @@ static int typeOf(Scope *scope, Expression *e) {
         if (object == TYPE_SCALE) return TYPE_NOTE;
         if (object == TYPE_CHORD_LIST) return TYPE_CHORD;
         if (object == TYPE_DEGREE_LIST) return TYPE_DEGREE;
-        if (object >= 20 && object < 30) return object - 20;
+        if (object >= TYPE_VECTOR && object <= TYPE_VECTOR + TYPE_DURATION) return object - 20;
         fprintf(stderr, "Semantic error: value is not indexable.\n"); return -2;
     }
     case PROPERTY_ACCESS: {

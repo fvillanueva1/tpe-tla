@@ -135,4 +135,3 @@ Stage I y Stage II no incorpora un nuevo informe.
 Las entregas se integran en `development` mediante PRs revisados por otro
 integrante. La entrega a la cátedra debe identificar el grupo, los integrantes
 y el hash completo del commit de `development` después de integrar la revisión.
-

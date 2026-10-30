@@ -15,3 +15,5 @@ Se comprueban tipos de condiciones, argumentos, retornos, construcciones musical
 Los valores calculados mediante variables, procedimientos o ciclos no se conocen en esta fase: el runtime debera verificar rangos, incluyendo tempo, inversion y transposicion. La validacion `strict`, realizacion SATB, tesituras y contrapunto necesitan el modelo musical y se mantienen pendientes, junto con sus casos en `src/test/c/pending/`. El generador aun no emite artefactos: no hay integracion de escala a archivo en este estado. El AST no conserva posiciones para informar numeros de linea.
 
 El rechazo semantico usa codigo de salida 1 y un mensaje `Semantic error:`. La suite verifica ese diagnostico para los casos semanticos, evitando que un error sintactico o un fallo del proceso cuente como rechazo correcto.
+
+La compilacion con avisos estrictos de `Semantic.c` no produce avisos propios; `Environment.h` conserva un aviso preexistente por un calificador en el tipo de retorno.

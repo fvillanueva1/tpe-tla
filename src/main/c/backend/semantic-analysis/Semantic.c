@@ -183,7 +183,7 @@ static int typeOf(Scope *scope, Expression *e) {
         return compatible(scope, e->leftExpression, TYPE_PROGRESSION) && compatible(scope, e->rightExpression, TYPE_KEY) ? TYPE_PROGRESSION : -2;
     case ARPEGGIATION:
         return compatible(scope, e->leftExpression, TYPE_CHORD) && compatible(scope, e->rightExpression, TYPE_DURATION) ? TYPE_PROGRESSION : TYPE_INVALID;
-    case PROCEDURE_CALL: { ProcedureDefinition *p = findProcedure(scope, e->call->name); return p && p->hasReturnType ? p->returnType + (p->returnsVector ? 20 : 0) : -1; }
+    case PROCEDURE_CALL: { ProcedureDefinition *p = findProcedure(scope, e->call->name); return p && p->hasReturnType ? (int)p->returnType + (p->returnsVector ? TYPE_VECTOR : 0) : -1; }
     case INDEX_ACCESS: {
         int object = typeOf(scope, e->leftExpression), index = typeOf(scope, e->rightExpression);
         if (object == -2 || index == -2) return -2;

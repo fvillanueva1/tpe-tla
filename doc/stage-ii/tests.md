@@ -76,3 +76,5 @@ nueve casos semánticos y cuatro escenarios musicales por concretar.
 La suite incluye rechazos semanticos activos y exige el mensaje `Semantic error:` para ellos, ademas del codigo 1. Los casos 54 y 60 a 63, instrumento y tempo invalidos ya son activos. Los casos 55 a 59 permanecen en `pending/`: dependen del modelo musical, y los casos SATB necesitan entradas concluyentes. Las tablas anteriores describen los snapshots historicos de Stage II.
 
 Los casos de rangos cubren literales y expresiones constantes; `semantic-dynamic-values.cad` verifica que las expresiones dependientes de variables sigan siendo aceptadas estaticamente.
+
+Los rechazos de tipos tambien cubren parametros, limites de for, voice, check, duracion de arpegio, inversion, modulacion, relaciones tonales y vectores heterogeneos.

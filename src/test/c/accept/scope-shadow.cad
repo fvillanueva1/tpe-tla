@@ -1,0 +1,6 @@
+integer numero = 1;
+if (true) {
+    integer numero = 2;
+    integer otro = numero;
+}
+integer final = numero;

@@ -1,0 +1,4 @@
+if (true) {
+    integer oculto = 1;
+}
+integer numero = oculto;

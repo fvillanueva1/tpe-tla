@@ -1,0 +1,2 @@
+integer[] numeros = [1];
+integer resultado = numeros[true];

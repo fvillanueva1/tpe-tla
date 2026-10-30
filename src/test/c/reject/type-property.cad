@@ -1,0 +1,2 @@
+note nota = C4;
+integer resultado = nota.desconocida;

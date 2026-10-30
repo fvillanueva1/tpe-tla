@@ -89,6 +89,38 @@ static int typeOf(Scope *scope, Expression *e) {
     case SCALE_OF_KEY: return TYPE_SCALE;
     case VOICE_EXPRESSION: return TYPE_VOICING;
     case PROCEDURE_CALL: { ProcedureDefinition *p = findProcedure(scope, e->call->name); return p && p->hasReturnType ? p->returnType + (p->returnsVector ? 20 : 0) : -1; }
+    case INDEX_ACCESS: {
+        int object = typeOf(scope, e->leftExpression), index = typeOf(scope, e->rightExpression);
+        if (object == -2 || index == -2) return -2;
+        if (index != -1 && index != TYPE_INTEGER) { fprintf(stderr, "Semantic error: index must be an integer.\n"); return -2; }
+        if (object == -1) return -1;
+        if (object == TYPE_SCALE) return TYPE_NOTE;
+        if (object >= 20 && object < 30) return object - 20;
+        fprintf(stderr, "Semantic error: value is not indexable.\n"); return -2;
+    }
+    case PROPERTY_ACCESS: {
+        int object = typeOf(scope, e->property.object);
+        if (object == -2 || object == -1) return object;
+        if (object == TYPE_NOTE && !strcmp(e->property.name, "octave")) return TYPE_INTEGER;
+        if (object == TYPE_CHORD && !strcmp(e->property.name, "root")) return TYPE_NOTE;
+        if (object == TYPE_CHORD && !strcmp(e->property.name, "quality")) return -1;
+        if (object == TYPE_KEY && !strcmp(e->property.name, "tonic")) return TYPE_NOTE;
+        if (object == TYPE_KEY && !strcmp(e->property.name, "mode")) return -1;
+        if (object == TYPE_PROGRESSION && !strcmp(e->property.name, "length")) return TYPE_INTEGER;
+        fprintf(stderr, "Semantic error: unknown property '%s'.\n", e->property.name); return -2;
+    }
+    case DOMINANT_OF_KEY: case SUBDOMINANT_OF_KEY: case RELATIVE_MINOR_OF_KEY: {
+        int t = typeOf(scope, e->operand);
+        if (t == -2) return -2;
+        if (t != -1 && t != TYPE_KEY) { fprintf(stderr, "Semantic error: tonal relation requires a key.\n"); return -2; }
+        return TYPE_KEY;
+    }
+    case IN_EXPRESSION: {
+        int a = typeOf(scope, e->leftExpression), b = typeOf(scope, e->rightExpression);
+        if (a == -2 || b == -2) return -2;
+        if (a == TYPE_NOTE && (b == TYPE_SCALE || b == TYPE_CHORD)) return TYPE_BOOLEAN;
+        return -1;
+    }
     case VARIABLE:
         for (Scope *p = scope; p; p = p->parent)
             for (Symbol *symbol = p->symbols; symbol; symbol = symbol->next)
@@ -132,6 +164,12 @@ static int typeOf(Scope *scope, Expression *e) {
     }
 }
 static bool compatible(Scope *scope, Expression *e, int expected) {
+    if (e && e->type == LIST_LITERAL && (expected >= 20 || expected == TYPE_PROGRESSION)) {
+        int element = expected >= 20 ? expected - 20 : TYPE_CHORD;
+        for (ExpressionList *item = e->elements; item; item = item->next)
+            if (!compatible(scope, item->expression, element)) return false;
+        return true;
+    }
     int actual = typeOf(scope, e);
     if (actual == -2) return false;
     if (actual != -1 && actual != expected) {

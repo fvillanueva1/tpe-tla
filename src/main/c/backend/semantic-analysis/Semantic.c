@@ -3,7 +3,7 @@
 #include <string.h>
 
 typedef struct Symbol { const char *name; int type; struct Symbol *next; } Symbol;
-typedef struct Scope { Symbol *symbols; struct Scope *parent; } Scope;
+typedef struct Scope { Symbol *symbols; struct Scope *parent; Program *program; ProcedureDefinition *procedure; } Scope;
 
 static bool declare(Scope *scope, const char *name, int type) {
     for (Symbol *s = scope->symbols; s; s = s->next)
@@ -22,6 +22,8 @@ static void clear(Scope *scope) {
     while (scope->symbols) { Symbol *s = scope->symbols; scope->symbols = s->next; free(s); }
 }
 static bool expression(Scope *, Expression *);
+static int typeOf(Scope *, Expression *);
+static bool compatible(Scope *, Expression *, int);
 static bool statements(Scope *, StatementList *);
 static bool parts(Scope *scope, StringPart *part) {
     for (; part; part = part->next)
@@ -32,13 +34,31 @@ static bool expressions(Scope *scope, ExpressionList *list) {
     for (; list; list = list->next) if (!expression(scope, list->expression)) return false;
     return true;
 }
+static ProcedureDefinition *findProcedure(Scope *scope, const char *name) {
+    for (StatementList *item = scope->program->statements; item; item = item->next)
+        if (item->statement->type == PROCEDURE_DEFINITION && !strcmp(item->statement->procedureDefinition->name, name))
+            return item->statement->procedureDefinition;
+    return NULL;
+}
+static bool call(Scope *scope, ProcedureCall *call, bool needsValue) {
+    ProcedureDefinition *p = findProcedure(scope, call->name);
+    if (!p) { fprintf(stderr, "Semantic error: unknown procedure '%s'.\n", call->name); return false; }
+    if (needsValue && !p->hasReturnType) { fprintf(stderr, "Semantic error: procedure '%s' has no return value.\n", call->name); return false; }
+    ParameterList *param = p->parameters; ExpressionList *arg = call->arguments;
+    while (param && arg) {
+        if (!expression(scope, arg->expression) || !compatible(scope, arg->expression, param->parameter->dataType + (param->parameter->isVector ? 20 : 0))) return false;
+        param = param->next; arg = arg->next;
+    }
+    if (param || arg) { fprintf(stderr, "Semantic error: incorrect argument count for '%s'.\n", call->name); return false; }
+    return true;
+}
 static bool expression(Scope *scope, Expression *e) {
     if (!e) return true;
     switch (e->type) {
     case VARIABLE: return lookup(scope, e->text);
     case STRING_LITERAL: return parts(scope, e->stringParts);
     case LIST_LITERAL: case NOTES_CHORD: return expressions(scope, e->elements);
-    case PROCEDURE_CALL: return expressions(scope, e->call->arguments);
+    case PROCEDURE_CALL: return call(scope, e->call, true);
     case PROPERTY_ACCESS: return expression(scope, e->property.object);
     case VOICE_EXPRESSION: return expression(scope, e->voice->progression);
     case NEGATION: case DOMINANT_OF_KEY: case RELATIVE_MINOR_OF_KEY:
@@ -53,7 +73,7 @@ static bool expression(Scope *scope, Expression *e) {
     }
 }
 static bool block(Scope *parent, StatementList *list) {
-    Scope local = {NULL, parent}; bool ok = statements(&local, list); clear(&local); return ok;
+    Scope local = {NULL, parent, parent->program, parent->procedure}; bool ok = statements(&local, list); clear(&local); return ok;
 }
 /* shortcut: unsupported expression types remain unchecked, expand as their rules are implemented. */
 static int typeOf(Scope *scope, Expression *e) {
@@ -68,6 +88,7 @@ static int typeOf(Scope *scope, Expression *e) {
     case NOTES_CHORD: case TRIAD_CHORD: case SEVENTH_CHORD: case NINTH_CHORD: return TYPE_CHORD;
     case SCALE_OF_KEY: return TYPE_SCALE;
     case VOICE_EXPRESSION: return TYPE_VOICING;
+    case PROCEDURE_CALL: { ProcedureDefinition *p = findProcedure(scope, e->call->name); return p && p->hasReturnType ? p->returnType + (p->returnsVector ? 20 : 0) : -1; }
     case VARIABLE:
         for (Scope *p = scope; p; p = p->parent)
             for (Symbol *symbol = p->symbols; symbol; symbol = symbol->next)
@@ -133,18 +154,24 @@ static bool statement(Scope *scope, Statement *s) {
     case LOG_STATEMENT: return parts(scope, s->log->message);
     case EXPORT_STATEMENT: return expression(scope, s->export->value) && expression(scope, s->export->tempo) && (!s->export->tempo || compatible(scope, s->export->tempo, TYPE_INTEGER));
     case CHECK_STATEMENT: return expression(scope, s->check->voicing) && compatible(scope, s->check->voicing, TYPE_VOICING);
-    case PROCEDURE_CALL_STATEMENT: return expressions(scope, s->procedureCall->arguments);
-    case RETURN_STATEMENT: return expression(scope, s->returnStatement->value);
+    case PROCEDURE_CALL_STATEMENT: return call(scope, s->procedureCall, false);
+    case RETURN_STATEMENT:
+        if (!scope->procedure) { fprintf(stderr, "Semantic error: return outside procedure.\n"); return false; }
+        if (scope->procedure->hasReturnType != (s->returnStatement->value != NULL)) { fprintf(stderr, "Semantic error: incorrect return value.\n"); return false; }
+        return expression(scope, s->returnStatement->value) && (!s->returnStatement->value || compatible(scope, s->returnStatement->value, scope->procedure->returnType + (scope->procedure->returnsVector ? 20 : 0)));
     case IF_STATEMENT:
         return expression(scope, s->ifStatement->condition) && compatible(scope, s->ifStatement->condition, TYPE_BOOLEAN) && block(scope, s->ifStatement->thenBlock) && block(scope, s->ifStatement->elseBlock);
     case WHILE_STATEMENT: return expression(scope, s->whileStatement->condition) && compatible(scope, s->whileStatement->condition, TYPE_BOOLEAN) && block(scope, s->whileStatement->body);
     case FOR_STATEMENT: {
-        For *f = s->forStatement; Scope local = {NULL, scope};
+        For *f = s->forStatement; Scope local = {NULL, scope, scope->program, scope->procedure};
         bool ok = expression(scope, f->from) && expression(scope, f->to) && compatible(scope, f->from, TYPE_INTEGER) && compatible(scope, f->to, TYPE_INTEGER) && declare(&local, f->variable, TYPE_INTEGER) && statements(&local, f->body);
         clear(&local); return ok;
     }
     case PROCEDURE_DEFINITION: {
-        ProcedureDefinition *p = s->procedureDefinition; Scope local = {NULL, scope}; bool ok = true;
+        ProcedureDefinition *p = s->procedureDefinition; Scope local = {NULL, scope, scope->program, p}; bool ok = true;
+        if (scope->parent) { fprintf(stderr, "Semantic error: nested procedure definition.\n"); return false; }
+        for (StatementList *item = scope->program->statements; item; item = item->next)
+            if (item->statement != s && item->statement->type == PROCEDURE_DEFINITION && !strcmp(item->statement->procedureDefinition->name, p->name)) { fprintf(stderr, "Semantic error: duplicate procedure '%s'.\n", p->name); return false; }
         for (ParameterList *item = p->parameters; item && ok; item = item->next) ok = declare(&local, item->parameter->name, item->parameter->dataType + (item->parameter->isVector ? 20 : 0));
         if (ok) ok = statements(&local, p->body);
         clear(&local); return ok;
@@ -157,6 +184,6 @@ static bool statements(Scope *scope, StatementList *list) {
     return true;
 }
 CompilationStatus analyzeSemantics(Program *program) {
-    Scope global = {NULL, NULL}; bool ok = statements(&global, program->statements); clear(&global);
+    Scope global = {NULL, NULL, program, NULL}; bool ok = statements(&global, program->statements); clear(&global);
     return ok ? SUCCEEDED : FAILED;
 }

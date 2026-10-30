@@ -1,9 +1,9 @@
-# Análisis semántico — avance inicial
+# Analisis semantico: estado actual
 
-El compilador recorre el AST después del análisis sintáctico y detiene la generación si falla la validación de nombres. Las variables son visibles después de su declaración; cada bloque crea un alcance y puede ocultar un nombre exterior, pero no redeclarar otro del mismo alcance. Los parámetros pertenecen al alcance del cuerpo de su procedimiento y la variable de `for` al de su cuerpo. Se comprueban también los nombres interpolados en strings.
+El compilador valida nombres y alcances tras el parser, y detiene la generacion si encuentra un error. Las declaraciones son visibles despues de su inicializacion. Los bloques permiten ocultar nombres exteriores y rechazan redeclaraciones en el mismo alcance; los parametros y la variable de for pertenecen al alcance de su cuerpo.
 
-Esta primera fase todavía no comprueba tipos, firmas de procedimientos ni las reglas musicales; aceptar un programa no garantiza su validez semántica completa. Las ubicaciones de origen no están disponibles en los nodos del AST, por lo que los errores aún no indican línea.
+Se comprueban parcialmente tipos de declaraciones, asignaciones, aritmetica, condiciones, comparaciones, check y tempo. Las expresiones cuyo tipo aun no se calcula quedan pendientes de validacion.
 
-Se validan adem?s condiciones booleanas conocidas, l?mites enteros de `for`, operaciones l?gicas y comparaciones de enteros, notas e intervalos.
+Los procedimientos se registran a nivel global y pueden llamarse antes o despues de su definicion. Se rechazan definiciones duplicadas o anidadas, llamadas a nombres inexistentes, cantidad incorrecta de argumentos y tipos incompatibles conocidos. Un return debe estar dentro de un procedimiento y coincidir con su tipo de retorno cuando se conoce el tipo de la expresion. No se garantiza aun que todos los caminos devuelvan un valor.
 
-Se comprueba que el tempo, cuando aparece, sea entero y que `check` reciba un `voicing`, siempre que se conozca el tipo de la expresi?n.
+Faltan reglas de tipos y validaciones musicales. El AST no conserva ubicaciones de origen para diagnosticos con linea. Aceptar un programa no garantiza aun su validez semantica completa.

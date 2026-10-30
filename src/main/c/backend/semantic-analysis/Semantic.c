@@ -85,9 +85,24 @@ static int typeOf(Scope *scope, Expression *e) {
     case INTERVAL_LITERAL: return TYPE_INTERVAL;
     case KEY_LITERAL: return TYPE_KEY;
     case STRING_LITERAL: return TYPE_STRING;
-    case NOTES_CHORD: case TRIAD_CHORD: case SEVENTH_CHORD: case NINTH_CHORD: return TYPE_CHORD;
-    case SCALE_OF_KEY: return TYPE_SCALE;
-    case VOICE_EXPRESSION: return TYPE_VOICING;
+    case NOTES_CHORD:
+        for (ExpressionList *item = e->elements; item; item = item->next)
+            if (!compatible(scope, item->expression, TYPE_NOTE)) return -2;
+        return TYPE_CHORD;
+    case TRIAD_CHORD: case SEVENTH_CHORD: case NINTH_CHORD:
+        if (!compatible(scope, e->rightExpression, TYPE_KEY)) return -2;
+        if (e->leftExpression->type != DEGREE_LITERAL && !compatible(scope, e->leftExpression, TYPE_INTEGER)) return -2;
+        return TYPE_CHORD;
+    case SCALE_OF_KEY:
+        return compatible(scope, e->operand, TYPE_KEY) ? TYPE_SCALE : -2;
+    case VOICE_EXPRESSION:
+        return compatible(scope, e->voice->progression, TYPE_PROGRESSION) ? TYPE_VOICING : -2;
+    case INVERSION:
+        return compatible(scope, e->leftExpression, TYPE_CHORD) && compatible(scope, e->rightExpression, TYPE_INTEGER) ? TYPE_CHORD : -2;
+    case MODULATION:
+        return compatible(scope, e->leftExpression, TYPE_PROGRESSION) && compatible(scope, e->rightExpression, TYPE_KEY) ? TYPE_PROGRESSION : -2;
+    case ARPEGGIATION:
+        return compatible(scope, e->leftExpression, TYPE_CHORD) ? TYPE_PROGRESSION : -2;
     case PROCEDURE_CALL: { ProcedureDefinition *p = findProcedure(scope, e->call->name); return p && p->hasReturnType ? p->returnType + (p->returnsVector ? 20 : 0) : -1; }
     case INDEX_ACCESS: {
         int object = typeOf(scope, e->leftExpression), index = typeOf(scope, e->rightExpression);

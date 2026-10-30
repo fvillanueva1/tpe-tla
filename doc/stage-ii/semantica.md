@@ -11,3 +11,5 @@ Faltan reglas de tipos y validaciones musicales. El AST no conserva ubicaciones 
 Se comprueban indices y propiedades de tipo conocido y relaciones tonales. Las listas y algunos tipos de dominio siguen pendientes.
 
 Las listas usadas directamente en declaraciones, asignaciones, argumentos o retornos se validan segun el tipo esperado de vector o progresion.
+
+Se comprueban operandos conocidos de acordes, escalas, inversion, modulacion, arpegio y voice; las duraciones todavia no tienen un tipo declarado.

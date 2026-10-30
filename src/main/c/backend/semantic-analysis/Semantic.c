@@ -142,11 +142,14 @@ static int typeOf(Scope *scope, Expression *e) {
     case BOOLEAN_LITERAL: return TYPE_BOOLEAN;
     case NOTE_LITERAL: {
         int pitch = literalPitch(e->text);
-        if (pitch != -10000 && (pitch < 0 || pitch > 107)) { fprintf(stderr, "Semantic error: note is out of range.\n"); return TYPE_INVALID; }
+        if (pitch == -10000) { fprintf(stderr, "Semantic error: note requires an octave.\n"); return TYPE_INVALID; }
+        if (pitch < 0 || pitch > 107) { fprintf(stderr, "Semantic error: note is out of range.\n"); return TYPE_INVALID; }
         return TYPE_NOTE;
     }
     case INTERVAL_LITERAL: return TYPE_INTERVAL;
-    case KEY_LITERAL: return TYPE_KEY;
+    case KEY_LITERAL:
+        if (literalPitch(e->key.tonic) != -10000) { fprintf(stderr, "Semantic error: key tonic cannot have an octave.\n"); return TYPE_INVALID; }
+        return TYPE_KEY;
     case STRING_LITERAL: return TYPE_STRING;
     case NOTES_CHORD:
         for (ExpressionList *item = e->elements; item; item = item->next)

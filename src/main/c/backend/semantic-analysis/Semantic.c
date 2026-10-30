@@ -124,7 +124,7 @@ static bool expression(Scope *scope, Expression *e) {
     }
 }
 static bool block(Scope *parent, StatementList *list) {
-    Scope local = {NULL, parent, parent->program, parent->procedure, parent->failure}; bool ok = statements(&local, list); clear(&local); return ok;
+    Scope local = {.parent = parent, .program = parent->program, .procedure = parent->procedure, .failure = parent->failure}; bool ok = statements(&local, list); clear(&local); return ok;
 }
 /* List literals keep their ambiguity until an expected type is available. */
 static int literalPitch(const char *note) {
@@ -610,12 +610,12 @@ static bool statement(Scope *scope, Statement *s) {
     }
     case FOR_STATEMENT: {
         forgetKeyContext(scope); forgetCurrentValues(scope);
-        For *f = s->forStatement; Scope local = {NULL, scope, scope->program, scope->procedure, scope->failure};
+        For *f = s->forStatement; Scope local = {.parent = scope, .program = scope->program, .procedure = scope->procedure, .failure = scope->failure};
         bool ok = expression(scope, f->from) && expression(scope, f->to) && compatible(scope, f->from, TYPE_INTEGER) && compatible(scope, f->to, TYPE_INTEGER) && declare(&local, f->variable, TYPE_INTEGER) && statements(&local, f->body);
         clear(&local); forgetCurrentValues(scope); return ok;
     }
     case PROCEDURE_DEFINITION: {
-        ProcedureDefinition *p = s->procedureDefinition; Scope local = {NULL, scope, scope->program, p, scope->failure}; bool ok = true;
+        ProcedureDefinition *p = s->procedureDefinition; Scope local = {.parent = scope, .program = scope->program, .procedure = p, .failure = scope->failure}; bool ok = true;
         forgetKeyContext(&local); forgetCurrentValues(scope);
         if (scope->parent) { fprintf(stderr, "Semantic error: nested procedure definition.\n"); return false; }
         for (StatementList *item = scope->program->statements; item; item = item->next)
@@ -636,6 +636,6 @@ static bool statements(Scope *scope, StatementList *list) {
 }
 CompilationStatus analyzeSemantics(Program *program) {
     CompilationStatus failure = FAILED;
-    Scope global = {NULL, NULL, program, NULL, &failure}; bool ok = statements(&global, program->statements); clear(&global);
+    Scope global = {.program = program, .failure = &failure}; bool ok = statements(&global, program->statements); clear(&global);
     return ok ? SUCCEEDED : failure;
 }

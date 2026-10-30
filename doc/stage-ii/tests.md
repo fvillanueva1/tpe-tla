@@ -110,3 +110,5 @@ Grados, tempos, inversiones y transposiciones tambien se prueban con variables i
 Las pruebas cubren valores escalares asignados en linea recta y olvidados despues de una rama, para evitar rechazos basados en un camino que podria no ejecutarse.
 
 El contexto estricto se prueba con reasignacion a una tonalidad conocida, alias y asignaciones a una tonalidad distinta.
+
+Un alias tonal conserva su valor anterior cuando se reasigna la variable de origen; el chequeo estricto valida esa copia.

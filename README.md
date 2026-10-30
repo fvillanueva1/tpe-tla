@@ -148,3 +148,5 @@ y el hash completo del commit de `development` después de integrar la revisión
 ## Avance de Stage III
 
 La primera pasada semántica valida nombres, redeclaraciones y alcances antes de invocar el generador. Su alcance y las validaciones pendientes se detallan en [análisis semántico](doc/stage-ii/semantica.md). La generación y el chequeo de tipos todavía no están implementados.
+
+La comprobaci?n de tipos de Stage III es parcial; ver [sem?ntica](doc/stage-ii/semantica.md).

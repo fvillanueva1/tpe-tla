@@ -108,3 +108,5 @@ Los casos SATB cubren ademas acordes por grado y septimas con tonalidades y grad
 Grados, tempos, inversiones y transposiciones tambien se prueban con variables inmutables conocidas; las variables asignadas en el programa permanecen desconocidas para estos controles estaticos.
 
 Las pruebas cubren valores escalares asignados en linea recta y olvidados despues de una rama, para evitar rechazos basados en un camino que podria no ejecutarse.
+
+El contexto estricto se prueba con reasignacion a una tonalidad conocida, alias y asignaciones a una tonalidad distinta.

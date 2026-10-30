@@ -9,7 +9,7 @@
 enum { TYPE_DEGREE = 11, TYPE_QUALITY, TYPE_MODE, TYPE_EMPTY_LIST, TYPE_CHORD_LIST, TYPE_DEGREE_LIST, TYPE_VECTOR = 20, TYPE_INVALID = -2 };
 
 typedef struct Symbol { const char *name; int type; struct Symbol *next; const Expression *literal, *currentLiteral; } Symbol;
-typedef struct Scope { Symbol *symbols; struct Scope *parent; Program *program; ProcedureDefinition *procedure; CompilationStatus *failure; const Expression *keyContext; bool hasKeyContext; } Scope;
+typedef struct Scope { Symbol *symbols; struct Scope *parent; Program *program; ProcedureDefinition *procedure; CompilationStatus *failure; const Expression *keyContext; bool hasKeyContext; Symbol *keyOwner; } Scope;
 
 static bool nameAssigned(StatementList *list, const char *name) {
     for (; list; list = list->next) {
@@ -87,6 +87,7 @@ static ProcedureDefinition *findProcedure(Scope *scope, const char *name) {
 static void forgetKeyContext(Scope *scope) {
     scope->hasKeyContext = true;
     scope->keyContext = NULL;
+    scope->keyOwner = NULL;
 }
 static bool call(Scope *scope, ProcedureCall *call, bool needsValue) {
     forgetKeyContext(scope);
@@ -571,7 +572,8 @@ static bool statement(Scope *scope, Statement *s) {
         if (s->dataType == TYPE_VOICING && !s->isVector && !checkKnownVoicing(scope, s->expression, 0)) return false;
         if (s->dataType == TYPE_KEY && !s->isVector) {
             scope->hasKeyContext = true;
-            scope->keyContext = s->expression->type == KEY_LITERAL ? s->expression : NULL;
+            scope->keyContext = value && value->type == KEY_LITERAL ? value : NULL;
+            scope->keyOwner = scope->symbols;
         }
         return true;
     }
@@ -579,7 +581,11 @@ static bool statement(Scope *scope, Statement *s) {
         if (!lookup(scope, s->name) || !expression(scope, s->expression) || !compatible(scope, s->expression, symbolType(scope, s->name))) return false;
         Symbol *symbol = findSymbol(scope, s->name);
         symbol->currentLiteral = symbol->type >= TYPE_VECTOR ? NULL : knownScalar(scope, s->expression);
-        if (symbol->type == TYPE_KEY) forgetKeyContext(scope);
+        if (symbol->type == TYPE_KEY) {
+            Scope *owner = scope;
+            while (owner && !owner->hasKeyContext) owner = owner->parent;
+            if (owner && owner->keyOwner == symbol) owner->keyContext = symbol->currentLiteral;
+        }
         return true;
     }
     case LOG_STATEMENT: return parts(scope, s->log->message);

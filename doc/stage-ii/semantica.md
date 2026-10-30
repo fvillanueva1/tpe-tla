@@ -35,3 +35,9 @@ Estas funciones se prueban con datos conocidos. El analizador utiliza la pertene
 ## Contexto de tonalidad estricta
 
 Una declaracion de tonalidad escalar establece el contexto tonal del alcance a partir de esa declaracion; la declaracion mas reciente prevalece y los bloques internos pueden definir otro contexto. Si es `strict` y se conoce su tonalidad literal, las notas literales y las variables inicializadas con una nota literal sin asignaciones posteriores en todo el programa deben pertenecer a ella. La busqueda de asignaciones incluye todos los bloques y procedimientos, incluso con sombreado, para no asumir valores mutables. Una nueva tonalidad no estricta reemplaza el contexto. El analizador deja de asumir un contexto conocido despues de una asignacion a tonalidad, una llamada o una estructura de control; tampoco presume el contexto global al analizar un procedimiento. Las demas notas y tonalidades calculadas requieren validacion en ejecucion. Esta regla explicita resuelve la ausencia de una sintaxis que asocie un acorde explicito con una tonalidad.
+
+## Realizacion SATB sobre acordes conocidos
+
+`musicRealizeSATB` recibe una mascara de clases de altura por acorde y produce una distribucion SATB con las tesituras documentadas, sin cruce y que contiene todas las clases de cada acorde. Considera todas las distribuciones posibles y elige la secuencia con menor suma de desplazamientos absolutos entre voces mediante programacion dinamica. En empate, elige la primera distribucion segun el recorrido ascendente. La salida solo se escribe si toda la secuencia se pudo resolver.
+
+Una mascara vacia o que no admite distribucion devuelve `MUSIC_VOICE_INVALID_CHORD`; los errores de memoria devuelven `MUSIC_VOICE_NO_MEMORY`. Actualmente solo pueden distribuirse acordes con hasta cuatro clases distintas, pues no esta definida una regla de omision para acordes de novena. Esta funcion aun no evalua expresiones de Cadence ni se conecta con `voice`.

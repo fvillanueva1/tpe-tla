@@ -7,15 +7,37 @@
 
 enum { TYPE_DEGREE = 11, TYPE_QUALITY, TYPE_MODE, TYPE_EMPTY_LIST, TYPE_CHORD_LIST, TYPE_DEGREE_LIST, TYPE_VECTOR = 20, TYPE_INVALID = -2 };
 
-typedef struct Symbol { const char *name; int type; struct Symbol *next; } Symbol;
+typedef struct Symbol { const char *name; int type; struct Symbol *next; const Expression *literal; } Symbol;
 typedef struct Scope { Symbol *symbols; struct Scope *parent; Program *program; ProcedureDefinition *procedure; CompilationStatus *failure; const Expression *keyContext; bool hasKeyContext; } Scope;
 
+static bool nameAssigned(StatementList *list, const char *name) {
+    for (; list; list = list->next) {
+        Statement *s = list->statement;
+        switch (s->type) {
+        case ASSIGNMENT: if (!strcmp(s->name, name)) return true; break;
+        case IF_STATEMENT:
+            if (nameAssigned(s->ifStatement->thenBlock, name) || nameAssigned(s->ifStatement->elseBlock, name)) return true;
+            break;
+        case WHILE_STATEMENT: if (nameAssigned(s->whileStatement->body, name)) return true; break;
+        case FOR_STATEMENT: if (nameAssigned(s->forStatement->body, name)) return true; break;
+        case PROCEDURE_DEFINITION: if (nameAssigned(s->procedureDefinition->body, name)) return true; break;
+        default: break;
+        }
+    }
+    return false;
+}
+static Symbol *findSymbol(Scope *scope, const char *name) {
+    for (; scope; scope = scope->parent)
+        for (Symbol *s = scope->symbols; s; s = s->next)
+            if (!strcmp(s->name, name)) return s;
+    return NULL;
+}
 static bool declare(Scope *scope, const char *name, int type) {
     for (Symbol *s = scope->symbols; s; s = s->next)
         if (!strcmp(s->name, name)) { fprintf(stderr, "Semantic error: '%s' is already declared in this scope.\n", name); return false; }
     Symbol *s = malloc(sizeof(*s));
     if (!s) { fprintf(stderr, "Semantic analysis: out of memory.\n"); *scope->failure = OUT_OF_MEMORY; return false; }
-    *s = (Symbol){name, type, scope->symbols}; scope->symbols = s; return true;
+    *s = (Symbol){name, type, scope->symbols, NULL}; scope->symbols = s; return true;
 }
 static bool lookup(Scope *scope, const char *name) {
     for (; scope; scope = scope->parent)
@@ -171,8 +193,13 @@ static int typeOf(Scope *scope, Expression *e) {
         }
         for (ExpressionList *item = e->elements; item; item = item->next) {
             if (!compatible(scope, item->expression, TYPE_NOTE)) return TYPE_INVALID;
-            if (key && key->key.strict && item->expression->type == NOTE_LITERAL) {
-                int pitch = literalPitch(item->expression->text) + 12;
+            const Expression *note = item->expression;
+            if (note->type == VARIABLE) {
+                Symbol *symbol = findSymbol(scope, note->text);
+                note = symbol ? symbol->literal : NULL;
+            }
+            if (key && key->key.strict && note && note->type == NOTE_LITERAL) {
+                int pitch = literalPitch(note->text) + 12;
                 if (!musicInKey(&pitch, 1, tonic, key->key.mode)) {
                     fprintf(stderr, "Semantic error: chord contains a note outside the strict key.\n"); return TYPE_INVALID;
                 }
@@ -391,6 +418,8 @@ static bool statement(Scope *scope, Statement *s) {
     switch (s->type) {
     case DECLARATION:
         if (!expression(scope, s->expression) || !compatible(scope, s->expression, s->dataType + (s->isVector ? 20 : 0)) || !declare(scope, s->name, s->dataType + (s->isVector ? 20 : 0))) return false;
+        if (s->dataType == TYPE_NOTE && !s->isVector && s->expression->type == NOTE_LITERAL &&
+            !nameAssigned(scope->program->statements, s->name)) scope->symbols->literal = s->expression;
         if (s->dataType == TYPE_KEY && !s->isVector) {
             scope->hasKeyContext = true;
             scope->keyContext = s->expression->type == KEY_LITERAL ? s->expression : NULL;

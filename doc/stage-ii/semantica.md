@@ -12,7 +12,7 @@ Se comprueban tipos de condiciones, argumentos, retornos, construcciones musical
 
 ## Limites e integracion
 
-Los valores calculados mediante variables, procedimientos o ciclos no se conocen en esta fase: el runtime debera verificar rangos, incluyendo tempo, inversion y transposicion. La validacion `strict`, realizacion SATB, tesituras y contrapunto necesitan el modelo musical y se mantienen pendientes, junto con sus casos en `src/test/c/pending/`. El generador aun no emite artefactos: no hay integracion de escala a archivo en este estado. El AST no conserva posiciones para informar numeros de linea.
+Los valores calculados mediante variables, procedimientos o ciclos no se conocen en esta fase: el runtime debera verificar rangos, incluyendo tempo, inversion y transposicion. La validacion `strict`, realizacion SATB, tesituras y contrapunto necesitan el modelo musical y se mantienen pendientes, junto con sus casos en `src/test/c/pending/`. El generador ya admite un programa de dos sentencias con una tonalidad literal y la exportacion MIDI de su escala. El resto de la generacion sigue pendiente. El AST no conserva posiciones para informar numeros de linea.
 
 El rechazo semantico usa codigo de salida 1 y un mensaje `Semantic error:`. La suite verifica ese diagnostico para los casos semanticos, evitando que un error sintactico o un fallo del proceso cuente como rechazo correcto.
 
@@ -30,4 +30,4 @@ Estas funciones ya se prueban con datos conocidos, pero aun no se invocan desde 
 
 `musicCheckVoicing` valida una secuencia completa: siempre comprueba tesitura y aplica las reglas indicadas por la mascara `CheckRule`. Devuelve el primer tipo de violacion y, si se solicita, el indice del acorde donde aparece (para paralelas, el segundo acorde). Una secuencia vacia es valida; mascaras desconocidas y datos nulos no vacios son errores de entrada. Las funciones aun no realizan la distribucion SATB ni se invocan desde el AST.
 
-`musicScale` calcula las siete alturas MIDI ascendentes de una tonalidad y modo, con una tonica que incluye octava. Devuelve fallo si la escala excede C0-B8 o la entrada es invalida; no altera la salida en caso de error. La validacion de pertenencia reutiliza esas alturas. La eleccion de octava para exportar y la escritura del archivo siguen pendientes.
+`musicScale` calcula las siete alturas MIDI ascendentes de una tonalidad y modo, con una tonica que incluye octava. Devuelve fallo si la escala excede C0-B8 o la entrada es invalida; no altera la salida en caso de error. La validacion de pertenencia reutiliza esas alturas. El generador inicial usa la tonica en octava 4, notas negras y tempo 120 por defecto.

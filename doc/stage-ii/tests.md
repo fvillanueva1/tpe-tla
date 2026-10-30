@@ -88,3 +88,5 @@ La prueba `semantic-oom.c` fuerza un fallo de reserva para verificar el codigo `
 La validacion de secuencias SATB comprueba los resultados y el indice de error, las reglas opcionales, la tesitura obligatoria y las entradas invalidas.
 
 La prueba musical tambien comprueba escalas de los siete modos, cruce de octava y limites de salida.
+
+La suite ejecuta cada aceptacion en un directorio temporal y comprueba bytes MIDI para escalas de Do y Sol, incluyendo instrumento, tempo, duraciones, errores de escritura y proteccion de archivos existentes.

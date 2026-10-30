@@ -102,3 +102,5 @@ Los casos 56 y 57 usan progresiones que fuerzan las paralelas bajo la realizacio
 Los casos 56 y 57 verifican tambien el nombre de la regla y el numero del acorde en el diagnostico.
 
 Se verifica la conduccion y el contrapunto de progresiones por grados conocidas, ademas de acordes explicitos.
+
+Los casos SATB cubren ademas acordes por grado y septimas con tonalidades y grados inmutables conocidos.

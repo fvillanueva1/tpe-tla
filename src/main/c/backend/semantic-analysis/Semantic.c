@@ -424,6 +424,41 @@ static int literalDegree(const char *text) {
     for (int i = 0; i < 7; ++i) if (!strcmp(roman, names[i])) return i;
     return -1;
 }
+static bool knownScale(Scope *scope, const Expression *expression, int scale[7]) {
+    const Expression *key = knownExpression(scope, expression);
+    if (!key || key->type != KEY_LITERAL) return false;
+    static const int pitchClass[] = {9, 11, 0, 2, 4, 5, 7};
+    int tonic = 60 + pitchClass[key->key.tonic[0] - 'A'];
+    if (key->key.tonic[1] == '#') ++tonic;
+    else if (key->key.tonic[1] == 'b') --tonic;
+    return musicScale(tonic, key->key.mode, scale);
+}
+static bool knownChordMask(Scope *scope, const Expression *expression, unsigned short *mask) {
+    const Expression *chord = knownExpression(scope, expression);
+    if (!chord) return false;
+    if (chord->type == TRIAD_CHORD || chord->type == SEVENTH_CHORD) {
+        int scale[7], degree = -1;
+        const Expression *value = knownExpression(scope, chord->leftExpression);
+        if (!value || !knownScale(scope, chord->rightExpression, scale)) return false;
+        if (value->type == DEGREE_LITERAL) degree = literalDegree(value->text);
+        else if (value->type == INTEGER_LITERAL) degree = value->integer - 1;
+        if (degree < 0 || degree > 6) return false;
+        int tones = chord->type == TRIAD_CHORD ? 3 : 4;
+        for (int i = 0; i < tones; ++i) *mask |= 1u << (scale[(degree + 2 * i) % 7] % 12);
+        return true;
+    }
+    if (chord->type != NOTES_CHORD) return false;
+    for (ExpressionList *note = chord->elements; note; note = note->next) {
+        const Expression *value = knownExpression(scope, note->expression);
+        if (!value || value->type != NOTE_LITERAL) return false;
+        int pitch = literalPitch(value->text);
+        if (pitch < 0 || pitch > 107) return false;
+        *mask |= 1u << (pitch % 12);
+    }
+    unsigned int classes = 0;
+    for (int bit = 0; bit < 12; ++bit) if (*mask & (1u << bit)) ++classes;
+    return classes <= VOICE_COUNT;
+}
 static bool checkKnownVoicing(Scope *scope, const Expression *expression, unsigned int rules) {
     if (scope->parent) return true;
     expression = knownExpression(scope, expression);
@@ -432,13 +467,7 @@ static bool checkKnownVoicing(Scope *scope, const Expression *expression, unsign
     if (!progression) return true;
     int scale[7]; bool degrees = progression->type == IN_EXPRESSION;
     if (degrees) {
-        const Expression *key = knownExpression(scope, progression->rightExpression);
-        if (!key || key->type != KEY_LITERAL || progression->leftExpression->type != LIST_LITERAL) return true;
-        static const int pitchClass[] = {9, 11, 0, 2, 4, 5, 7};
-        int tonic = 60 + pitchClass[key->key.tonic[0] - 'A'];
-        if (key->key.tonic[1] == '#') ++tonic;
-        else if (key->key.tonic[1] == 'b') --tonic;
-        if (!musicScale(tonic, key->key.mode, scale)) return true;
+        if (progression->leftExpression->type != LIST_LITERAL || !knownScale(scope, progression->rightExpression, scale)) return true;
         progression = progression->leftExpression;
     }
     if (progression->type != LIST_LITERAL) return true;
@@ -465,17 +494,7 @@ static bool checkKnownVoicing(Scope *scope, const Expression *expression, unsign
             for (int step = 0; step < 3; ++step) masks[index] |= 1u << (scale[(degree + 2 * step) % 7] % 12);
             continue;
         }
-        if (!chord || chord->type != NOTES_CHORD) { known = false; break; }
-        for (ExpressionList *note = chord->elements; note; note = note->next) {
-            const Expression *value = knownExpression(scope, note->expression);
-            if (!value || value->type != NOTE_LITERAL) { known = false; break; }
-            int pitch = literalPitch(value->text);
-            if (pitch < 0 || pitch > 107) { known = false; break; }
-            masks[index] |= 1u << (pitch % 12);
-        }
-        unsigned int classes = 0;
-        for (int bit = 0; bit < 12; ++bit) if (masks[index] & (1u << bit)) ++classes;
-        if (classes > VOICE_COUNT) known = false;
+        if (!knownChordMask(scope, chord, &masks[index])) known = false;
     }
     bool ok = true;
     if (known) {
@@ -513,7 +532,8 @@ static bool statement(Scope *scope, Statement *s) {
         if (!expression(scope, s->expression) || !compatible(scope, s->expression, s->dataType + (s->isVector ? 20 : 0)) || !declare(scope, s->name, s->dataType + (s->isVector ? 20 : 0))) return false;
         if (!s->isVector && !nameAssigned(scope->program->statements, s->name) &&
             ((s->dataType == TYPE_NOTE && s->expression->type == NOTE_LITERAL) ||
-             (s->dataType == TYPE_CHORD && s->expression->type == NOTES_CHORD) ||
+             (s->dataType == TYPE_INTEGER && s->expression->type == INTEGER_LITERAL) ||
+             (s->dataType == TYPE_CHORD && (s->expression->type == NOTES_CHORD || s->expression->type == TRIAD_CHORD || s->expression->type == SEVENTH_CHORD)) ||
              (s->dataType == TYPE_KEY && s->expression->type == KEY_LITERAL) ||
              (s->dataType == TYPE_PROGRESSION && (s->expression->type == LIST_LITERAL || s->expression->type == IN_EXPRESSION)) ||
              (s->dataType == TYPE_VOICING && s->expression->type == VOICE_EXPRESSION))) scope->symbols->literal = s->expression;

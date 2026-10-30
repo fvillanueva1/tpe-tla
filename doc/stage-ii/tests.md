@@ -73,7 +73,7 @@ nueve casos semánticos y cuatro escenarios musicales por concretar.
 
 ## Actualizacion de Stage III
 
-La suite incluye rechazos semanticos activos y exige el mensaje `Semantic error:` para ellos, ademas del codigo 1. Los casos 54, 55 y 60 a 63, instrumento y tempo invalidos ya son activos. Los casos 56 a 59 permanecen en `pending/`: dependen del modelo musical, y los casos SATB necesitan entradas concluyentes. Las tablas anteriores describen los snapshots historicos de Stage II.
+La suite incluye rechazos semanticos activos y exige el mensaje `Semantic error:` para ellos, ademas del codigo 1. Los casos 54 a 57 y 60 a 63, instrumento y tempo invalidos ya son activos. Los casos 58 y 59 permanecen en `pending/`: necesitan escenarios concluyentes o una forma de fijar las voces. Las tablas anteriores describen los snapshots historicos de Stage II.
 
 Los casos de rangos cubren literales y expresiones constantes; `semantic-dynamic-values.cad` verifica que las expresiones dependientes de variables sigan siendo aceptadas estaticamente.
 
@@ -96,3 +96,29 @@ El caso 55 comprueba `strict` con una tonalidad y un acorde literales. Casos adi
 `strict` tambien verifica notas variables de valor literal inmutable; si hay alguna asignacion al mismo nombre en el programa, su valor se considera desconocido y queda para ejecucion.
 
 Las pruebas de realizacion SATB comprueban cobertura de notas, tesituras, ausencia de cruce, minimo de movimiento conocido, acordes imposibles y fallos de reserva.
+
+Los casos 56 y 57 usan progresiones que fuerzan las paralelas bajo la realizacion de minimo movimiento. Se comprueba tambien una progresion referida por variables inmutables y la seleccion de reglas de `check`.
+
+Los casos 56 y 57 verifican tambien el nombre de la regla y el numero del acorde en el diagnostico.
+
+Se verifica la conduccion y el contrapunto de progresiones por grados conocidas, ademas de acordes explicitos.
+
+Los casos SATB cubren ademas acordes por grado y septimas con tonalidades y grados inmutables conocidos.
+
+Grados, tempos, inversiones y transposiciones tambien se prueban con variables inmutables conocidas; las variables asignadas en el programa permanecen desconocidas para estos controles estaticos.
+
+Las pruebas cubren valores escalares asignados en linea recta y olvidados despues de una rama, para evitar rechazos basados en un camino que podria no ejecutarse.
+
+El contexto estricto se prueba con reasignacion a una tonalidad conocida, alias y asignaciones a una tonalidad distinta.
+
+Un alias tonal conserva su valor anterior cuando se reasigna la variable de origen; el chequeo estricto valida esa copia.
+
+Los rechazos de asignacion y operador verifican ademas los tipos incluidos en el diagnostico.
+
+La suite ejecuta aceptaciones semanticas con `--check`; las pruebas de generacion usan el modo normal y comprueban tanto la salida MIDI como el fallo explicito de programas aun no soportados. Los rechazos se ejecutan en directorios temporales con el modo normal.
+
+La integracion MIDI comprueba tambien una escala declarada y exportada por nombre.
+
+Los indices constantes sobre vectores literales inmutables incluyen pruebas de limite y de conservacion de vectores que pueden cambiar.
+
+Las llamadas antes de la definicion se rechazan, tambien desde otro procedimiento o cuando el cuerpo usa una global posterior; la recursion directa se acepta. El voicing explicito se acepta con acordes de cuatro notas y se rechaza con notas sueltas o acordes de otro tamano (`type-check-list`).

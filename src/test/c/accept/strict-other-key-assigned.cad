@@ -1,0 +1,4 @@
+key anterior = C major strict;
+key tonalidad = G major strict;
+anterior = D major;
+chord acorde = {G4, B4, F#4};

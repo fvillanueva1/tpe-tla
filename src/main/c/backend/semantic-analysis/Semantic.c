@@ -1,14 +1,39 @@
 #include "Semantic.h"
 #include "MusicValidation.h"
 #include <stdio.h>
+#include <ctype.h>
 #include <limits.h>
 #include <stdint.h>
 #include <string.h>
 
 enum { TYPE_DEGREE = 11, TYPE_QUALITY, TYPE_MODE, TYPE_EMPTY_LIST, TYPE_CHORD_LIST, TYPE_DEGREE_LIST, TYPE_VECTOR = 20, TYPE_INVALID = -2 };
 
-typedef struct Symbol { const char *name; int type; struct Symbol *next; const Expression *literal; } Symbol;
-typedef struct Scope { Symbol *symbols; struct Scope *parent; Program *program; ProcedureDefinition *procedure; CompilationStatus *failure; const Expression *keyContext; bool hasKeyContext; } Scope;
+static const char *typeName(int type) {
+    static const char *names[] = {
+        [TYPE_BOOLEAN] = "boolean", [TYPE_CHORD] = "chord", [TYPE_INTEGER] = "integer", [TYPE_INTERVAL] = "interval",
+        [TYPE_KEY] = "key", [TYPE_NOTE] = "note", [TYPE_PROGRESSION] = "progression", [TYPE_SCALE] = "scale",
+        [TYPE_STRING] = "string", [TYPE_VOICING] = "voicing", [TYPE_DURATION] = "duration"
+    };
+    static const char *vectors[] = {
+        [TYPE_BOOLEAN] = "boolean[]", [TYPE_CHORD] = "chord[]", [TYPE_INTEGER] = "integer[]", [TYPE_INTERVAL] = "interval[]",
+        [TYPE_KEY] = "key[]", [TYPE_NOTE] = "note[]", [TYPE_PROGRESSION] = "progression[]", [TYPE_SCALE] = "scale[]",
+        [TYPE_STRING] = "string[]", [TYPE_VOICING] = "voicing[]", [TYPE_DURATION] = "duration[]"
+    };
+    if (type >= 0 && type <= TYPE_DURATION) return names[type];
+    if (type >= TYPE_VECTOR && type <= TYPE_VECTOR + TYPE_DURATION) return vectors[type - TYPE_VECTOR];
+    switch (type) {
+    case TYPE_DEGREE: return "degree";
+    case TYPE_QUALITY: return "quality";
+    case TYPE_MODE: return "mode";
+    case TYPE_EMPTY_LIST: return "empty list";
+    case TYPE_CHORD_LIST: return "chord list";
+    case TYPE_DEGREE_LIST: return "degree list";
+    default: return "unknown";
+    }
+}
+
+typedef struct Symbol { const char *name; int type; struct Symbol *next; const Expression *literal, *currentLiteral; } Symbol;
+typedef struct Scope { Symbol *symbols; struct Scope *parent; Program *program; ProcedureDefinition *procedure; CompilationStatus *failure; const Expression *keyContext; bool hasKeyContext; Symbol *keyOwner; Statement *current; } Scope;
 
 static bool nameAssigned(StatementList *list, const char *name) {
     for (; list; list = list->next) {
@@ -32,12 +57,28 @@ static Symbol *findSymbol(Scope *scope, const char *name) {
             if (!strcmp(s->name, name)) return s;
     return NULL;
 }
+static const Expression *knownScalar(Scope *scope, const Expression *expression) {
+    if (!expression) return NULL;
+    if (expression->type == VARIABLE) {
+        Symbol *symbol = findSymbol(scope, expression->text);
+        return symbol ? symbol->currentLiteral : NULL;
+    }
+    switch (expression->type) {
+    case INTEGER_LITERAL: case NOTE_LITERAL: case INTERVAL_LITERAL: case KEY_LITERAL:
+        return expression;
+    default: return NULL;
+    }
+}
+static void forgetCurrentValues(Scope *scope) {
+    for (; scope; scope = scope->parent)
+        for (Symbol *symbol = scope->symbols; symbol; symbol = symbol->next) symbol->currentLiteral = NULL;
+}
 static bool declare(Scope *scope, const char *name, int type) {
     for (Symbol *s = scope->symbols; s; s = s->next)
         if (!strcmp(s->name, name)) { fprintf(stderr, "Semantic error: '%s' is already declared in this scope.\n", name); return false; }
     Symbol *s = malloc(sizeof(*s));
     if (!s) { fprintf(stderr, "Semantic analysis: out of memory.\n"); *scope->failure = OUT_OF_MEMORY; return false; }
-    *s = (Symbol){name, type, scope->symbols, NULL}; scope->symbols = s; return true;
+    *s = (Symbol){name, type, scope->symbols, NULL, NULL}; scope->symbols = s; return true;
 }
 static bool lookup(Scope *scope, const char *name) {
     for (; scope; scope = scope->parent)
@@ -61,20 +102,32 @@ static bool expressions(Scope *scope, ExpressionList *list) {
     for (; list; list = list->next) if (!expression(scope, list->expression)) return false;
     return true;
 }
+/* Only procedures defined up to the current global statement are callable; this includes recursion. */
 static ProcedureDefinition *findProcedure(Scope *scope, const char *name) {
-    for (StatementList *item = scope->program->statements; item; item = item->next)
+    while (scope->parent) scope = scope->parent;
+    for (StatementList *item = scope->program->statements; item; item = item->next) {
         if (item->statement->type == PROCEDURE_DEFINITION && !strcmp(item->statement->procedureDefinition->name, name))
             return item->statement->procedureDefinition;
+        if (item->statement == scope->current) break;
+    }
     return NULL;
 }
 static void forgetKeyContext(Scope *scope) {
     scope->hasKeyContext = true;
     scope->keyContext = NULL;
+    scope->keyOwner = NULL;
 }
 static bool call(Scope *scope, ProcedureCall *call, bool needsValue) {
     forgetKeyContext(scope);
+    forgetCurrentValues(scope);
     ProcedureDefinition *p = findProcedure(scope, call->name);
-    if (!p) { fprintf(stderr, "Semantic error: unknown procedure '%s'.\n", call->name); return false; }
+    if (!p) {
+        for (StatementList *item = scope->program->statements; item; item = item->next)
+            if (item->statement->type == PROCEDURE_DEFINITION && !strcmp(item->statement->procedureDefinition->name, call->name)) {
+                fprintf(stderr, "Semantic error: procedure '%s' is called before its definition.\n", call->name); return false;
+            }
+        fprintf(stderr, "Semantic error: unknown procedure '%s'.\n", call->name); return false;
+    }
     if (needsValue && !p->hasReturnType) { fprintf(stderr, "Semantic error: procedure '%s' has no return value.\n", call->name); return false; }
     ParameterList *param = p->parameters; ExpressionList *arg = call->arguments;
     while (param && arg) {
@@ -105,7 +158,7 @@ static bool expression(Scope *scope, Expression *e) {
     }
 }
 static bool block(Scope *parent, StatementList *list) {
-    Scope local = {NULL, parent, parent->program, parent->procedure, parent->failure}; bool ok = statements(&local, list); clear(&local); return ok;
+    Scope local = {.parent = parent, .program = parent->program, .procedure = parent->procedure, .failure = parent->failure}; bool ok = statements(&local, list); clear(&local); return ok;
 }
 /* List literals keep their ambiguity until an expected type is available. */
 static int literalPitch(const char *note) {
@@ -127,11 +180,16 @@ static int literalInterval(const char *interval) {
     return -1;
 }
 /* Evaluate only side-effect-free integer literals; runtime values remain unknown. */
-static bool constantInteger(Expression *e, int *result) {
+static bool constantInteger(Scope *scope, Expression *e, int *result) {
+    if (e->type == VARIABLE) {
+        Symbol *symbol = findSymbol(scope, e->text);
+        if (!symbol || !symbol->currentLiteral || symbol->currentLiteral->type != INTEGER_LITERAL) return false;
+        *result = symbol->currentLiteral->integer; return true;
+    }
     if (e->type == INTEGER_LITERAL) { *result = e->integer; return true; }
     if (e->type != ADDITION && e->type != SUBTRACTION && e->type != MULTIPLICATION && e->type != DIVISION) return false;
     int left, right;
-    if (!constantInteger(e->leftExpression, &left) || !constantInteger(e->rightExpression, &right)) return false;
+    if (!constantInteger(scope, e->leftExpression, &left) || !constantInteger(scope, e->rightExpression, &right)) return false;
     int64_t value;
     switch (e->type) {
     case ADDITION: value = (int64_t)left + right; break;
@@ -196,7 +254,7 @@ static int typeOf(Scope *scope, Expression *e) {
             const Expression *note = item->expression;
             if (note->type == VARIABLE) {
                 Symbol *symbol = findSymbol(scope, note->text);
-                note = symbol ? symbol->literal : NULL;
+                note = symbol ? symbol->currentLiteral : NULL;
             }
             if (key && key->key.strict && note && note->type == NOTE_LITERAL) {
                 int pitch = literalPitch(note->text) + 12;
@@ -212,7 +270,7 @@ static int typeOf(Scope *scope, Expression *e) {
         int degree = typeOf(scope, e->leftExpression);
         if (degree != TYPE_DEGREE && degree != TYPE_INTEGER) { fprintf(stderr, "Semantic error: chord degree must be a degree or integer.\n"); return TYPE_INVALID; }
         int degreeValue;
-        if (degree == TYPE_INTEGER && constantInteger(e->leftExpression, &degreeValue) && (degreeValue < 1 || degreeValue > 7)) {
+        if (degree == TYPE_INTEGER && constantInteger(scope, e->leftExpression, &degreeValue) && (degreeValue < 1 || degreeValue > 7)) {
             fprintf(stderr, "Semantic error: chord degree must be between 1 and 7.\n"); return TYPE_INVALID;
         }
         return TYPE_CHORD;
@@ -223,9 +281,11 @@ static int typeOf(Scope *scope, Expression *e) {
     case INVERSION:
         if (!compatible(scope, e->leftExpression, TYPE_CHORD) || !compatible(scope, e->rightExpression, TYPE_INTEGER)) return TYPE_INVALID;
         int inversions;
-        if (e->leftExpression->type == NOTES_CHORD && constantInteger(e->rightExpression, &inversions)) {
+        const Expression *chord = e->leftExpression;
+        if (chord->type == VARIABLE) { Symbol *symbol = findSymbol(scope, chord->text); chord = symbol ? symbol->literal : NULL; }
+        if (chord && chord->type == NOTES_CHORD && constantInteger(scope, e->rightExpression, &inversions)) {
             int count = 0;
-            for (ExpressionList *item = e->leftExpression->elements; item; item = item->next) ++count;
+            for (ExpressionList *item = chord->elements; item; item = item->next) ++count;
             if (inversions < 0 || inversions > count) {
                 fprintf(stderr, "Semantic error: inversion is outside the chord range.\n"); return TYPE_INVALID;
             }
@@ -242,11 +302,13 @@ static int typeOf(Scope *scope, Expression *e) {
         if (index != -1 && index != TYPE_INTEGER) { fprintf(stderr, "Semantic error: index must be an integer.\n"); return -2; }
         if (object == -1) return -1;
         int indexValue;
-        if (constantInteger(e->rightExpression, &indexValue)) {
+        if (constantInteger(scope, e->rightExpression, &indexValue)) {
             int length = object == TYPE_SCALE ? 7 : -1;
-            if (e->leftExpression->type == LIST_LITERAL) {
+            const Expression *list = e->leftExpression;
+            if (list->type == VARIABLE) { Symbol *symbol = findSymbol(scope, list->text); list = symbol ? symbol->literal : NULL; }
+            if (list && list->type == LIST_LITERAL) {
                 length = 0;
-                for (ExpressionList *item = e->leftExpression->elements; item; item = item->next) ++length;
+                for (ExpressionList *item = list->elements; item; item = item->next) ++length;
             }
             if (indexValue < 0 || (length >= 0 && indexValue >= length)) {
                 fprintf(stderr, "Semantic error: index is out of range.\n"); return TYPE_INVALID;
@@ -319,15 +381,18 @@ static int typeOf(Scope *scope, Expression *e) {
         if (b == TYPE_CHORD_LIST || b == TYPE_EMPTY_LIST) b = TYPE_PROGRESSION;
         if (a == TYPE_INTEGER && b == TYPE_INTEGER) {
             int divisor;
-            if (e->type == DIVISION && constantInteger(e->rightExpression, &divisor) && divisor == 0) {
+            if (e->type == DIVISION && constantInteger(scope, e->rightExpression, &divisor) && divisor == 0) {
                 fprintf(stderr, "Semantic error: division by zero.\n"); return TYPE_INVALID;
             }
             return TYPE_INTEGER;
         }
         if ((e->type == ADDITION || e->type == SUBTRACTION) && b == TYPE_INTERVAL &&
             (a == TYPE_NOTE || a == TYPE_CHORD || a == TYPE_PROGRESSION)) {
-            if (a == TYPE_NOTE && e->leftExpression->type == NOTE_LITERAL && e->rightExpression->type == INTERVAL_LITERAL) {
-                int pitch = literalPitch(e->leftExpression->text), interval = literalInterval(e->rightExpression->text);
+            const Expression *note = e->leftExpression, *intervalExpression = e->rightExpression;
+            if (note->type == VARIABLE) { Symbol *symbol = findSymbol(scope, note->text); note = symbol ? symbol->currentLiteral : NULL; }
+            if (intervalExpression->type == VARIABLE) { Symbol *symbol = findSymbol(scope, intervalExpression->text); intervalExpression = symbol ? symbol->currentLiteral : NULL; }
+            if (a == TYPE_NOTE && note && intervalExpression && note->type == NOTE_LITERAL && intervalExpression->type == INTERVAL_LITERAL) {
+                int pitch = literalPitch(note->text), interval = literalInterval(intervalExpression->text);
                 if (pitch >= 0 && interval >= 0) {
                     int result = pitch + (e->type == ADDITION ? interval : -interval);
                     if (result < 0 || result > 107) { fprintf(stderr, "Semantic error: transposed note is out of range.\n"); return TYPE_INVALID; }
@@ -338,12 +403,13 @@ static int typeOf(Scope *scope, Expression *e) {
         if (e->type == ADDITION && a == TYPE_PROGRESSION && (b == TYPE_PROGRESSION || b == TYPE_CHORD)) return TYPE_PROGRESSION;
         if (e->type == MULTIPLICATION && a == TYPE_PROGRESSION && b == TYPE_INTEGER) {
             int repetitions;
-            if (constantInteger(e->rightExpression, &repetitions) && repetitions < 0) {
+            if (constantInteger(scope, e->rightExpression, &repetitions) && repetitions < 0) {
                 fprintf(stderr, "Semantic error: repetition count cannot be negative.\n"); return TYPE_INVALID;
             }
             return TYPE_PROGRESSION;
         }
-        fprintf(stderr, "Semantic error: incompatible operand types.\n"); return -2;
+        const char *operator = e->type == ADDITION ? "+" : e->type == SUBTRACTION ? "-" : e->type == MULTIPLICATION ? "*" : "/";
+        fprintf(stderr, "Semantic error: operator %s does not accept %s and %s.\n", operator, typeName(a), typeName(b)); return TYPE_INVALID;
     }
     default: fprintf(stderr, "Semantic error: unsupported expression type.\n"); return TYPE_INVALID;
     }
@@ -352,9 +418,19 @@ static bool compatible(Scope *scope, Expression *e, int expected) {
     int actual = typeOf(scope, e);
     if (actual == TYPE_INVALID) return false;
     if (actual == TYPE_EMPTY_LIST && (expected >= TYPE_VECTOR || expected == TYPE_PROGRESSION)) return true;
+    /* An explicit voicing lists each chord's notes as soprano, alto, tenor and bass. */
+    if (actual == TYPE_CHORD_LIST && expected == TYPE_VOICING) {
+        for (ExpressionList *item = e->elements; item; item = item->next) {
+            if (item->expression->type != NOTES_CHORD) continue;
+            int notes = 0;
+            for (ExpressionList *note = item->expression->elements; note; note = note->next) ++notes;
+            if (notes != VOICE_COUNT) { fprintf(stderr, "Semantic error: explicit voicing chords need four notes.\n"); return false; }
+        }
+        return true;
+    }
     if (actual == TYPE_CHORD_LIST && (expected == TYPE_VECTOR + TYPE_CHORD || expected == TYPE_PROGRESSION)) return true;
     if (actual != expected) {
-        fprintf(stderr, "Semantic error: expression type does not match declaration or assignment.\n"); return false;
+        fprintf(stderr, "Semantic error: expected %s, got %s.\n", typeName(expected), typeName(actual)); return false;
     }
     return true;
 }
@@ -395,7 +471,7 @@ static bool exportStatement(Scope *scope, Export *export) {
     }
     if (export->tempo && !compatible(scope, export->tempo, TYPE_INTEGER)) return false;
     int tempo;
-    if (export->tempo && constantInteger(export->tempo, &tempo) &&
+    if (export->tempo && constantInteger(scope, export->tempo, &tempo) &&
         (tempo < (export->format == EXPORT_MIDI ? 4 : 1) ||
          (export->format == EXPORT_MIDI && tempo > 60000000))) {
         fprintf(stderr, "Semantic error: tempo is outside the export format's range.\n"); return false;
@@ -404,6 +480,117 @@ static bool exportStatement(Scope *scope, Export *export) {
         fprintf(stderr, "Semantic error: unknown instrument '%s'.\n", export->instrument); return false;
     }
     return true;
+}
+/* Only evaluate immutable, literal voice inputs; other cases belong to runtime. */
+static const Expression *knownExpression(Scope *scope, const Expression *e) {
+    if (e && e->type == VARIABLE) {
+        Symbol *symbol = findSymbol(scope, e->text);
+        return symbol ? symbol->literal : NULL;
+    }
+    return e;
+}
+static int literalDegree(const char *text) {
+    static const char *names[] = {"I", "II", "III", "IV", "V", "VI", "VII"};
+    char roman[4]; size_t length = 0;
+    while (text[length] && text[length] != 'd' && length < sizeof(roman) - 1) {
+        roman[length] = (char)toupper((unsigned char)text[length]); ++length;
+    }
+    roman[length] = '\0';
+    for (int i = 0; i < 7; ++i) if (!strcmp(roman, names[i])) return i;
+    return -1;
+}
+static bool knownScale(Scope *scope, const Expression *expression, int scale[7]) {
+    const Expression *key = knownExpression(scope, expression);
+    if (!key || key->type != KEY_LITERAL) return false;
+    static const int pitchClass[] = {9, 11, 0, 2, 4, 5, 7};
+    int tonic = 60 + pitchClass[key->key.tonic[0] - 'A'];
+    if (key->key.tonic[1] == '#') ++tonic;
+    else if (key->key.tonic[1] == 'b') --tonic;
+    return musicScale(tonic, key->key.mode, scale);
+}
+static bool knownChordMask(Scope *scope, const Expression *expression, unsigned short *mask) {
+    const Expression *chord = knownExpression(scope, expression);
+    if (!chord) return false;
+    if (chord->type == TRIAD_CHORD || chord->type == SEVENTH_CHORD) {
+        int scale[7], degree = -1;
+        const Expression *value = knownExpression(scope, chord->leftExpression);
+        if (!value || !knownScale(scope, chord->rightExpression, scale)) return false;
+        if (value->type == DEGREE_LITERAL) degree = literalDegree(value->text);
+        else if (value->type == INTEGER_LITERAL) degree = value->integer - 1;
+        if (degree < 0 || degree > 6) return false;
+        int tones = chord->type == TRIAD_CHORD ? 3 : 4;
+        for (int i = 0; i < tones; ++i) *mask |= 1u << (scale[(degree + 2 * i) % 7] % 12);
+        return true;
+    }
+    if (chord->type != NOTES_CHORD) return false;
+    for (ExpressionList *note = chord->elements; note; note = note->next) {
+        const Expression *value = knownExpression(scope, note->expression);
+        if (!value || value->type != NOTE_LITERAL) return false;
+        int pitch = literalPitch(value->text);
+        if (pitch < 0 || pitch > 107) return false;
+        *mask |= 1u << (pitch % 12);
+    }
+    unsigned int classes = 0;
+    for (int bit = 0; bit < 12; ++bit) if (*mask & (1u << bit)) ++classes;
+    return classes <= VOICE_COUNT;
+}
+static bool checkKnownVoicing(Scope *scope, const Expression *expression, unsigned int rules) {
+    if (scope->parent) return true;
+    expression = knownExpression(scope, expression);
+    if (!expression || expression->type != VOICE_EXPRESSION) return true;
+    const Expression *progression = knownExpression(scope, expression->voice->progression);
+    if (!progression) return true;
+    int scale[7]; bool degrees = progression->type == IN_EXPRESSION;
+    if (degrees) {
+        if (progression->leftExpression->type != LIST_LITERAL || !knownScale(scope, progression->rightExpression, scale)) return true;
+        progression = progression->leftExpression;
+    }
+    if (progression->type != LIST_LITERAL) return true;
+    size_t count = 0;
+    for (ExpressionList *item = progression->elements; item; item = item->next) ++count;
+    if (!count) return true;
+    if (count > SIZE_MAX / sizeof(unsigned short) || count > SIZE_MAX / sizeof(int[VOICE_COUNT])) {
+        *scope->failure = OUT_OF_MEMORY; return false;
+    }
+    unsigned short *masks = calloc(count, sizeof(*masks));
+    int (*voices)[VOICE_COUNT] = calloc(count, sizeof(*voices));
+    if (!masks || !voices) {
+        free(masks); free(voices); *scope->failure = OUT_OF_MEMORY;
+        fprintf(stderr, "Semantic analysis: out of memory.\n"); return false;
+    }
+    size_t index = 0;
+    bool known = true;
+    for (ExpressionList *item = progression->elements; item && known; item = item->next, ++index) {
+        const Expression *chord = knownExpression(scope, item->expression);
+        if (degrees) {
+            if (!chord || chord->type != DEGREE_LITERAL) { known = false; break; }
+            int degree = literalDegree(chord->text);
+            if (degree < 0) { known = false; break; }
+            for (int step = 0; step < 3; ++step) masks[index] |= 1u << (scale[(degree + 2 * step) % 7] % 12);
+            continue;
+        }
+        if (!knownChordMask(scope, chord, &masks[index])) known = false;
+    }
+    bool ok = true;
+    if (known) {
+        MusicVoiceResult realization = musicRealizeSATB(masks, count, voices);
+        if (realization == MUSIC_VOICE_NO_MEMORY) {
+            *scope->failure = OUT_OF_MEMORY; fprintf(stderr, "Semantic analysis: out of memory.\n"); ok = false;
+        } else if (realization != MUSIC_VOICE_SUCCESS) {
+            fprintf(stderr, "Semantic error: cannot realize progression as SATB.\n"); ok = false;
+        } else {
+            size_t failed = 0;
+            MusicValidationResult result = musicCheckVoicing((const int (*)[VOICE_COUNT])voices, count, rules, &failed);
+            if (result != MUSIC_VALID) {
+                const char *reason = result == MUSIC_TESSITURA_ERROR ? "tessitura" :
+                    result == MUSIC_VOICE_CROSSING_ERROR ? "voice crossing" :
+                    result == MUSIC_PARALLEL_FIFTHS_ERROR ? "parallel fifths" :
+                    result == MUSIC_PARALLEL_OCTAVES_ERROR ? "parallel octaves" : "invalid voicing";
+                fprintf(stderr, "Semantic error: %s at chord %zu.\n", reason, failed + 1); ok = false;
+            }
+        }
+    }
+    free(masks); free(voices); return ok;
 }
 static bool returnsOnEveryPath(StatementList *list) {
     for (; list; list = list->next) {
@@ -416,40 +603,68 @@ static bool returnsOnEveryPath(StatementList *list) {
 }
 static bool statement(Scope *scope, Statement *s) {
     switch (s->type) {
-    case DECLARATION:
-        if (!expression(scope, s->expression) || !compatible(scope, s->expression, s->dataType + (s->isVector ? 20 : 0)) || !declare(scope, s->name, s->dataType + (s->isVector ? 20 : 0))) return false;
-        if (s->dataType == TYPE_NOTE && !s->isVector && s->expression->type == NOTE_LITERAL &&
-            !nameAssigned(scope->program->statements, s->name)) scope->symbols->literal = s->expression;
+    case DECLARATION: {
+        if (!expression(scope, s->expression) || !compatible(scope, s->expression, s->dataType + (s->isVector ? 20 : 0))) return false;
+        const Expression *value = s->isVector ? NULL : knownScalar(scope, s->expression);
+        if (!declare(scope, s->name, s->dataType + (s->isVector ? 20 : 0))) return false;
+        scope->symbols->currentLiteral = value;
+        if (!nameAssigned(scope->program->statements, s->name) &&
+            ((s->isVector && s->expression->type == LIST_LITERAL) ||
+             (!s->isVector && ((s->dataType == TYPE_NOTE && s->expression->type == NOTE_LITERAL) ||
+             (s->dataType == TYPE_INTEGER && s->expression->type == INTEGER_LITERAL) ||
+             (s->dataType == TYPE_INTERVAL && s->expression->type == INTERVAL_LITERAL) ||
+             (s->dataType == TYPE_CHORD && (s->expression->type == NOTES_CHORD || s->expression->type == TRIAD_CHORD || s->expression->type == SEVENTH_CHORD)) ||
+             (s->dataType == TYPE_KEY && s->expression->type == KEY_LITERAL) ||
+             (s->dataType == TYPE_PROGRESSION && (s->expression->type == LIST_LITERAL || s->expression->type == IN_EXPRESSION)) ||
+             (s->dataType == TYPE_VOICING && s->expression->type == VOICE_EXPRESSION))))) scope->symbols->literal = s->expression;
+        if (s->dataType == TYPE_VOICING && !s->isVector && !checkKnownVoicing(scope, s->expression, 0)) return false;
         if (s->dataType == TYPE_KEY && !s->isVector) {
             scope->hasKeyContext = true;
-            scope->keyContext = s->expression->type == KEY_LITERAL ? s->expression : NULL;
+            scope->keyContext = value && value->type == KEY_LITERAL ? value : NULL;
+            scope->keyOwner = scope->symbols;
         }
         return true;
-    case ASSIGNMENT:
+    }
+    case ASSIGNMENT: {
         if (!lookup(scope, s->name) || !expression(scope, s->expression) || !compatible(scope, s->expression, symbolType(scope, s->name))) return false;
-        if (symbolType(scope, s->name) == TYPE_KEY) forgetKeyContext(scope);
+        Symbol *symbol = findSymbol(scope, s->name);
+        symbol->currentLiteral = symbol->type >= TYPE_VECTOR ? NULL : knownScalar(scope, s->expression);
+        if (symbol->type == TYPE_KEY) {
+            Scope *owner = scope;
+            while (owner && !owner->hasKeyContext) owner = owner->parent;
+            if (owner && owner->keyOwner == symbol) owner->keyContext = symbol->currentLiteral;
+        }
         return true;
+    }
     case LOG_STATEMENT: return parts(scope, s->log->message);
     case EXPORT_STATEMENT: return exportStatement(scope, s->export);
-    case CHECK_STATEMENT: return expression(scope, s->check->voicing) && compatible(scope, s->check->voicing, TYPE_VOICING);
+    case CHECK_STATEMENT: return expression(scope, s->check->voicing) && compatible(scope, s->check->voicing, TYPE_VOICING) && checkKnownVoicing(scope, s->check->voicing, s->check->rules);
     case PROCEDURE_CALL_STATEMENT: return call(scope, s->procedureCall, false);
     case RETURN_STATEMENT:
         if (!scope->procedure) { fprintf(stderr, "Semantic error: return outside procedure.\n"); return false; }
         if (scope->procedure->hasReturnType != (s->returnStatement->value != NULL)) { fprintf(stderr, "Semantic error: incorrect return value.\n"); return false; }
         return expression(scope, s->returnStatement->value) && (!s->returnStatement->value || compatible(scope, s->returnStatement->value, scope->procedure->returnType + (scope->procedure->returnsVector ? 20 : 0)));
-    case IF_STATEMENT:
-        forgetKeyContext(scope);
-        return expression(scope, s->ifStatement->condition) && compatible(scope, s->ifStatement->condition, TYPE_BOOLEAN) && block(scope, s->ifStatement->thenBlock) && block(scope, s->ifStatement->elseBlock);
-    case WHILE_STATEMENT: forgetKeyContext(scope); return expression(scope, s->whileStatement->condition) && compatible(scope, s->whileStatement->condition, TYPE_BOOLEAN) && block(scope, s->whileStatement->body);
+    case IF_STATEMENT: {
+        forgetKeyContext(scope); forgetCurrentValues(scope);
+        bool ok = expression(scope, s->ifStatement->condition) && compatible(scope, s->ifStatement->condition, TYPE_BOOLEAN) && block(scope, s->ifStatement->thenBlock);
+        forgetCurrentValues(scope);
+        if (ok) ok = block(scope, s->ifStatement->elseBlock);
+        forgetCurrentValues(scope); return ok;
+    }
+    case WHILE_STATEMENT: {
+        forgetKeyContext(scope); forgetCurrentValues(scope);
+        bool ok = expression(scope, s->whileStatement->condition) && compatible(scope, s->whileStatement->condition, TYPE_BOOLEAN) && block(scope, s->whileStatement->body);
+        forgetCurrentValues(scope); return ok;
+    }
     case FOR_STATEMENT: {
-        forgetKeyContext(scope);
-        For *f = s->forStatement; Scope local = {NULL, scope, scope->program, scope->procedure, scope->failure};
+        forgetKeyContext(scope); forgetCurrentValues(scope);
+        For *f = s->forStatement; Scope local = {.parent = scope, .program = scope->program, .procedure = scope->procedure, .failure = scope->failure};
         bool ok = expression(scope, f->from) && expression(scope, f->to) && compatible(scope, f->from, TYPE_INTEGER) && compatible(scope, f->to, TYPE_INTEGER) && declare(&local, f->variable, TYPE_INTEGER) && statements(&local, f->body);
-        clear(&local); return ok;
+        clear(&local); forgetCurrentValues(scope); return ok;
     }
     case PROCEDURE_DEFINITION: {
-        ProcedureDefinition *p = s->procedureDefinition; Scope local = {NULL, scope, scope->program, p, scope->failure}; bool ok = true;
-        forgetKeyContext(&local);
+        ProcedureDefinition *p = s->procedureDefinition; Scope local = {.parent = scope, .program = scope->program, .procedure = p, .failure = scope->failure}; bool ok = true;
+        forgetKeyContext(&local); forgetCurrentValues(scope);
         if (scope->parent) { fprintf(stderr, "Semantic error: nested procedure definition.\n"); return false; }
         for (StatementList *item = scope->program->statements; item; item = item->next)
             if (item->statement != s && item->statement->type == PROCEDURE_DEFINITION && !strcmp(item->statement->procedureDefinition->name, p->name)) { fprintf(stderr, "Semantic error: duplicate procedure '%s'.\n", p->name); return false; }
@@ -458,17 +673,20 @@ static bool statement(Scope *scope, Statement *s) {
         if (ok && p->hasReturnType && !returnsOnEveryPath(p->body)) {
             fprintf(stderr, "Semantic error: procedure '%s' can finish without returning a value.\n", p->name); ok = false;
         }
-        clear(&local); return ok;
+        clear(&local); forgetCurrentValues(scope); return ok;
     }
     }
     return false;
 }
 static bool statements(Scope *scope, StatementList *list) {
-    for (; list; list = list->next) if (!statement(scope, list->statement)) return false;
+    for (; list; list = list->next) {
+        if (!scope->parent) scope->current = list->statement;
+        if (!statement(scope, list->statement)) return false;
+    }
     return true;
 }
 CompilationStatus analyzeSemantics(Program *program) {
     CompilationStatus failure = FAILED;
-    Scope global = {NULL, NULL, program, NULL, &failure}; bool ok = statements(&global, program->statements); clear(&global);
+    Scope global = {.program = program, .failure = &failure}; bool ok = statements(&global, program->statements); clear(&global);
     return ok ? SUCCEEDED : failure;
 }

@@ -7,6 +7,7 @@
 #include "support/type/CompilationStatus.h"
 #include "support/type/CompilerState.h"
 #include "support/type/ModuleDestructor.h"
+#include <string.h>
 
 /**
  * The main entry-point of the entire application. If you use "strtok" to
@@ -19,6 +20,8 @@ const int main(const int length, const char ** arguments) {
 	for (int k = 0; k < length; ++k) {
 		logDebugging(logger, "Argument %d: \"%s\"", k, arguments[k]);
 	}
+	bool checkOnly = false;
+	for (int k = 1; k < length; ++k) checkOnly = checkOnly || strcmp(arguments[k], "--check") == 0;
 	CompilerState compilerState = {
 		.abstractSyntaxtTree = NULL
 	};
@@ -35,7 +38,7 @@ const int main(const int length, const char ** arguments) {
 		// ----------------------------------------------------------------------------------------
 		// Beginning of the Backend... ------------------------------------------------------------
 		compilationStatus = analyzeSemantics(program);
-		if (compilationStatus == SUCCEEDED) compilationStatus = executeGenerator(&compilerState);
+		if (compilationStatus == SUCCEEDED && !checkOnly) compilationStatus = executeGenerator(&compilerState);
 		// ...end of the Backend. -----------------------------------------------------------------
 		// ----------------------------------------------------------------------------------------
 	}

@@ -1,5 +1,7 @@
 #include "Semantic.h"
 #include <stdio.h>
+#include <limits.h>
+#include <stdint.h>
 #include <string.h>
 
 enum { TYPE_DEGREE = 10, TYPE_DURATION, TYPE_QUALITY, TYPE_MODE, TYPE_EMPTY_LIST, TYPE_CHORD_LIST, TYPE_DEGREE_LIST, TYPE_VECTOR = 20, TYPE_INVALID = -2 };
@@ -96,6 +98,23 @@ static int literalInterval(const char *interval) {
         if (!strcmp(interval, intervals[i].name)) return intervals[i].semitones;
     return -1;
 }
+/* Evaluate only side-effect-free integer literals; runtime values remain unknown. */
+static bool constantInteger(Expression *e, int *result) {
+    if (e->type == INTEGER_LITERAL) { *result = e->integer; return true; }
+    if (e->type != ADDITION && e->type != SUBTRACTION && e->type != MULTIPLICATION && e->type != DIVISION) return false;
+    int left, right;
+    if (!constantInteger(e->leftExpression, &left) || !constantInteger(e->rightExpression, &right)) return false;
+    int64_t value;
+    switch (e->type) {
+    case ADDITION: value = (int64_t)left + right; break;
+    case SUBTRACTION: value = (int64_t)left - right; break;
+    case MULTIPLICATION: value = (int64_t)left * right; break;
+    case DIVISION: if (!right) return false; value = (int64_t)left / right; break;
+    default: return false;
+    }
+    if (value < INT_MIN || value > INT_MAX) return false;
+    *result = (int)value; return true;
+}
 static int typeOf(Scope *scope, Expression *e) {
     if (!e) return -1;
     switch (e->type) {
@@ -137,7 +156,8 @@ static int typeOf(Scope *scope, Expression *e) {
         if (!compatible(scope, e->rightExpression, TYPE_KEY)) return -2;
         int degree = typeOf(scope, e->leftExpression);
         if (degree != TYPE_DEGREE && degree != TYPE_INTEGER) { fprintf(stderr, "Semantic error: chord degree must be a degree or integer.\n"); return TYPE_INVALID; }
-        if (e->leftExpression->type == INTEGER_LITERAL && (e->leftExpression->integer < 1 || e->leftExpression->integer > 7)) {
+        int degreeValue;
+        if (degree == TYPE_INTEGER && constantInteger(e->leftExpression, &degreeValue) && (degreeValue < 1 || degreeValue > 7)) {
             fprintf(stderr, "Semantic error: chord degree must be between 1 and 7.\n"); return TYPE_INVALID;
         }
         return TYPE_CHORD;
@@ -147,10 +167,11 @@ static int typeOf(Scope *scope, Expression *e) {
         return compatible(scope, e->voice->progression, TYPE_PROGRESSION) ? TYPE_VOICING : -2;
     case INVERSION:
         if (!compatible(scope, e->leftExpression, TYPE_CHORD) || !compatible(scope, e->rightExpression, TYPE_INTEGER)) return TYPE_INVALID;
-        if (e->leftExpression->type == NOTES_CHORD && e->rightExpression->type == INTEGER_LITERAL) {
+        int inversions;
+        if (e->leftExpression->type == NOTES_CHORD && constantInteger(e->rightExpression, &inversions)) {
             int count = 0;
             for (ExpressionList *item = e->leftExpression->elements; item; item = item->next) ++count;
-            if (e->rightExpression->integer < 0 || e->rightExpression->integer > count) {
+            if (inversions < 0 || inversions > count) {
                 fprintf(stderr, "Semantic error: inversion is outside the chord range.\n"); return TYPE_INVALID;
             }
         }
@@ -165,6 +186,17 @@ static int typeOf(Scope *scope, Expression *e) {
         if (object == -2 || index == -2) return -2;
         if (index != -1 && index != TYPE_INTEGER) { fprintf(stderr, "Semantic error: index must be an integer.\n"); return -2; }
         if (object == -1) return -1;
+        int indexValue;
+        if (constantInteger(e->rightExpression, &indexValue)) {
+            int length = object == TYPE_SCALE ? 7 : -1;
+            if (e->leftExpression->type == LIST_LITERAL) {
+                length = 0;
+                for (ExpressionList *item = e->leftExpression->elements; item; item = item->next) ++length;
+            }
+            if (indexValue < 0 || (length >= 0 && indexValue >= length)) {
+                fprintf(stderr, "Semantic error: index is out of range.\n"); return TYPE_INVALID;
+            }
+        }
         if (object == TYPE_SCALE) return TYPE_NOTE;
         if (object == TYPE_CHORD_LIST) return TYPE_CHORD;
         if (object == TYPE_DEGREE_LIST) return TYPE_DEGREE;
@@ -231,7 +263,8 @@ static int typeOf(Scope *scope, Expression *e) {
         if (a == TYPE_CHORD_LIST || a == TYPE_EMPTY_LIST) a = TYPE_PROGRESSION;
         if (b == TYPE_CHORD_LIST || b == TYPE_EMPTY_LIST) b = TYPE_PROGRESSION;
         if (a == TYPE_INTEGER && b == TYPE_INTEGER) {
-            if (e->type == DIVISION && e->rightExpression->type == INTEGER_LITERAL && e->rightExpression->integer == 0) {
+            int divisor;
+            if (e->type == DIVISION && constantInteger(e->rightExpression, &divisor) && divisor == 0) {
                 fprintf(stderr, "Semantic error: division by zero.\n"); return TYPE_INVALID;
             }
             return TYPE_INTEGER;
@@ -248,7 +281,13 @@ static int typeOf(Scope *scope, Expression *e) {
             return a;
         }
         if (e->type == ADDITION && a == TYPE_PROGRESSION && (b == TYPE_PROGRESSION || b == TYPE_CHORD)) return TYPE_PROGRESSION;
-        if (e->type == MULTIPLICATION && a == TYPE_PROGRESSION && b == TYPE_INTEGER) return TYPE_PROGRESSION;
+        if (e->type == MULTIPLICATION && a == TYPE_PROGRESSION && b == TYPE_INTEGER) {
+            int repetitions;
+            if (constantInteger(e->rightExpression, &repetitions) && repetitions < 0) {
+                fprintf(stderr, "Semantic error: repetition count cannot be negative.\n"); return TYPE_INVALID;
+            }
+            return TYPE_PROGRESSION;
+        }
         fprintf(stderr, "Semantic error: incompatible operand types.\n"); return -2;
     }
     default: fprintf(stderr, "Semantic error: unsupported expression type.\n"); return TYPE_INVALID;
@@ -300,9 +339,10 @@ static bool exportStatement(Scope *scope, Export *export) {
         fprintf(stderr, "Semantic error: value is not exportable.\n"); return false;
     }
     if (export->tempo && !compatible(scope, export->tempo, TYPE_INTEGER)) return false;
-    if (export->tempo && export->tempo->type == INTEGER_LITERAL &&
-        (export->tempo->integer < (export->format == EXPORT_MIDI ? 4 : 1) ||
-         (export->format == EXPORT_MIDI && export->tempo->integer > 60000000))) {
+    int tempo;
+    if (export->tempo && constantInteger(export->tempo, &tempo) &&
+        (tempo < (export->format == EXPORT_MIDI ? 4 : 1) ||
+         (export->format == EXPORT_MIDI && tempo > 60000000))) {
         fprintf(stderr, "Semantic error: tempo is outside the export format's range.\n"); return false;
     }
     if (export->instrument && semanticInstrumentProgram(export->instrument) < 0) {

@@ -458,7 +458,11 @@ static bool checkKnownVoicing(Scope *scope, const Expression *expression, unsign
             size_t failed = 0;
             MusicValidationResult result = musicCheckVoicing((const int (*)[VOICE_COUNT])voices, count, rules, &failed);
             if (result != MUSIC_VALID) {
-                fprintf(stderr, "Semantic error: SATB rule %d failed at chord %zu.\n", result, failed + 1); ok = false;
+                const char *reason = result == MUSIC_TESSITURA_ERROR ? "tessitura" :
+                    result == MUSIC_VOICE_CROSSING_ERROR ? "voice crossing" :
+                    result == MUSIC_PARALLEL_FIFTHS_ERROR ? "parallel fifths" :
+                    result == MUSIC_PARALLEL_OCTAVES_ERROR ? "parallel octaves" : "invalid voicing";
+                fprintf(stderr, "Semantic error: %s at chord %zu.\n", reason, failed + 1); ok = false;
             }
         }
     }

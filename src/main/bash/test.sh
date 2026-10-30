@@ -44,6 +44,16 @@ for test in $(ls src/test/c/reject/); do
 				continue
 			fi ;;
 	esac
+    case "$test" in
+        56-*) EXPECTED="parallel fifths at chord 2" ;;
+        57-*) EXPECTED="parallel octaves at chord 2" ;;
+        *) EXPECTED="" ;;
+    esac
+    if [[ -n "$EXPECTED" && "$OUTPUT" != *"$EXPECTED"* ]]; then
+        echo -e "    $test, ${RED}incorrect rule or chord diagnostic${OFF}"
+        STATUS=1
+        continue
+    fi
 	if [ "$RESULT" == "1" ]; then
 		echo -e "    $test, ${GREEN}and it does${OFF} (status $RESULT)"
 	else

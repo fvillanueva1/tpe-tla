@@ -98,3 +98,5 @@ El caso 55 comprueba `strict` con una tonalidad y un acorde literales. Casos adi
 Las pruebas de realizacion SATB comprueban cobertura de notas, tesituras, ausencia de cruce, minimo de movimiento conocido, acordes imposibles y fallos de reserva.
 
 Los casos 56 y 57 usan progresiones que fuerzan las paralelas bajo la realizacion de minimo movimiento. Se comprueba tambien una progresion referida por variables inmutables y la seleccion de reglas de `check`.
+
+Los casos 56 y 57 verifican tambien el nombre de la regla y el numero del acorde en el diagnostico.

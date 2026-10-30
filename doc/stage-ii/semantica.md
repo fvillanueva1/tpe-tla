@@ -45,3 +45,5 @@ Una mascara vacia o que no admite distribucion devuelve `MUSIC_VOICE_INVALID_CHO
 ## Comprobacion estatica de `voice` y `check`
 
 El analizador realiza y verifica progresiones literales de acordes por notas en el alcance global. Se admiten variables de nota, acorde, progresion y voicing cuando su inicializador es literal y no se asigna al mismo nombre en ninguna parte del programa. `check` aplica solamente las reglas solicitadas sobre esa realizacion; las tesituras se comprueban siempre. Casos con mas de cuatro clases por acorde, grados, valores mutables o expresiones dentro de bloques y procedimientos quedan para la evaluacion en ejecucion. Los escenarios 56 y 57 usan acordes que fuerzan las paralelas; 58 y 59 siguen pendientes porque la realizacion escogida ya evita cruces y tesituras invalidas.
+
+Los errores SATB identifican la regla y el acorde (numeracion desde uno).

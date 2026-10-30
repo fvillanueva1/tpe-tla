@@ -114,3 +114,11 @@ El contexto estricto se prueba con reasignacion a una tonalidad conocida, alias 
 Un alias tonal conserva su valor anterior cuando se reasigna la variable de origen; el chequeo estricto valida esa copia.
 
 Los rechazos de asignacion y operador verifican ademas los tipos incluidos en el diagnostico.
+
+La suite ejecuta aceptaciones semanticas con `--check`; las pruebas de generacion usan el modo normal y comprueban tanto la salida MIDI como el fallo explicito de programas aun no soportados. Los rechazos se ejecutan en directorios temporales con el modo normal.
+
+La integracion MIDI comprueba tambien una escala declarada y exportada por nombre.
+
+Los indices constantes sobre vectores literales inmutables incluyen pruebas de limite y de conservacion de vectores que pueden cambiar.
+
+Las llamadas antes de la definicion se rechazan, tambien desde otro procedimiento o cuando el cuerpo usa una global posterior; la recursion directa se acepta. El voicing explicito se acepta con acordes de cuatro notas y se rechaza con notas sueltas o acordes de otro tamano (`type-check-list`).

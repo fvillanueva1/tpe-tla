@@ -1,0 +1,3 @@
+key tonalidad = C major;
+scale escala = scale of tonalidad;
+export escala as midi to "declarada.mid";

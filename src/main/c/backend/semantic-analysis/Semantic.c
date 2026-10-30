@@ -33,7 +33,7 @@ static const char *typeName(int type) {
 }
 
 typedef struct Symbol { const char *name; int type; struct Symbol *next; const Expression *literal, *currentLiteral; } Symbol;
-typedef struct Scope { Symbol *symbols; struct Scope *parent; Program *program; ProcedureDefinition *procedure; CompilationStatus *failure; const Expression *keyContext; bool hasKeyContext; Symbol *keyOwner; } Scope;
+typedef struct Scope { Symbol *symbols; struct Scope *parent; Program *program; ProcedureDefinition *procedure; CompilationStatus *failure; const Expression *keyContext; bool hasKeyContext; Symbol *keyOwner; Statement *current; } Scope;
 
 static bool nameAssigned(StatementList *list, const char *name) {
     for (; list; list = list->next) {
@@ -102,10 +102,14 @@ static bool expressions(Scope *scope, ExpressionList *list) {
     for (; list; list = list->next) if (!expression(scope, list->expression)) return false;
     return true;
 }
+/* Only procedures defined up to the current global statement are callable; this includes recursion. */
 static ProcedureDefinition *findProcedure(Scope *scope, const char *name) {
-    for (StatementList *item = scope->program->statements; item; item = item->next)
+    while (scope->parent) scope = scope->parent;
+    for (StatementList *item = scope->program->statements; item; item = item->next) {
         if (item->statement->type == PROCEDURE_DEFINITION && !strcmp(item->statement->procedureDefinition->name, name))
             return item->statement->procedureDefinition;
+        if (item->statement == scope->current) break;
+    }
     return NULL;
 }
 static void forgetKeyContext(Scope *scope) {
@@ -117,7 +121,13 @@ static bool call(Scope *scope, ProcedureCall *call, bool needsValue) {
     forgetKeyContext(scope);
     forgetCurrentValues(scope);
     ProcedureDefinition *p = findProcedure(scope, call->name);
-    if (!p) { fprintf(stderr, "Semantic error: unknown procedure '%s'.\n", call->name); return false; }
+    if (!p) {
+        for (StatementList *item = scope->program->statements; item; item = item->next)
+            if (item->statement->type == PROCEDURE_DEFINITION && !strcmp(item->statement->procedureDefinition->name, call->name)) {
+                fprintf(stderr, "Semantic error: procedure '%s' is called before its definition.\n", call->name); return false;
+            }
+        fprintf(stderr, "Semantic error: unknown procedure '%s'.\n", call->name); return false;
+    }
     if (needsValue && !p->hasReturnType) { fprintf(stderr, "Semantic error: procedure '%s' has no return value.\n", call->name); return false; }
     ParameterList *param = p->parameters; ExpressionList *arg = call->arguments;
     while (param && arg) {
@@ -294,9 +304,11 @@ static int typeOf(Scope *scope, Expression *e) {
         int indexValue;
         if (constantInteger(scope, e->rightExpression, &indexValue)) {
             int length = object == TYPE_SCALE ? 7 : -1;
-            if (e->leftExpression->type == LIST_LITERAL) {
+            const Expression *list = e->leftExpression;
+            if (list->type == VARIABLE) { Symbol *symbol = findSymbol(scope, list->text); list = symbol ? symbol->literal : NULL; }
+            if (list && list->type == LIST_LITERAL) {
                 length = 0;
-                for (ExpressionList *item = e->leftExpression->elements; item; item = item->next) ++length;
+                for (ExpressionList *item = list->elements; item; item = item->next) ++length;
             }
             if (indexValue < 0 || (length >= 0 && indexValue >= length)) {
                 fprintf(stderr, "Semantic error: index is out of range.\n"); return TYPE_INVALID;
@@ -406,6 +418,16 @@ static bool compatible(Scope *scope, Expression *e, int expected) {
     int actual = typeOf(scope, e);
     if (actual == TYPE_INVALID) return false;
     if (actual == TYPE_EMPTY_LIST && (expected >= TYPE_VECTOR || expected == TYPE_PROGRESSION)) return true;
+    /* An explicit voicing lists each chord's notes as soprano, alto, tenor and bass. */
+    if (actual == TYPE_CHORD_LIST && expected == TYPE_VOICING) {
+        for (ExpressionList *item = e->elements; item; item = item->next) {
+            if (item->expression->type != NOTES_CHORD) continue;
+            int notes = 0;
+            for (ExpressionList *note = item->expression->elements; note; note = note->next) ++notes;
+            if (notes != VOICE_COUNT) { fprintf(stderr, "Semantic error: explicit voicing chords need four notes.\n"); return false; }
+        }
+        return true;
+    }
     if (actual == TYPE_CHORD_LIST && (expected == TYPE_VECTOR + TYPE_CHORD || expected == TYPE_PROGRESSION)) return true;
     if (actual != expected) {
         fprintf(stderr, "Semantic error: expected %s, got %s.\n", typeName(expected), typeName(actual)); return false;
@@ -586,14 +608,15 @@ static bool statement(Scope *scope, Statement *s) {
         const Expression *value = s->isVector ? NULL : knownScalar(scope, s->expression);
         if (!declare(scope, s->name, s->dataType + (s->isVector ? 20 : 0))) return false;
         scope->symbols->currentLiteral = value;
-        if (!s->isVector && !nameAssigned(scope->program->statements, s->name) &&
-            ((s->dataType == TYPE_NOTE && s->expression->type == NOTE_LITERAL) ||
+        if (!nameAssigned(scope->program->statements, s->name) &&
+            ((s->isVector && s->expression->type == LIST_LITERAL) ||
+             (!s->isVector && ((s->dataType == TYPE_NOTE && s->expression->type == NOTE_LITERAL) ||
              (s->dataType == TYPE_INTEGER && s->expression->type == INTEGER_LITERAL) ||
              (s->dataType == TYPE_INTERVAL && s->expression->type == INTERVAL_LITERAL) ||
              (s->dataType == TYPE_CHORD && (s->expression->type == NOTES_CHORD || s->expression->type == TRIAD_CHORD || s->expression->type == SEVENTH_CHORD)) ||
              (s->dataType == TYPE_KEY && s->expression->type == KEY_LITERAL) ||
              (s->dataType == TYPE_PROGRESSION && (s->expression->type == LIST_LITERAL || s->expression->type == IN_EXPRESSION)) ||
-             (s->dataType == TYPE_VOICING && s->expression->type == VOICE_EXPRESSION))) scope->symbols->literal = s->expression;
+             (s->dataType == TYPE_VOICING && s->expression->type == VOICE_EXPRESSION))))) scope->symbols->literal = s->expression;
         if (s->dataType == TYPE_VOICING && !s->isVector && !checkKnownVoicing(scope, s->expression, 0)) return false;
         if (s->dataType == TYPE_KEY && !s->isVector) {
             scope->hasKeyContext = true;
@@ -656,7 +679,10 @@ static bool statement(Scope *scope, Statement *s) {
     return false;
 }
 static bool statements(Scope *scope, StatementList *list) {
-    for (; list; list = list->next) if (!statement(scope, list->statement)) return false;
+    for (; list; list = list->next) {
+        if (!scope->parent) scope->current = list->statement;
+        if (!statement(scope, list->statement)) return false;
+    }
     return true;
 }
 CompilationStatus analyzeSemantics(Program *program) {

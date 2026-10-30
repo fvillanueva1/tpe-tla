@@ -10,7 +10,7 @@ RED='\033[0;31m'
 OFF='\033[0m'
 STATUS=0
 
-echo "Compiler should accept..."
+echo "Semantic analysis should accept..."
 echo ""
 
 ROOT_PATH="$PWD"
@@ -19,7 +19,7 @@ trap 'rm -rf "$TEST_DIRECTORY"' EXIT
 for test in $(ls src/test/c/accept/); do
     TEST_WORK="$TEST_DIRECTORY/$test"
     mkdir "$TEST_WORK"
-    (cd "$TEST_WORK" && "$ROOT_PATH/.build/Flex-Bison-Compiler" < "$ROOT_PATH/src/test/c/accept/$test") >/dev/null 2>&1
+    (cd "$TEST_WORK" && "$ROOT_PATH/.build/Flex-Bison-Compiler" --check < "$ROOT_PATH/src/test/c/accept/$test") >/dev/null 2>&1
 	RESULT="$?"
 	if [ "$RESULT" == "0" ]; then
 		echo -e "    $test, ${GREEN}and it does${OFF} (status $RESULT)"
@@ -34,7 +34,9 @@ echo "Compiler should reject..."
 echo ""
 
 for test in $(ls src/test/c/reject/); do
-	OUTPUT=$(".build/Flex-Bison-Compiler" < "src/test/c/reject/$test" 2>&1)
+    TEST_WORK="$TEST_DIRECTORY/reject-$test"
+    mkdir "$TEST_WORK"
+	OUTPUT=$(cd "$TEST_WORK" && "$ROOT_PATH/.build/Flex-Bison-Compiler" < "$ROOT_PATH/src/test/c/reject/$test" 2>&1)
 	RESULT="$?"
 	case "$test" in
 		54-*|55-*|56-*|57-*|60-*|61-*|62-*|63-*|log-undeclared-*|scope-outside*|type-*|procedure-*|return-outside*|export-invalid-*)
@@ -65,6 +67,16 @@ for test in $(ls src/test/c/reject/); do
 done
 echo ""
 
+echo "Checking unsupported generation..."
+UNSUPPORTED_WORK="$TEST_DIRECTORY/unsupported"
+mkdir "$UNSUPPORTED_WORK"
+UNSUPPORTED_OUTPUT=$(cd "$UNSUPPORTED_WORK" && "$ROOT_PATH/.build/Flex-Bison-Compiler" < "$ROOT_PATH/src/test/c/accept/48-export-midi.cad" 2>&1)
+UNSUPPORTED_RESULT=$?
+if [[ "$UNSUPPORTED_RESULT" != 1 || "$UNSUPPORTED_OUTPUT" != *"Code generation is not implemented"* || -e "$UNSUPPORTED_WORK/tema.mid" ]]; then
+    echo -e "    unsupported generation, ${RED}failed${OFF}"
+    STATUS=1
+fi
+
 echo "Checking scale MIDI integration..."
 SCALE_WORK="$TEST_DIRECTORY/scale-integration"
 mkdir "$SCALE_WORK"
@@ -72,7 +84,9 @@ if ! (cd "$SCALE_WORK" && "$ROOT_PATH/.build/Flex-Bison-Compiler" < "$ROOT_PATH/
    ! cc -std=gnu99 src/test/c/scale-midi.c -o "$TEST_DIRECTORY/scale-midi" ||
    ! "$TEST_DIRECTORY/scale-midi" "$SCALE_WORK/escala.mid" C ||
    ! (cd "$SCALE_WORK" && "$ROOT_PATH/.build/Flex-Bison-Compiler" < "$ROOT_PATH/src/test/c/accept/scale-midi-g-major.cad" >/dev/null 2>&1) ||
-   ! "$TEST_DIRECTORY/scale-midi" "$SCALE_WORK/sol.mid" G; then
+   ! "$TEST_DIRECTORY/scale-midi" "$SCALE_WORK/sol.mid" G ||
+   ! (cd "$SCALE_WORK" && "$ROOT_PATH/.build/Flex-Bison-Compiler" < "$ROOT_PATH/src/test/c/accept/scale-midi-variable.cad" >/dev/null 2>&1) ||
+   ! "$TEST_DIRECTORY/scale-midi" "$SCALE_WORK/declarada.mid" C; then
     echo -e "    scale MIDI, ${RED}failed${OFF}"
     STATUS=1
 else

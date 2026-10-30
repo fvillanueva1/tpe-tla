@@ -20,7 +20,7 @@ escalas, acordes, progresiones, vectores e índices, propiedades, operadores,
 transformaciones, control de flujo, procedimientos, `voice ... as SATB`,
 `check`, `export` a MIDI/sheet y `log` con interpolación por nombre.
 
-El frontend construye el AST y el analizador semantico verifica nombres, alcances y tipos. La evaluacion musical y la realizacion SATB siguen pendientes. La generacion MIDI soporta por ahora unicamente una tonalidad literal seguida de la exportacion de su escala; las demas salidas siguen pendientes. El detalle y las limitaciones estan en [analisis semantico](doc/stage-ii/semantica.md).
+El frontend construye el AST y el analizador semantico verifica nombres, alcances y tipos, ademas de algunos valores musicales conocidos. La evaluacion musical general y la realizacion SATB en ejecucion siguen pendientes. La generacion MIDI soporta por ahora unicamente una tonalidad literal seguida de la exportacion de su escala, directamente o mediante una declaracion de escala; las demas salidas siguen pendientes. El detalle y las limitaciones estan en [analisis semantico](doc/stage-ii/semantica.md).
 
 ## Documentación
 
@@ -53,7 +53,7 @@ en macOS también se ejecuta dentro del contenedor.
 Para ejecutar un programa:
 
 ```bash
-docker compose run --rm compiler bash -lc 'src/main/bash/run.sh src/test/c/accept/48-export-midi.cad'
+docker compose run --rm compiler bash -lc 'src/main/bash/run.sh src/test/c/accept/30-export-scale.cad'
 ```
 
 También se puede abrir una consola con `docker compose run --rm compiler bash`
@@ -67,7 +67,7 @@ como `==`, `aug4`, instrumentos e interpolación.
 
 | Carpeta | Contenido | Resultado esperado |
 |---------|-----------|-------------------|
-| `src/test/c/accept/` | Programas aceptados | Codigo 0 |
+| `src/test/c/accept/` | Programas validos segun el analizador | Codigo 0 con `--check` |
 | `src/test/c/reject/` | Errores lexicos, sintacticos y semanticos | Codigo 1 |
 | `src/test/c/pending/` | Escenarios musicales pendientes | No se ejecutan en la suite |
 
@@ -138,4 +138,4 @@ y el hash completo del commit de `development` después de integrar la revisión
 
 ## Primera exportacion MIDI
 
-Un programa con dos sentencias, `key tonalidad = C major;` y `export scale of tonalidad as midi to "escala.mid" at 120 bpm;`, produce una escala MIDI de siete notas en octava 4. El tempo literal y el instrumento son opcionales; se usan 120 BPM y piano por defecto. La ruta no debe existir: el compilador devuelve error sin sobrescribirla. Por ahora no se admiten rutas con escapes ni expresiones calculadas de tempo en esta salida. Los demas programas se analizan pero no generan salida y producen una advertencia: el backend sigue incompleto.
+Un programa con dos sentencias, `key tonalidad = C major;` y `export scale of tonalidad as midi to "escala.mid" at 120 bpm;`, produce una escala MIDI de siete notas en octava 4. El tempo literal y el instrumento son opcionales; se usan 120 BPM y piano por defecto. La ruta no debe existir: el compilador devuelve error sin sobrescribirla. Por ahora no se admiten rutas con escapes ni expresiones calculadas de tempo en esta salida. Los programas cuya generacion todavia no esta implementada devuelven error y no producen salida. Para comprobar solo sintaxis y semantica, usar `src/main/bash/run.sh archivo.cad --check`; este modo no genera archivos.

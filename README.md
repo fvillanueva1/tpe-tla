@@ -9,7 +9,7 @@ y generará artefactos reproducibles.
 
 ## Estado del proyecto
 
-El proyecto se encuentra en **Stage II: Frontend**. Está implementado en C con
+El proyecto se encuentra iniciando **Stage III: Backend**. Está implementado en C con
 Flex y Bison: reconoce programas Cadence y construye su árbol de sintaxis
 abstracta (AST), con destructores para liberar los nodos y sus hijos.
 La especificación está disponible como [PDF de Stage I](<doc/Cadence%20-%20Stage%20I.pdf>);
@@ -144,3 +144,7 @@ Stage I y Stage II no incorpora un nuevo informe.
 Las entregas se integran en `development` mediante PRs revisados por otro
 integrante. La entrega a la cátedra debe identificar el grupo, los integrantes
 y el hash completo del commit de `development` después de integrar la revisión.
+
+## Avance de Stage III
+
+La primera pasada semántica valida nombres, redeclaraciones y alcances antes de invocar el generador. Su alcance y las validaciones pendientes se detallan en [análisis semántico](doc/stage-ii/semantica.md). La generación y el chequeo de tipos todavía no están implementados.

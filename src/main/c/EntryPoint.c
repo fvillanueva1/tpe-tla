@@ -1,4 +1,5 @@
 #include "backend/code-generation/Generator.h"
+#include "backend/semantic-analysis/Semantic.h"
 #include "frontend/Frontend.h"
 #include "frontend/lexical-analysis/FlexActions.h"
 #include "frontend/syntactic-analysis/BisonActions.h"
@@ -33,7 +34,8 @@ const int main(const int length, const char ** arguments) {
 	if (compilationStatus == SUCCEEDED) {
 		// ----------------------------------------------------------------------------------------
 		// Beginning of the Backend... ------------------------------------------------------------
-		executeGenerator(&compilerState);
+		compilationStatus = analyzeSemantics(program);
+		if (compilationStatus == SUCCEEDED) executeGenerator(&compilerState);
 		// ...end of the Backend. -----------------------------------------------------------------
 		// ----------------------------------------------------------------------------------------
 	}

@@ -8,6 +8,30 @@
 
 enum { TYPE_DEGREE = 11, TYPE_QUALITY, TYPE_MODE, TYPE_EMPTY_LIST, TYPE_CHORD_LIST, TYPE_DEGREE_LIST, TYPE_VECTOR = 20, TYPE_INVALID = -2 };
 
+static const char *typeName(int type) {
+    static const char *names[] = {
+        [TYPE_BOOLEAN] = "boolean", [TYPE_CHORD] = "chord", [TYPE_INTEGER] = "integer", [TYPE_INTERVAL] = "interval",
+        [TYPE_KEY] = "key", [TYPE_NOTE] = "note", [TYPE_PROGRESSION] = "progression", [TYPE_SCALE] = "scale",
+        [TYPE_STRING] = "string", [TYPE_VOICING] = "voicing", [TYPE_DURATION] = "duration"
+    };
+    static const char *vectors[] = {
+        [TYPE_BOOLEAN] = "boolean[]", [TYPE_CHORD] = "chord[]", [TYPE_INTEGER] = "integer[]", [TYPE_INTERVAL] = "interval[]",
+        [TYPE_KEY] = "key[]", [TYPE_NOTE] = "note[]", [TYPE_PROGRESSION] = "progression[]", [TYPE_SCALE] = "scale[]",
+        [TYPE_STRING] = "string[]", [TYPE_VOICING] = "voicing[]", [TYPE_DURATION] = "duration[]"
+    };
+    if (type >= 0 && type <= TYPE_DURATION) return names[type];
+    if (type >= TYPE_VECTOR && type <= TYPE_VECTOR + TYPE_DURATION) return vectors[type - TYPE_VECTOR];
+    switch (type) {
+    case TYPE_DEGREE: return "degree";
+    case TYPE_QUALITY: return "quality";
+    case TYPE_MODE: return "mode";
+    case TYPE_EMPTY_LIST: return "empty list";
+    case TYPE_CHORD_LIST: return "chord list";
+    case TYPE_DEGREE_LIST: return "degree list";
+    default: return "unknown";
+    }
+}
+
 typedef struct Symbol { const char *name; int type; struct Symbol *next; const Expression *literal, *currentLiteral; } Symbol;
 typedef struct Scope { Symbol *symbols; struct Scope *parent; Program *program; ProcedureDefinition *procedure; CompilationStatus *failure; const Expression *keyContext; bool hasKeyContext; Symbol *keyOwner; } Scope;
 
@@ -372,7 +396,8 @@ static int typeOf(Scope *scope, Expression *e) {
             }
             return TYPE_PROGRESSION;
         }
-        fprintf(stderr, "Semantic error: incompatible operand types.\n"); return -2;
+        const char *operator = e->type == ADDITION ? "+" : e->type == SUBTRACTION ? "-" : e->type == MULTIPLICATION ? "*" : "/";
+        fprintf(stderr, "Semantic error: operator %s does not accept %s and %s.\n", operator, typeName(a), typeName(b)); return TYPE_INVALID;
     }
     default: fprintf(stderr, "Semantic error: unsupported expression type.\n"); return TYPE_INVALID;
     }
@@ -383,7 +408,7 @@ static bool compatible(Scope *scope, Expression *e, int expected) {
     if (actual == TYPE_EMPTY_LIST && (expected >= TYPE_VECTOR || expected == TYPE_PROGRESSION)) return true;
     if (actual == TYPE_CHORD_LIST && (expected == TYPE_VECTOR + TYPE_CHORD || expected == TYPE_PROGRESSION)) return true;
     if (actual != expected) {
-        fprintf(stderr, "Semantic error: expression type does not match declaration or assignment.\n"); return false;
+        fprintf(stderr, "Semantic error: expected %s, got %s.\n", typeName(expected), typeName(actual)); return false;
     }
     return true;
 }

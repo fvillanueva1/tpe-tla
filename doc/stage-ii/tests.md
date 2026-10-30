@@ -112,3 +112,5 @@ Las pruebas cubren valores escalares asignados en linea recta y olvidados despue
 El contexto estricto se prueba con reasignacion a una tonalidad conocida, alias y asignaciones a una tonalidad distinta.
 
 Un alias tonal conserva su valor anterior cuando se reasigna la variable de origen; el chequeo estricto valida esa copia.
+
+Los rechazos de asignacion y operador verifican ademas los tipos incluidos en el diagnostico.

@@ -49,3 +49,5 @@ El analizador realiza y verifica progresiones literales de acordes por notas en 
 Los errores SATB identifican la regla y el acorde (numeracion desde uno).
 
 Para reconstruir valores compuestos usados en SATB se exige ademas que sus variables no reciban asignaciones en ningun bloque o procedimiento; esto evita reevaluar un acorde con valores distintos a los que tenia cuando se creo.
+
+Los errores de tipos informan el tipo esperado y el recibido, o el operador y los dos operandos incompatibles.

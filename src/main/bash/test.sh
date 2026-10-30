@@ -45,6 +45,8 @@ for test in $(ls src/test/c/reject/); do
 			fi ;;
 	esac
     case "$test" in
+        54-*) EXPECTED="operator + does not accept chord and integer" ;;
+        type-declaration.cad) EXPECTED="expected integer, got boolean" ;;
         56-*) EXPECTED="parallel fifths at chord 2" ;;
         57-*) EXPECTED="parallel octaves at chord 2" ;;
         *) EXPECTED="" ;;

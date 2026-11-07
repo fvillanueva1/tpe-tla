@@ -1,0 +1,2 @@
+define infinita(integer numero) -> integer { return infinita(numero + 1); }
+integer resultado = infinita(0);

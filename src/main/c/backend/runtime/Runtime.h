@@ -5,6 +5,9 @@
 #include "../../support/type/CompilationStatus.h"
 #include <stdbool.h>
 
+/** Maximum depth of nested procedure calls before a runtime error. */
+#define RUNTIME_MAX_CALL_DEPTH 1000
+
 /**
  * True when every construct of the program can be executed by the runtime.
  * It is checked before executing anything, so an unsupported program never

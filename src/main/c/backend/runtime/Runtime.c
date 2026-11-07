@@ -9,17 +9,29 @@
 /**
  * A tree-walking interpreter over the AST. The semantic analysis already
  * guarantees names, types, arities and returns, so the runtime only checks
- * values: division by zero, overflow and indices.
+ * values: division by zero, overflow, indices and call depth.
  */
 
 typedef enum {
 	FLOW_NORMAL,
+	FLOW_RETURN,
 	FLOW_ERROR
 } Flow;
 
+typedef struct Procedure Procedure;
+
+struct Procedure {
+	ProcedureDefinition * definition;
+	Procedure * next;
+};
+
 typedef struct {
 	RuntimeScope global;
+	Procedure * procedures;
 	CompilationStatus status;
+	unsigned int depth;
+	Value returned;
+	bool hasReturned;
 } Runtime;
 
 /* SUPPORTED CONSTRUCTS */
@@ -49,6 +61,8 @@ static bool _supportsExpression(const Expression * expression) {
 			return true;
 		case LIST_LITERAL:
 			return _supportsExpressions(expression->elements);
+		case PROCEDURE_CALL:
+			return _supportsExpressions(expression->call->arguments);
 		case NEGATION:
 			return _supportsExpression(expression->operand);
 		case ADDITION:
@@ -89,6 +103,18 @@ static bool _supportsStatement(const Statement * statement) {
 			return _supportsExpression(statement->forStatement->from)
 				&& _supportsExpression(statement->forStatement->to)
 				&& _supportsStatements(statement->forStatement->body);
+		case PROCEDURE_CALL_STATEMENT:
+			return _supportsExpressions(statement->procedureCall->arguments);
+		case RETURN_STATEMENT:
+			return _supportsExpression(statement->returnStatement->value);
+		case PROCEDURE_DEFINITION: {
+			const ProcedureDefinition * procedure = statement->procedureDefinition;
+			if (procedure->hasReturnType && !_supportedType(procedure->returnType)) return false;
+			for (const ParameterList * item = procedure->parameters; item != NULL; item = item->next) {
+				if (!_supportedType(item->parameter->dataType)) return false;
+			}
+			return _supportsStatements(procedure->body);
+		}
 		default:
 			return false;
 	}
@@ -128,6 +154,7 @@ static bool _outOfMemory(Runtime * runtime) {
 /* EXPRESSIONS */
 
 static bool _evaluate(Runtime * runtime, RuntimeScope * scope, const Expression * expression, Value * result);
+static bool _call(Runtime * runtime, RuntimeScope * scope, const ProcedureCall * call, Value * result);
 static Flow _executeStatements(Runtime * runtime, RuntimeScope * scope, const StatementList * list);
 
 /** Appends a string fragment, decoding the escapes kept by the lexer. */
@@ -277,6 +304,8 @@ static bool _evaluate(Runtime * runtime, RuntimeScope * scope, const Expression 
 			return _evaluateList(runtime, scope, expression->elements, result);
 		case INDEX_ACCESS:
 			return _evaluateIndex(runtime, scope, expression, result);
+		case PROCEDURE_CALL:
+			return _call(runtime, scope, expression->call, result);
 		case NEGATION:
 			result->type = TYPE_BOOLEAN;
 			if (!_evaluateBoolean(runtime, scope, expression->operand, &result->boolean)) return false;
@@ -326,6 +355,57 @@ static bool _evaluate(Runtime * runtime, RuntimeScope * scope, const Expression 
 		default:
 			return _error(runtime, "expression is not supported yet");
 	}
+}
+
+/* PROCEDURES */
+
+static ProcedureDefinition * _findProcedure(Runtime * runtime, const char * name) {
+	for (Procedure * procedure = runtime->procedures; procedure != NULL; procedure = procedure->next) {
+		if (strcmp(procedure->definition->name, name) == 0) return procedure->definition;
+	}
+	return NULL;
+}
+
+/**
+ * Arguments are evaluated in the caller's scope and copied (also vectors).
+ * The body runs in a new scope whose parent is the global one: the semantic
+ * analysis guarantees it only reads globals declared before the definition.
+ * "result" is NULL when the call is a statement.
+ */
+static bool _call(Runtime * runtime, RuntimeScope * scope, const ProcedureCall * call, Value * result) {
+	ProcedureDefinition * procedure = _findProcedure(runtime, call->name);
+	if (procedure == NULL) return _error(runtime, "procedure '%s' is not defined", call->name);
+	if (runtime->depth >= RUNTIME_MAX_CALL_DEPTH) {
+		return _error(runtime, "procedure '%s' exceeds the maximum call depth of %d", call->name, RUNTIME_MAX_CALL_DEPTH);
+	}
+	RuntimeScope local = {.parent = &runtime->global};
+	const ParameterList * parameter = procedure->parameters;
+	const ExpressionList * argument = call->arguments;
+	bool ok = true;
+	for (; ok && parameter != NULL && argument != NULL; parameter = parameter->next, argument = argument->next) {
+		Value value;
+		ok = _evaluate(runtime, scope, argument->expression, &value);
+		if (!ok) break;
+		if (parameter->parameter->isVector) value.type = parameter->parameter->dataType;
+		if (!bindValue(&local, parameter->parameter->name, &value)) {
+			destroyValue(&value);
+			ok = _outOfMemory(runtime);
+		}
+	}
+	if (ok) {
+		++runtime->depth;
+		Flow flow = _executeStatements(runtime, &local, procedure->body);
+		--runtime->depth;
+		ok = flow != FLOW_ERROR;
+	}
+	if (ok && runtime->hasReturned) {
+		runtime->hasReturned = false;
+		if (procedure->returnsVector) runtime->returned.type = procedure->returnType;
+		if (result != NULL) *result = runtime->returned;
+		else destroyValue(&runtime->returned);
+	}
+	clearScope(&local);
+	return ok;
 }
 
 /* STATEMENTS */
@@ -396,6 +476,26 @@ static Flow _execute(Runtime * runtime, RuntimeScope * scope, const Statement * 
 			}
 		case FOR_STATEMENT:
 			return _executeFor(runtime, scope, statement->forStatement);
+		case PROCEDURE_DEFINITION: {
+			/* Registered when reached: a procedure is only callable after its definition. */
+			Procedure * procedure = malloc(sizeof(Procedure));
+			if (procedure == NULL) {
+				_outOfMemory(runtime);
+				return FLOW_ERROR;
+			}
+			procedure->definition = statement->procedureDefinition;
+			procedure->next = runtime->procedures;
+			runtime->procedures = procedure;
+			return FLOW_NORMAL;
+		}
+		case PROCEDURE_CALL_STATEMENT:
+			return _call(runtime, scope, statement->procedureCall, NULL) ? FLOW_NORMAL : FLOW_ERROR;
+		case RETURN_STATEMENT:
+			if (statement->returnStatement->value != NULL) {
+				if (!_evaluate(runtime, scope, statement->returnStatement->value, &runtime->returned)) return FLOW_ERROR;
+				runtime->hasReturned = true;
+			}
+			return FLOW_RETURN;
 		case LOG_STATEMENT: {
 			char * text;
 			if (!_interpolate(runtime, scope, statement->log->message, &text)) return FLOW_ERROR;
@@ -422,7 +522,13 @@ static Flow _executeStatements(Runtime * runtime, RuntimeScope * scope, const St
 CompilationStatus executeProgram(Program * program) {
 	Runtime runtime = {.status = SUCCEEDED};
 	Flow flow = _executeStatements(&runtime, &runtime.global, program->statements);
+	if (runtime.hasReturned) destroyValue(&runtime.returned);
 	clearScope(&runtime.global);
+	while (runtime.procedures != NULL) {
+		Procedure * procedure = runtime.procedures;
+		runtime.procedures = procedure->next;
+		free(procedure);
+	}
 	fflush(stdout);
 	return flow == FLOW_ERROR ? runtime.status : SUCCEEDED;
 }

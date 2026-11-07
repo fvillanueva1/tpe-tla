@@ -1,0 +1,5 @@
+integer contador = 0;
+define incrementar() { contador = contador + 1; return; }
+incrementar();
+incrementar();
+log "{contador}";

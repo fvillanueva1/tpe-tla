@@ -15,8 +15,8 @@ runtime de `src/main/c/backend/runtime/`.
 - `RuntimeScope`: lista de variables con puntero al alcance padre. La búsqueda
   va del alcance más interno al global, con las mismas reglas de ocultamiento
   que la semántica (`doc/stage-ii/semantica.md`).
-  Cada bloque, cada iteración de `while` y `for` crean un alcance y lo liberan
-  al salir, también ante un error.
+  Cada bloque, cada iteración de `while` y `for` y cada llamada crean un alcance
+  y lo liberan al salir, también ante un error o un `return`.
 - `Runtime.h` / `Runtime.c`: el evaluador. La semántica ya garantiza nombres,
   tipos, aridades y retornos; el runtime solo comprueba valores.
 
@@ -24,7 +24,7 @@ runtime de `src/main/c/backend/runtime/`.
 
 Enteros, booleanos, strings, duraciones y sus vectores, declaraciones,
 asignaciones, aritmética, lógica, comparaciones, índices, `if` / `else if` /
-`else`, `while`, `for` y `log`.
+`else`, `while`, `for`, procedimientos y `log`.
 
 Antes de ejecutar, `runtimeSupports` recorre todo el programa. Si aparece una
 construcción que el runtime todavía no ejecuta (notas, tonalidades, acordes,
@@ -44,6 +44,11 @@ musical esté disponible.
   evalúan una vez. Si `desde > hasta` no hay iteraciones. Cada iteración liga
   la variable al valor del contador; asignarla dentro del cuerpo no cambia la
   cantidad de iteraciones.
+- **Procedimientos:** se registran al llegar a su `define`. Los argumentos se
+  evalúan en el alcance del llamador y se copian, vectores incluidos (paso por
+  valor). El cuerpo corre en un alcance cuyo padre es el global, así que ve y
+  puede modificar las globales. La profundidad máxima de llamadas anidadas es
+  `RUNTIME_MAX_CALL_DEPTH` (1000).
 - **`log`:** imprime el mensaje en la salida estándar seguido de un salto de
   línea. Decodifica los escapes (`\"`, `\\`, `\{`, `\}`, `\n`, `\t`) e
   interpola cada `{variable}` con su valor actual. Los vectores se muestran como
@@ -62,11 +67,11 @@ Se detectan:
 | División por cero | `division by zero` |
 | Desborde de enteros (`+ - * /`, incluido `-2147483648 / -1`) | `integer overflow in A op B` |
 | Índice fuera de rango (base cero) | `index N is out of range for a vector of length L` |
+| Recursión demasiado profunda | `procedure 'p' exceeds the maximum call depth of 1000` |
 | Memoria insuficiente | `out of memory` (código 2) |
 
 ## Pendiente
 
-- Procedimientos y límite de recursión.
 - Expresiones musicales, `voice`, `check` y `strict` con valores calculados,
   sobre `backend/music/Music.h`.
 - `export` general: el runtime acumulará los eventos y los escribirá recién al

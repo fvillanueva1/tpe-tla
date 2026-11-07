@@ -28,6 +28,7 @@ El frontend construye el AST y el analizador semantico verifica nombres, alcance
 - [Decisiones de diseño de Stage II](doc/stage-ii/decisiones.md)
 - [Tokens y nodos del AST](doc/stage-ii/tokens.md)
 - [Cobertura y clasificación de los tests](doc/stage-ii/tests.md)
+- [Runtime: ejecución del programa y errores](doc/stage-iii/runtime.md)
 - [Consignas y material de la cátedra](doc/consignas/)
 
 La carpeta `doc/` contiene los entregables y, en `doc/consignas/`, el material

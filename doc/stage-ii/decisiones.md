@@ -195,4 +195,4 @@ En Stage III un procedimiento solo puede llamarse despues de su `define` o desde
 
 En Stage III un `voicing` tambien puede declararse explicitamente como lista de acordes de cuatro notas, en orden soprano, contralto, tenor y bajo: `voicing voces = [{C5, G4, E4, C3}, {B4, G4, D4, G2}];`. El runtime lo usa sin redistribuirlo, lo que permite probar cruce de voces y tesitura (casos 58 y 59).
 
-En Stage III el runtime fija la semántica de ejecución (detalle en `doc/stage-iii/runtime.md`): `and` / `or` en cortocircuito y división entera truncada hacia cero. Un error de ejecución termina con `Runtime error: ...` y código 1.
+En Stage III el runtime fija la semántica de ejecución (detalle en `doc/stage-iii/runtime.md`): `and` / `or` en cortocircuito, división entera truncada hacia cero y `log` con salto de línea final. Un error de ejecución termina con `Runtime error: ...` y código 1.

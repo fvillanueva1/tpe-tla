@@ -1,0 +1,4 @@
+integer[] ceros = [0];
+boolean conjuncion = false and 1 / ceros[0] == 0;
+boolean disyuncion = true or 1 / ceros[0] == 0;
+log "{conjuncion} {disyuncion}";

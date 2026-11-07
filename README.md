@@ -20,7 +20,7 @@ escalas, acordes, progresiones, vectores e índices, propiedades, operadores,
 transformaciones, control de flujo, procedimientos, `voice ... as SATB`,
 `check`, `export` a MIDI/sheet y `log` con interpolación por nombre.
 
-El frontend construye el AST y el analizador semantico verifica nombres, alcances y tipos, ademas de algunos valores musicales conocidos. El runtime ejecuta enteros, booleanos, duraciones y sus vectores, con errores de ejecucion (division por cero, desborde, indices); ver [runtime](doc/stage-iii/runtime.md). La evaluacion musical general y la realizacion SATB en ejecucion siguen pendientes. La generacion MIDI soporta por ahora unicamente una tonalidad literal seguida de la exportacion de su escala, directamente o mediante una declaracion de escala; las demas salidas siguen pendientes. El detalle y las limitaciones estan en [analisis semantico](doc/stage-ii/semantica.md).
+El frontend construye el AST y el analizador semantico verifica nombres, alcances y tipos, ademas de algunos valores musicales conocidos. El runtime ejecuta enteros, booleanos, strings, duraciones y sus vectores y `log`, con errores de ejecucion (division por cero, desborde, indices); ver [runtime](doc/stage-iii/runtime.md). La evaluacion musical general y la realizacion SATB en ejecucion siguen pendientes. La generacion MIDI soporta por ahora unicamente una tonalidad literal seguida de la exportacion de su escala, directamente o mediante una declaracion de escala; las demas salidas siguen pendientes. El detalle y las limitaciones estan en [analisis semantico](doc/stage-ii/semantica.md).
 
 ## Documentación
 

@@ -1,0 +1,3 @@
+integer resultado = 1 + 2 * 3 - 4 / 2;
+integer truncado = (0 - 7) / 2;
+log "{resultado} {truncado}";

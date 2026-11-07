@@ -44,6 +44,7 @@ static bool _supportsExpression(const Expression * expression) {
 		case BOOLEAN_LITERAL:
 		case DURATION_LITERAL:
 		case INTEGER_LITERAL:
+		case STRING_LITERAL:
 		case VARIABLE:
 			return true;
 		case LIST_LITERAL:
@@ -75,6 +76,8 @@ static bool _supportsStatement(const Statement * statement) {
 			return _supportedType(statement->dataType) && _supportsExpression(statement->expression);
 		case ASSIGNMENT:
 			return _supportsExpression(statement->expression);
+		case LOG_STATEMENT:
+			return true;
 		default:
 			return false;
 	}
@@ -115,6 +118,45 @@ static bool _outOfMemory(Runtime * runtime) {
 
 static bool _evaluate(Runtime * runtime, RuntimeScope * scope, const Expression * expression, Value * result);
 static Flow _executeStatements(Runtime * runtime, RuntimeScope * scope, const StatementList * list);
+
+/** Appends a string fragment, decoding the escapes kept by the lexer. */
+static bool _appendDecoded(TextBuffer * buffer, const char * text) {
+	for (const char * p = text; *p != '\0'; ++p) {
+		char character = *p;
+		if (character == '\\' && p[1] != '\0') {
+			++p;
+			character = *p == 'n' ? '\n' : *p == 't' ? '\t' : *p;
+		}
+		if (!appendText(buffer, &character, 1)) return false;
+	}
+	return true;
+}
+
+/** Builds the text of a string or "log" message; "text" is owned by the caller. */
+static bool _interpolate(Runtime * runtime, RuntimeScope * scope, const StringPart * part, char ** text) {
+	TextBuffer buffer = {0};
+	if (!appendText(&buffer, "", 0)) return _outOfMemory(runtime);
+	for (; part != NULL; part = part->next) {
+		bool ok;
+		if (part->type == STRING_PART_TEXT) {
+			ok = _appendDecoded(&buffer, part->text);
+		}
+		else {
+			Binding * binding = findBinding(scope, part->text);
+			if (binding == NULL) {
+				free(buffer.text);
+				return _error(runtime, "variable '%s' has no value", part->text);
+			}
+			ok = appendValue(&buffer, &binding->value);
+		}
+		if (!ok) {
+			free(buffer.text);
+			return _outOfMemory(runtime);
+		}
+	}
+	*text = buffer.text;
+	return true;
+}
 
 static bool _evaluateInteger(Runtime * runtime, RuntimeScope * scope, const Expression * expression, int * result) {
 	Value value;
@@ -211,6 +253,9 @@ static bool _evaluate(Runtime * runtime, RuntimeScope * scope, const Expression 
 			result->type = TYPE_DURATION;
 			if (!durationFromLexeme(expression->text, &result->duration)) return _error(runtime, "unknown duration '%s'", expression->text);
 			return true;
+		case STRING_LITERAL:
+			result->type = TYPE_STRING;
+			return _interpolate(runtime, scope, expression->stringParts, &result->string);
 		case VARIABLE: {
 			Binding * binding = findBinding(scope, expression->text);
 			if (binding == NULL) return _error(runtime, "variable '%s' has no value", expression->text);
@@ -301,6 +346,15 @@ static Flow _execute(Runtime * runtime, RuntimeScope * scope, const Statement * 
 			if (binding->value.isVector) value.type = binding->value.type;
 			destroyValue(&binding->value);
 			binding->value = value;
+			return FLOW_NORMAL;
+		}
+		case LOG_STATEMENT: {
+			char * text;
+			if (!_interpolate(runtime, scope, statement->log->message, &text)) return FLOW_ERROR;
+			fputs(text, stdout);
+			fputc('\n', stdout);
+			fflush(stdout);
+			free(text);
 			return FLOW_NORMAL;
 		}
 		default:

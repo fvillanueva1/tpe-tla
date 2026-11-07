@@ -1,0 +1,4 @@
+boolean menor = 1 < 2;
+boolean distinto = 3 != 3;
+boolean combinado = not 1 == 2 and 2 >= 2 or false;
+log "{menor} {distinto} {combinado}";

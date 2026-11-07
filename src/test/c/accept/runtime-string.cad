@@ -1,0 +1,5 @@
+integer grado = 1;
+string mensaje = "grado {grado}";
+grado = 2;
+duration[] ritmos = [eighth, quarter];
+log "{mensaje}, ahora {grado}, {ritmos}";

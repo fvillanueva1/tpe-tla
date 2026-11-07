@@ -22,8 +22,8 @@ runtime de `src/main/c/backend/runtime/`.
 
 ## Construcciones que ejecuta
 
-Enteros, booleanos, duraciones y sus vectores, declaraciones, asignaciones,
-aritmética, lógica, comparaciones e índices.
+Enteros, booleanos, strings, duraciones y sus vectores, declaraciones,
+asignaciones, aritmética, lógica, comparaciones, índices y `log`.
 
 Antes de ejecutar, `runtimeSupports` recorre todo el programa. Si aparece una
 construcción que el runtime todavía no ejecuta (notas, tonalidades, acordes,
@@ -39,11 +39,17 @@ musical esté disponible.
 - **Lógica:** `and` y `or` evalúan en cortocircuito: el operando derecho solo
   se evalúa si decide el resultado.
 - **Vectores:** índices de base cero. Una asignación reemplaza el vector entero.
+- **`log`:** imprime el mensaje en la salida estándar seguido de un salto de
+  línea. Decodifica los escapes (`\"`, `\\`, `\{`, `\}`, `\n`, `\t`) e
+  interpola cada `{variable}` con su valor actual. Los vectores se muestran como
+  `[1, 2]`, los booleanos como `true` / `false` y las duraciones por su nombre.
+- **Strings:** un literal string se interpola al evaluarse; cambiar después
+  una variable interpolada no cambia el string ya guardado.
 
 ## Errores de ejecución
 
 Un error imprime `Runtime error: ...` en la salida de error y termina con
-código 1.
+código 1. Lo que `log` imprimió antes del error ya está en la salida estándar.
 Se detectan:
 
 | Error | Mensaje |
@@ -55,7 +61,6 @@ Se detectan:
 
 ## Pendiente
 
-- Strings y `log`.
 - `if`, `while` y `for`.
 - Procedimientos y límite de recursión.
 - Expresiones musicales, `voice`, `check` y `strict` con valores calculados,

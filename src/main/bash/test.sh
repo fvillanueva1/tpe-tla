@@ -114,6 +114,14 @@ if [[ "$UNSUPPORTED_RESULT" != 1 || "$UNSUPPORTED_OUTPUT" != *"Code generation i
     STATUS=1
 fi
 
+echo "Checking log write failure..."
+LOG_FAILURE=$(cd "$UNSUPPORTED_WORK" && LOGGING_LEVEL=ERROR "$ROOT_PATH/.build/Flex-Bison-Compiler" < "$ROOT_PATH/src/test/c/accept/log-text.cad" 2>&1 >/dev/full)
+LOG_FAILURE_RESULT=$?
+if [[ "$LOG_FAILURE_RESULT" != 1 || "$LOG_FAILURE" != *"Runtime error: cannot write the log output."* ]]; then
+    echo -e "    log write failure, ${RED}not reported${OFF}"
+    STATUS=1
+fi
+
 echo "Checking scale MIDI integration..."
 SCALE_WORK="$TEST_DIRECTORY/scale-integration"
 mkdir "$SCALE_WORK"

@@ -533,10 +533,12 @@ static Flow _execute(Runtime * runtime, RuntimeScope * scope, const Statement * 
 		case LOG_STATEMENT: {
 			char * text;
 			if (!_interpolate(runtime, scope, statement->log->message, &text)) return FLOW_ERROR;
-			fputs(text, stdout);
-			fputc('\n', stdout);
-			fflush(stdout);
+			bool written = fputs(text, stdout) != EOF && fputc('\n', stdout) != EOF && fflush(stdout) == 0;
 			free(text);
+			if (!written) {
+				_error(runtime, "cannot write the log output");
+				return FLOW_ERROR;
+			}
 			return FLOW_NORMAL;
 		}
 		default:

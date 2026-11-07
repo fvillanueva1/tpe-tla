@@ -73,6 +73,7 @@ Se detectan:
 | Índice fuera de rango (base cero) | `index N is out of range for a vector of length L` |
 | Recursión demasiado profunda | `procedure 'p' exceeds the maximum call depth of 1000` |
 | Anidamiento que agota la pila de C (bloques y expresiones dentro de muchas llamadas) | `the program nests too deeply for the available stack` |
+| No se puede escribir la salida de `log` | `cannot write the log output` |
 | Memoria insuficiente | `out of memory` (código 2) |
 
 ## Pendiente

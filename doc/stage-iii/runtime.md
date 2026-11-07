@@ -48,7 +48,11 @@ musical esté disponible.
   evalúan en el alcance del llamador y se copian, vectores incluidos (paso por
   valor). El cuerpo corre en un alcance cuyo padre es el global, así que ve y
   puede modificar las globales. La profundidad máxima de llamadas anidadas es
-  `RUNTIME_MAX_CALL_DEPTH` (1000).
+  `RUNTIME_MAX_CALL_DEPTH` (1000). Como el intérprete es recursivo, también mide
+  la pila de C usada: si supera la mitad del límite del sistema (`RLIMIT_STACK`,
+  como máximo 8 MB), corta con un error de ejecución en lugar de terminar con
+  un desborde de pila. Así un programa con menos de 1000 llamadas pero muchos
+  bloques anidados en cada una falla con un diagnóstico.
 - **`log`:** imprime el mensaje en la salida estándar seguido de un salto de
   línea. Decodifica los escapes (`\"`, `\\`, `\{`, `\}`, `\n`, `\t`) e
   interpola cada `{variable}` con su valor actual. Los vectores se muestran como
@@ -68,6 +72,7 @@ Se detectan:
 | Desborde de enteros (`+ - * /`, incluido `-2147483648 / -1`) | `integer overflow in A op B` |
 | Índice fuera de rango (base cero) | `index N is out of range for a vector of length L` |
 | Recursión demasiado profunda | `procedure 'p' exceeds the maximum call depth of 1000` |
+| Anidamiento que agota la pila de C (bloques y expresiones dentro de muchas llamadas) | `the program nests too deeply for the available stack` |
 | Memoria insuficiente | `out of memory` (código 2) |
 
 ## Pendiente

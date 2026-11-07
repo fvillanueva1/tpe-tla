@@ -5,11 +5,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/resource.h>
 
 /**
  * A tree-walking interpreter over the AST. The semantic analysis already
  * guarantees names, types, arities and returns, so the runtime only checks
- * values: division by zero, overflow, indices and call depth.
+ * values: division by zero, overflow, indices and call depth. It also stops
+ * a program that nests too deeply for the native stack, instead of crashing.
  */
 
 typedef enum {
@@ -32,6 +34,8 @@ typedef struct {
 	unsigned int depth;
 	Value returned;
 	bool hasReturned;
+	const char * stackBase;
+	size_t stackBudget;
 } Runtime;
 
 /* SUPPORTED CONSTRUCTS */
@@ -149,6 +153,31 @@ static bool _outOfMemory(Runtime * runtime) {
 	_error(runtime, "out of memory");
 	runtime->status = OUT_OF_MEMORY;
 	return false;
+}
+
+/* NATIVE STACK */
+
+/**
+ * The interpreter recurses once per nested call, block and expression, so a
+ * program within the call-depth limit could still exhaust the native stack.
+ * Half of the stack limit is available to the program; the rest is a margin
+ * for the C library and the sanitizer.
+ */
+static void _measureStack(Runtime * runtime) {
+	struct rlimit limit;
+	size_t size = 8u * 1024u * 1024u;
+	if (getrlimit(RLIMIT_STACK, &limit) == 0 && limit.rlim_cur != RLIM_INFINITY && limit.rlim_cur < size) {
+		size = (size_t) limit.rlim_cur;
+	}
+	runtime->stackBase = __builtin_frame_address(0);
+	runtime->stackBudget = size / 2;
+}
+
+static bool _checkStack(Runtime * runtime) {
+	const char * here = __builtin_frame_address(0);
+	size_t used = runtime->stackBase > here ? (size_t) (runtime->stackBase - here) : (size_t) (here - runtime->stackBase);
+	if (used > runtime->stackBudget) return _error(runtime, "the program nests too deeply for the available stack");
+	return true;
 }
 
 /* EXPRESSIONS */
@@ -279,6 +308,7 @@ static bool _evaluateIndex(Runtime * runtime, RuntimeScope * scope, const Expres
 
 static bool _evaluate(Runtime * runtime, RuntimeScope * scope, const Expression * expression, Value * result) {
 	*result = (Value) {.type = TYPE_INTEGER};
+	if (!_checkStack(runtime)) return false;
 	switch (expression->type) {
 		case INTEGER_LITERAL:
 			result->integer = expression->integer;
@@ -440,6 +470,7 @@ static Flow _executeFor(Runtime * runtime, RuntimeScope * scope, const For * loo
 }
 
 static Flow _execute(Runtime * runtime, RuntimeScope * scope, const Statement * statement) {
+	if (!_checkStack(runtime)) return FLOW_ERROR;
 	switch (statement->type) {
 		case DECLARATION: {
 			Value value;
@@ -524,6 +555,7 @@ static Flow _executeStatements(Runtime * runtime, RuntimeScope * scope, const St
 
 CompilationStatus executeProgram(Program * program) {
 	Runtime runtime = {.status = SUCCEEDED};
+	_measureStack(&runtime);
 	Flow flow = _executeStatements(&runtime, &runtime.global, program->statements);
 	if (runtime.hasReturned) destroyValue(&runtime.returned);
 	clearScope(&runtime.global);

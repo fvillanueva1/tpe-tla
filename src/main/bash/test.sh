@@ -87,6 +87,7 @@ for test in $(ls src/test/c/reject/); do
         runtime-index-range.cad) EXPECTED="index 3 is out of range for a vector of length 1" ;;
         runtime-negative-index.cad) EXPECTED="index -1 is out of range for a vector of length 1" ;;
         runtime-call-depth.cad) EXPECTED="exceeds the maximum call depth of 1000" ;;
+        runtime-stack-depth.cad) EXPECTED="the program nests too deeply for the available stack" ;;
         *) EXPECTED="" ;;
     esac
     if [[ -n "$EXPECTED" && "$OUTPUT" != *"$EXPECTED"* ]]; then

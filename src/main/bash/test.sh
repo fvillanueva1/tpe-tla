@@ -10,7 +10,7 @@ RED='\033[0;31m'
 OFF='\033[0m'
 STATUS=0
 
-echo "Semantic analysis should accept..."
+echo "Compiler should accept (and run, when an expected output exists)..."
 echo ""
 
 ROOT_PATH="$PWD"
@@ -19,8 +19,24 @@ trap 'rm -rf "$TEST_DIRECTORY"' EXIT
 for test in $(ls src/test/c/accept/); do
     TEST_WORK="$TEST_DIRECTORY/$test"
     mkdir "$TEST_WORK"
-    (cd "$TEST_WORK" && "$ROOT_PATH/.build/Flex-Bison-Compiler" --check < "$ROOT_PATH/src/test/c/accept/$test") >/dev/null 2>&1
-	RESULT="$?"
+    EXPECTED_OUTPUT="$ROOT_PATH/src/test/c/output/${test%.cad}.out"
+    if [ -f "$EXPECTED_OUTPUT" ]; then
+        (cd "$TEST_WORK" && LOGGING_LEVEL=ERROR "$ROOT_PATH/.build/Flex-Bison-Compiler" < "$ROOT_PATH/src/test/c/accept/$test") > "$TEST_DIRECTORY/$test.out" 2>/dev/null
+        RESULT="$?"
+        if [ "$RESULT" == "0" ] && ! cmp -s "$TEST_DIRECTORY/$test.out" "$EXPECTED_OUTPUT"; then
+            echo -e "    $test, ${RED}but its output differs${OFF}"
+            STATUS=1
+            continue
+        fi
+        if [ -n "$(ls -A "$TEST_WORK")" ]; then
+            echo -e "    $test, ${RED}but it writes unexpected files${OFF}"
+            STATUS=1
+            continue
+        fi
+    else
+        (cd "$TEST_WORK" && "$ROOT_PATH/.build/Flex-Bison-Compiler" --check < "$ROOT_PATH/src/test/c/accept/$test") >/dev/null 2>&1
+        RESULT="$?"
+    fi
 	if [ "$RESULT" == "0" ]; then
 		echo -e "    $test, ${GREEN}and it does${OFF} (status $RESULT)"
 	else
@@ -45,12 +61,23 @@ for test in $(ls src/test/c/reject/); do
 				STATUS=1
 				continue
 			fi ;;
+		runtime-*)
+			if [[ "$OUTPUT" != *"Runtime error:"* || "$OUTPUT" == *"Semantic error:"* ]]; then
+				echo -e "    $test, ${RED}missing runtime diagnostic${OFF}"
+				STATUS=1
+				continue
+			fi ;;
 	esac
     case "$test" in
         54-*) EXPECTED="operator + does not accept chord and integer" ;;
         type-declaration.cad) EXPECTED="expected integer, got boolean" ;;
         56-*) EXPECTED="parallel fifths at chord 2" ;;
         57-*) EXPECTED="parallel octaves at chord 2" ;;
+        runtime-division-by-zero.cad) EXPECTED="Runtime error: division by zero." ;;
+        runtime-overflow.cad) EXPECTED="integer overflow in 2147483647 + 1" ;;
+        runtime-division-overflow.cad) EXPECTED="integer overflow in -2147483648 / -1" ;;
+        runtime-index-range.cad) EXPECTED="index 3 is out of range for a vector of length 1" ;;
+        runtime-negative-index.cad) EXPECTED="index -1 is out of range for a vector of length 1" ;;
         *) EXPECTED="" ;;
     esac
     if [[ -n "$EXPECTED" && "$OUTPUT" != *"$EXPECTED"* ]]; then

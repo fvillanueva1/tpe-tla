@@ -1,0 +1,326 @@
+#include "Runtime.h"
+#include "Value.h"
+#include <limits.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+/**
+ * A tree-walking interpreter over the AST. The semantic analysis already
+ * guarantees names, types, arities and returns, so the runtime only checks
+ * values: division by zero, overflow and indices.
+ */
+
+typedef enum {
+	FLOW_NORMAL,
+	FLOW_ERROR
+} Flow;
+
+typedef struct {
+	RuntimeScope global;
+	CompilationStatus status;
+} Runtime;
+
+/* SUPPORTED CONSTRUCTS */
+
+static bool _supportedType(DataType type) {
+	return type == TYPE_INTEGER || type == TYPE_BOOLEAN || type == TYPE_STRING || type == TYPE_DURATION;
+}
+
+static bool _supportsExpression(const Expression * expression);
+static bool _supportsStatements(const StatementList * list);
+
+static bool _supportsExpressions(const ExpressionList * list) {
+	for (; list != NULL; list = list->next) {
+		if (!_supportsExpression(list->expression)) return false;
+	}
+	return true;
+}
+
+static bool _supportsExpression(const Expression * expression) {
+	if (expression == NULL) return true;
+	switch (expression->type) {
+		case BOOLEAN_LITERAL:
+		case DURATION_LITERAL:
+		case INTEGER_LITERAL:
+		case VARIABLE:
+			return true;
+		case LIST_LITERAL:
+			return _supportsExpressions(expression->elements);
+		case NEGATION:
+			return _supportsExpression(expression->operand);
+		case ADDITION:
+		case CONJUNCTION:
+		case DISJUNCTION:
+		case DIVISION:
+		case EQUALITY:
+		case GREATER_THAN:
+		case GREATER_THAN_OR_EQUAL:
+		case INDEX_ACCESS:
+		case INEQUALITY:
+		case LESS_THAN:
+		case LESS_THAN_OR_EQUAL:
+		case MULTIPLICATION:
+		case SUBTRACTION:
+			return _supportsExpression(expression->leftExpression) && _supportsExpression(expression->rightExpression);
+		default:
+			return false;
+	}
+}
+
+static bool _supportsStatement(const Statement * statement) {
+	switch (statement->type) {
+		case DECLARATION:
+			return _supportedType(statement->dataType) && _supportsExpression(statement->expression);
+		case ASSIGNMENT:
+			return _supportsExpression(statement->expression);
+		default:
+			return false;
+	}
+}
+
+static bool _supportsStatements(const StatementList * list) {
+	for (; list != NULL; list = list->next) {
+		if (!_supportsStatement(list->statement)) return false;
+	}
+	return true;
+}
+
+bool runtimeSupports(const Program * program) {
+	return _supportsStatements(program->statements);
+}
+
+/* ERRORS */
+
+static bool _error(Runtime * runtime, const char * format, ...) {
+	va_list arguments;
+	va_start(arguments, format);
+	fflush(stdout);
+	fputs("Runtime error: ", stderr);
+	vfprintf(stderr, format, arguments);
+	fputs(".\n", stderr);
+	va_end(arguments);
+	runtime->status = FAILED;
+	return false;
+}
+
+static bool _outOfMemory(Runtime * runtime) {
+	_error(runtime, "out of memory");
+	runtime->status = OUT_OF_MEMORY;
+	return false;
+}
+
+/* EXPRESSIONS */
+
+static bool _evaluate(Runtime * runtime, RuntimeScope * scope, const Expression * expression, Value * result);
+static Flow _executeStatements(Runtime * runtime, RuntimeScope * scope, const StatementList * list);
+
+static bool _evaluateInteger(Runtime * runtime, RuntimeScope * scope, const Expression * expression, int * result) {
+	Value value;
+	if (!_evaluate(runtime, scope, expression, &value)) return false;
+	*result = value.integer;
+	return true;
+}
+
+static bool _evaluateBoolean(Runtime * runtime, RuntimeScope * scope, const Expression * expression, bool * result) {
+	Value value;
+	if (!_evaluate(runtime, scope, expression, &value)) return false;
+	*result = value.boolean;
+	return true;
+}
+
+static bool _arithmetic(Runtime * runtime, ExpressionType type, int left, int right, int * result) {
+	bool overflow;
+	const char * operator;
+	switch (type) {
+		case ADDITION:
+			overflow = __builtin_add_overflow(left, right, result);
+			operator = "+";
+			break;
+		case SUBTRACTION:
+			overflow = __builtin_sub_overflow(left, right, result);
+			operator = "-";
+			break;
+		case MULTIPLICATION:
+			overflow = __builtin_mul_overflow(left, right, result);
+			operator = "*";
+			break;
+		default:
+			if (right == 0) return _error(runtime, "division by zero");
+			overflow = left == INT_MIN && right == -1;
+			if (!overflow) *result = left / right;
+			operator = "/";
+			break;
+	}
+	if (overflow) return _error(runtime, "integer overflow in %d %s %d", left, operator, right);
+	return true;
+}
+
+static bool _evaluateList(Runtime * runtime, RuntimeScope * scope, const ExpressionList * list, Value * result) {
+	size_t count = 0;
+	for (const ExpressionList * item = list; item != NULL; item = item->next) ++count;
+	*result = (Value) {.type = TYPE_INTEGER, .isVector = true};
+	if (count == 0) return true;
+	Value * items = calloc(count, sizeof(Value));
+	if (items == NULL) return _outOfMemory(runtime);
+	size_t k = 0;
+	for (const ExpressionList * item = list; item != NULL; item = item->next, ++k) {
+		if (!_evaluate(runtime, scope, item->expression, &items[k])) {
+			for (size_t j = 0; j < k; ++j) destroyValue(&items[j]);
+			free(items);
+			return false;
+		}
+	}
+	result->type = items[0].type;
+	result->vector.items = items;
+	result->vector.count = count;
+	return true;
+}
+
+static bool _evaluateIndex(Runtime * runtime, RuntimeScope * scope, const Expression * expression, Value * result) {
+	Value vector;
+	int index;
+	if (!_evaluate(runtime, scope, expression->leftExpression, &vector)) return false;
+	if (!_evaluateInteger(runtime, scope, expression->rightExpression, &index)) {
+		destroyValue(&vector);
+		return false;
+	}
+	if (index < 0 || (size_t) index >= vector.vector.count) {
+		size_t length = vector.vector.count;
+		destroyValue(&vector);
+		return _error(runtime, "index %d is out of range for a vector of length %zu", index, length);
+	}
+	*result = vector.vector.items[index];
+	vector.vector.items[index] = (Value) {.type = TYPE_INTEGER};
+	destroyValue(&vector);
+	return true;
+}
+
+static bool _evaluate(Runtime * runtime, RuntimeScope * scope, const Expression * expression, Value * result) {
+	*result = (Value) {.type = TYPE_INTEGER};
+	switch (expression->type) {
+		case INTEGER_LITERAL:
+			result->integer = expression->integer;
+			return true;
+		case BOOLEAN_LITERAL:
+			result->type = TYPE_BOOLEAN;
+			result->boolean = expression->boolean;
+			return true;
+		case DURATION_LITERAL:
+			result->type = TYPE_DURATION;
+			if (!durationFromLexeme(expression->text, &result->duration)) return _error(runtime, "unknown duration '%s'", expression->text);
+			return true;
+		case VARIABLE: {
+			Binding * binding = findBinding(scope, expression->text);
+			if (binding == NULL) return _error(runtime, "variable '%s' has no value", expression->text);
+			if (!copyValue(&binding->value, result)) return _outOfMemory(runtime);
+			return true;
+		}
+		case LIST_LITERAL:
+			return _evaluateList(runtime, scope, expression->elements, result);
+		case INDEX_ACCESS:
+			return _evaluateIndex(runtime, scope, expression, result);
+		case NEGATION:
+			result->type = TYPE_BOOLEAN;
+			if (!_evaluateBoolean(runtime, scope, expression->operand, &result->boolean)) return false;
+			result->boolean = !result->boolean;
+			return true;
+		case CONJUNCTION:
+		case DISJUNCTION: {
+			/* Short-circuit: the right operand runs only when it decides the result. */
+			bool value;
+			result->type = TYPE_BOOLEAN;
+			if (!_evaluateBoolean(runtime, scope, expression->leftExpression, &value)) return false;
+			if (value == (expression->type == DISJUNCTION)) {
+				result->boolean = value;
+				return true;
+			}
+			return _evaluateBoolean(runtime, scope, expression->rightExpression, &result->boolean);
+		}
+		case EQUALITY:
+		case INEQUALITY:
+		case LESS_THAN:
+		case LESS_THAN_OR_EQUAL:
+		case GREATER_THAN:
+		case GREATER_THAN_OR_EQUAL: {
+			int left, right;
+			if (!_evaluateInteger(runtime, scope, expression->leftExpression, &left)
+				|| !_evaluateInteger(runtime, scope, expression->rightExpression, &right)) return false;
+			result->type = TYPE_BOOLEAN;
+			switch (expression->type) {
+				case EQUALITY: result->boolean = left == right; break;
+				case INEQUALITY: result->boolean = left != right; break;
+				case LESS_THAN: result->boolean = left < right; break;
+				case LESS_THAN_OR_EQUAL: result->boolean = left <= right; break;
+				case GREATER_THAN: result->boolean = left > right; break;
+				default: result->boolean = left >= right; break;
+			}
+			return true;
+		}
+		case ADDITION:
+		case SUBTRACTION:
+		case MULTIPLICATION:
+		case DIVISION: {
+			int left, right;
+			if (!_evaluateInteger(runtime, scope, expression->leftExpression, &left)
+				|| !_evaluateInteger(runtime, scope, expression->rightExpression, &right)) return false;
+			return _arithmetic(runtime, expression->type, left, right, &result->integer);
+		}
+		default:
+			return _error(runtime, "expression is not supported yet");
+	}
+}
+
+/* STATEMENTS */
+
+static Flow _bind(Runtime * runtime, RuntimeScope * scope, const char * name, Value * value) {
+	if (bindValue(scope, name, value)) return FLOW_NORMAL;
+	destroyValue(value);
+	_outOfMemory(runtime);
+	return FLOW_ERROR;
+}
+
+static Flow _execute(Runtime * runtime, RuntimeScope * scope, const Statement * statement) {
+	switch (statement->type) {
+		case DECLARATION: {
+			Value value;
+			if (!_evaluate(runtime, scope, statement->expression, &value)) return FLOW_ERROR;
+			if (statement->isVector) value.type = statement->dataType;
+			return _bind(runtime, scope, statement->name, &value);
+		}
+		case ASSIGNMENT: {
+			Value value;
+			if (!_evaluate(runtime, scope, statement->expression, &value)) return FLOW_ERROR;
+			Binding * binding = findBinding(scope, statement->name);
+			if (binding == NULL) {
+				destroyValue(&value);
+				_error(runtime, "variable '%s' is not declared", statement->name);
+				return FLOW_ERROR;
+			}
+			if (binding->value.isVector) value.type = binding->value.type;
+			destroyValue(&binding->value);
+			binding->value = value;
+			return FLOW_NORMAL;
+		}
+		default:
+			_error(runtime, "statement is not supported yet");
+			return FLOW_ERROR;
+	}
+}
+
+static Flow _executeStatements(Runtime * runtime, RuntimeScope * scope, const StatementList * list) {
+	for (; list != NULL; list = list->next) {
+		Flow flow = _execute(runtime, scope, list->statement);
+		if (flow != FLOW_NORMAL) return flow;
+	}
+	return FLOW_NORMAL;
+}
+
+CompilationStatus executeProgram(Program * program) {
+	Runtime runtime = {.status = SUCCEEDED};
+	Flow flow = _executeStatements(&runtime, &runtime.global, program->statements);
+	clearScope(&runtime.global);
+	fflush(stdout);
+	return flow == FLOW_ERROR ? runtime.status : SUCCEEDED;
+}

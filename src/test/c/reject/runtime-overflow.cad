@@ -1,0 +1,2 @@
+integer numero = 2147483647;
+numero = numero + 1;

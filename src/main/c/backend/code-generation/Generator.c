@@ -1,6 +1,7 @@
 #include "Generator.h"
 #include "../semantic-analysis/MusicValidation.h"
 #include "../semantic-analysis/Semantic.h"
+#include "../runtime/Runtime.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -82,10 +83,10 @@ static CompilationStatus exportLiteralScale(Program *program, bool *handled) {
 
 CompilationStatus executeGenerator(CompilerState * compilerState) {
     bool handled;
-    CompilationStatus status = exportLiteralScale(compilerState->abstractSyntaxtTree, &handled);
-    if (!handled) {
-        logError(_logger, "Code generation is not implemented for this program.");
-        return FAILED;
-    }
-    return status;
+    Program *program = compilerState->abstractSyntaxtTree;
+    CompilationStatus status = exportLiteralScale(program, &handled);
+    if (handled) return status;
+    if (runtimeSupports(program)) return executeProgram(program);
+    logError(_logger, "Code generation is not implemented for this program.");
+    return FAILED;
 }

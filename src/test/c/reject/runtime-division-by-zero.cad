@@ -1,0 +1,2 @@
+integer[] divisores = [0];
+integer resultado = 1 / divisores[0];

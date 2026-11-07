@@ -1,0 +1,2 @@
+integer[] valores = [0 - 2147483647 - 1];
+integer resultado = valores[0] / (0 - 1);

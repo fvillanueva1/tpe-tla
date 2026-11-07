@@ -20,7 +20,7 @@ escalas, acordes, progresiones, vectores e índices, propiedades, operadores,
 transformaciones, control de flujo, procedimientos, `voice ... as SATB`,
 `check`, `export` a MIDI/sheet y `log` con interpolación por nombre.
 
-El frontend construye el AST y el analizador semantico verifica nombres, alcances y tipos, ademas de algunos valores musicales conocidos. La evaluacion musical general y la realizacion SATB en ejecucion siguen pendientes. La generacion MIDI soporta por ahora unicamente una tonalidad literal seguida de la exportacion de su escala, directamente o mediante una declaracion de escala; las demas salidas siguen pendientes. El detalle y las limitaciones estan en [analisis semantico](doc/stage-ii/semantica.md).
+El frontend construye el AST y el analizador semantico verifica nombres, alcances y tipos, ademas de algunos valores musicales conocidos. El runtime ejecuta enteros, booleanos, duraciones y sus vectores, con errores de ejecucion (division por cero, desborde, indices); ver [runtime](doc/stage-iii/runtime.md). La evaluacion musical general y la realizacion SATB en ejecucion siguen pendientes. La generacion MIDI soporta por ahora unicamente una tonalidad literal seguida de la exportacion de su escala, directamente o mediante una declaracion de escala; las demas salidas siguen pendientes. El detalle y las limitaciones estan en [analisis semantico](doc/stage-ii/semantica.md).
 
 ## Documentación
 
@@ -68,8 +68,8 @@ como `==`, `aug4`, instrumentos e interpolación.
 
 | Carpeta | Contenido | Resultado esperado |
 |---------|-----------|-------------------|
-| `src/test/c/accept/` | Programas validos segun el analizador | Codigo 0 con `--check` |
-| `src/test/c/reject/` | Errores lexicos, sintacticos y semanticos | Codigo 1 |
+| `src/test/c/accept/` | Programas validos | Codigo 0; si existe `src/test/c/output/<caso>.out` se ejecuta y se compara la salida, si no se usa `--check` |
+| `src/test/c/reject/` | Errores lexicos, sintacticos, semanticos y de ejecucion (`runtime-*`) | Codigo 1 |
 | `src/test/c/pending/` | Escenarios musicales pendientes | No se ejecutan en la suite |
 
 `test.sh` ejecuta `accept/` y `reject/` y exige el diagnostico semantico en los casos correspondientes. Comprueba el contenido MIDI de la primera exportacion de escala y las funciones de validacion musical; la evaluacion general sigue pendiente. Los casos 55 a 57 validan `strict` y paralelas con valores conocidos; los casos 58 y 59 siguen pendientes.

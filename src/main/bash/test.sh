@@ -10,6 +10,9 @@ RED='\033[0;31m'
 OFF='\033[0m'
 STATUS=0
 
+# A sanitizer report (memory error or leak) must not look like an expected rejection (status 1).
+export ASAN_OPTIONS="exitcode=86${ASAN_OPTIONS:+:$ASAN_OPTIONS}"
+
 echo "Compiler should accept (and run, when an expected output exists)..."
 echo ""
 
@@ -54,6 +57,11 @@ for test in $(ls src/test/c/reject/); do
     mkdir "$TEST_WORK"
 	OUTPUT=$(cd "$TEST_WORK" && "$ROOT_PATH/.build/Flex-Bison-Compiler" < "$ROOT_PATH/src/test/c/reject/$test" 2>&1)
 	RESULT="$?"
+	if [[ "$OUTPUT" == *"Sanitizer"* ]]; then
+		echo -e "    $test, ${RED}but the sanitizer reports an error${OFF}"
+		STATUS=1
+		continue
+	fi
 	case "$test" in
 		54-*|55-*|56-*|57-*|60-*|61-*|62-*|63-*|log-undeclared-*|scope-outside*|type-*|procedure-*|return-outside*|export-invalid-*)
 			if [[ "$OUTPUT" != *"Semantic error:"* || "$OUTPUT" == *"Code generation is not implemented"* ]]; then

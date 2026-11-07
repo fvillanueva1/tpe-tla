@@ -85,3 +85,6 @@ Se detectan:
 comprueba que no se escriba ningún archivo. Los casos sin `.out` siguen con
 `--check`. Los rechazos `src/test/c/reject/runtime-*.cad` exigen el diagnóstico
 `Runtime error:` (y ningún `Semantic error:`), además del mensaje concreto.
+`test.sh` cambia el código de salida de AddressSanitizer a 86 y rechaza
+cualquier reporte del sanitizador, así un error de memoria o una fuga no pasa
+por un rechazo esperado (código 1).

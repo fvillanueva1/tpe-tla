@@ -78,6 +78,17 @@ static bool _supportsStatement(const Statement * statement) {
 			return _supportsExpression(statement->expression);
 		case LOG_STATEMENT:
 			return true;
+		case IF_STATEMENT:
+			return _supportsExpression(statement->ifStatement->condition)
+				&& _supportsStatements(statement->ifStatement->thenBlock)
+				&& _supportsStatements(statement->ifStatement->elseBlock);
+		case WHILE_STATEMENT:
+			return _supportsExpression(statement->whileStatement->condition)
+				&& _supportsStatements(statement->whileStatement->body);
+		case FOR_STATEMENT:
+			return _supportsExpression(statement->forStatement->from)
+				&& _supportsExpression(statement->forStatement->to)
+				&& _supportsStatements(statement->forStatement->body);
 		default:
 			return false;
 	}
@@ -319,11 +330,33 @@ static bool _evaluate(Runtime * runtime, RuntimeScope * scope, const Expression 
 
 /* STATEMENTS */
 
+static Flow _executeBlock(Runtime * runtime, RuntimeScope * parent, const StatementList * list) {
+	RuntimeScope local = {.parent = parent};
+	Flow flow = _executeStatements(runtime, &local, list);
+	clearScope(&local);
+	return flow;
+}
+
 static Flow _bind(Runtime * runtime, RuntimeScope * scope, const char * name, Value * value) {
 	if (bindValue(scope, name, value)) return FLOW_NORMAL;
 	destroyValue(value);
 	_outOfMemory(runtime);
 	return FLOW_ERROR;
+}
+
+static Flow _executeFor(Runtime * runtime, RuntimeScope * scope, const For * loop) {
+	int from, to;
+	if (!_evaluateInteger(runtime, scope, loop->from, &from) || !_evaluateInteger(runtime, scope, loop->to, &to)) return FLOW_ERROR;
+	/* Both bounds are inclusive and evaluated once; the counter is not the variable. */
+	for (long long counter = from; counter <= to; ++counter) {
+		RuntimeScope local = {.parent = scope};
+		Value value = {.type = TYPE_INTEGER, .integer = (int) counter};
+		Flow flow = _bind(runtime, &local, loop->variable, &value);
+		if (flow == FLOW_NORMAL) flow = _executeStatements(runtime, &local, loop->body);
+		clearScope(&local);
+		if (flow != FLOW_NORMAL) return flow;
+	}
+	return FLOW_NORMAL;
 }
 
 static Flow _execute(Runtime * runtime, RuntimeScope * scope, const Statement * statement) {
@@ -348,6 +381,21 @@ static Flow _execute(Runtime * runtime, RuntimeScope * scope, const Statement * 
 			binding->value = value;
 			return FLOW_NORMAL;
 		}
+		case IF_STATEMENT: {
+			bool condition;
+			if (!_evaluateBoolean(runtime, scope, statement->ifStatement->condition, &condition)) return FLOW_ERROR;
+			return _executeBlock(runtime, scope, condition ? statement->ifStatement->thenBlock : statement->ifStatement->elseBlock);
+		}
+		case WHILE_STATEMENT:
+			while (true) {
+				bool condition;
+				if (!_evaluateBoolean(runtime, scope, statement->whileStatement->condition, &condition)) return FLOW_ERROR;
+				if (!condition) return FLOW_NORMAL;
+				Flow flow = _executeBlock(runtime, scope, statement->whileStatement->body);
+				if (flow != FLOW_NORMAL) return flow;
+			}
+		case FOR_STATEMENT:
+			return _executeFor(runtime, scope, statement->forStatement);
 		case LOG_STATEMENT: {
 			char * text;
 			if (!_interpolate(runtime, scope, statement->log->message, &text)) return FLOW_ERROR;

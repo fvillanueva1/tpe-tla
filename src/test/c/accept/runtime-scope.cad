@@ -1,0 +1,3 @@
+integer numero = 1;
+if (true) { integer numero = 2; log "{numero}"; }
+log "{numero}";

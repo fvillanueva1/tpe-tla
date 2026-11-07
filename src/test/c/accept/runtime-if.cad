@@ -1,0 +1,2 @@
+integer numero = 2;
+if (numero == 1) { log "uno"; } else if (numero == 2) { log "dos"; } else { log "otro"; }

@@ -1,0 +1,4 @@
+integer suma = 0;
+for paso = 1 to 4 { suma = suma + paso; }
+for paso = 3 to 1 { suma = 0; }
+log "{suma}";

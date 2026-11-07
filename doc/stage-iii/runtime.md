@@ -15,15 +15,16 @@ runtime de `src/main/c/backend/runtime/`.
 - `RuntimeScope`: lista de variables con puntero al alcance padre. La búsqueda
   va del alcance más interno al global, con las mismas reglas de ocultamiento
   que la semántica (`doc/stage-ii/semantica.md`).
-  El alcance global se crea al empezar la ejecución y se libera al terminar,
-  también ante un error.
+  Cada bloque, cada iteración de `while` y `for` crean un alcance y lo liberan
+  al salir, también ante un error.
 - `Runtime.h` / `Runtime.c`: el evaluador. La semántica ya garantiza nombres,
   tipos, aridades y retornos; el runtime solo comprueba valores.
 
 ## Construcciones que ejecuta
 
 Enteros, booleanos, strings, duraciones y sus vectores, declaraciones,
-asignaciones, aritmética, lógica, comparaciones, índices y `log`.
+asignaciones, aritmética, lógica, comparaciones, índices, `if` / `else if` /
+`else`, `while`, `for` y `log`.
 
 Antes de ejecutar, `runtimeSupports` recorre todo el programa. Si aparece una
 construcción que el runtime todavía no ejecuta (notas, tonalidades, acordes,
@@ -39,6 +40,10 @@ musical esté disponible.
 - **Lógica:** `and` y `or` evalúan en cortocircuito: el operando derecho solo
   se evalúa si decide el resultado.
 - **Vectores:** índices de base cero. Una asignación reemplaza el vector entero.
+- **`for variable = desde to hasta`:** ambos límites son inclusivos y se
+  evalúan una vez. Si `desde > hasta` no hay iteraciones. Cada iteración liga
+  la variable al valor del contador; asignarla dentro del cuerpo no cambia la
+  cantidad de iteraciones.
 - **`log`:** imprime el mensaje en la salida estándar seguido de un salto de
   línea. Decodifica los escapes (`\"`, `\\`, `\{`, `\}`, `\n`, `\t`) e
   interpola cada `{variable}` con su valor actual. Los vectores se muestran como
@@ -61,7 +66,6 @@ Se detectan:
 
 ## Pendiente
 
-- `if`, `while` y `for`.
 - Procedimientos y límite de recursión.
 - Expresiones musicales, `voice`, `check` y `strict` con valores calculados,
   sobre `backend/music/Music.h`.

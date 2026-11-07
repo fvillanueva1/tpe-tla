@@ -6,7 +6,20 @@ frontend. Si alguna cambia, se actualiza este documento.
 ## Lenguaje
 
 - `=` solo asigna; `==` compara.
-- Los operadores relacionales se aceptan también entre enteros.
+- Los operadores relacionales se aceptan también entre enteros. Ambos
+  operandos deben tener el mismo tipo; no hay conversiones implícitas:
+
+  | Tipo | `<` `<=` `>` `>=` | `==` `!=` | Criterio |
+  |------|:-----------------:|:---------:|----------|
+  | `integer` | Sí | Sí | Valor numérico |
+  | `note` | Sí | Sí | Altura MIDI: `C#4 == Db4` |
+  | `interval` | Sí | Sí | Semitonos: `aug4 == d5` |
+  | Calidad de acorde (`c.quality`) | No | Sí | Igualdad de calidad |
+  | Modo (`k.mode`) | No | Sí | Igualdad de modo |
+  | `boolean`, `string`, `duration`, `key`, `scale`, `chord`, `progression`, `voicing` y vectores | No | No | Se rechaza en el análisis semántico |
+
+  Los booleanos se combinan con `and`, `or` y `not`; los strings solo se
+  construyen e interpolan, no se comparan.
 - `log` usa interpolación por nombre: `log "Se descartó el grado {grado}";`.
   Solo se admiten nombres de variable entre llaves, no expresiones. El lexer
   emite un token por cada fragmento de texto y por cada `{variable}`; en el AST

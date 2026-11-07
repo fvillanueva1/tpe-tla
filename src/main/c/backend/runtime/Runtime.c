@@ -492,7 +492,10 @@ static Flow _execute(Runtime * runtime, RuntimeScope * scope, const Statement * 
 			return _call(runtime, scope, statement->procedureCall, NULL) ? FLOW_NORMAL : FLOW_ERROR;
 		case RETURN_STATEMENT:
 			if (statement->returnStatement->value != NULL) {
-				if (!_evaluate(runtime, scope, statement->returnStatement->value, &runtime->returned)) return FLOW_ERROR;
+				/* Calls inside the expression use runtime->returned, so it is filled at the end. */
+				Value value;
+				if (!_evaluate(runtime, scope, statement->returnStatement->value, &value)) return FLOW_ERROR;
+				runtime->returned = value;
 				runtime->hasReturned = true;
 			}
 			return FLOW_RETURN;

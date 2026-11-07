@@ -29,6 +29,7 @@ El frontend construye el AST y el analizador semantico verifica nombres, alcance
 - [Tokens y nodos del AST](doc/stage-ii/tokens.md)
 - [Cobertura y clasificación de los tests](doc/stage-ii/tests.md)
 - [Runtime: ejecución del programa y errores](doc/stage-iii/runtime.md)
+- [Seguimiento del feedback del Stage I](doc/stage-iii/feedback-stage-i.md)
 - [Consignas y material de la cátedra](doc/consignas/)
 
 La carpeta `doc/` contiene los entregables y, en `doc/consignas/`, el material
@@ -132,6 +133,10 @@ se implementarán en Stage III. Los escapes se conservan sin decodificar en
 el AST. Los cambios de presentación del informe (fecha, índice, justificación,
 paginación y figuras) corresponden al informe final: no se reentrega el PDF de
 Stage I y Stage II no incorpora un nuevo informe.
+
+El estado de cada punto del feedback y la lista de control del informe final
+están en [feedback-stage-i.md](doc/stage-iii/feedback-stage-i.md). Los
+operadores relacionales admitidos por tipo están en `decisiones.md`.
 
 Las entregas se integran en `development` mediante PRs revisados por otro
 integrante. La entrega a la cátedra debe identificar el grupo, los integrantes

@@ -43,6 +43,9 @@ typedef enum {
     MUSIC_DURATION_SIXTEENTH
 } MusicDuration;
 
+/** Length of a note, chord or chord of a progression when the program does not give one. */
+#define MUSIC_DEFAULT_DURATION MUSIC_DURATION_QUARTER
+
 /** Result of the operations that can fail on their input. */
 typedef enum {
     MUSIC_OK,

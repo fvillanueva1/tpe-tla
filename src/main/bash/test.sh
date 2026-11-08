@@ -169,5 +169,12 @@ if ! cc -std=gnu99 -fsanitize=address src/test/c/music-property.c $MUSIC_SOURCES
     STATUS=1
 fi
 rm -f "$PROPERTY_TEST"
+echo "Checking output score..."
+SCORE_TEST=$(mktemp)
+if ! cc -std=gnu99 -fsanitize=address src/test/c/output-score.c src/main/c/backend/output/Score.c $MUSIC_SOURCES -Wl,--wrap=realloc -o "$SCORE_TEST" || ! "$SCORE_TEST"; then
+    echo -e "    output score, ${RED}failed${OFF}"
+    STATUS=1
+fi
+rm -f "$SCORE_TEST"
 echo "All done."
 exit $STATUS

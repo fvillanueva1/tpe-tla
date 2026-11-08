@@ -42,7 +42,7 @@ Cada función devuelve un resultado o un código de error, sin imprimir nada. Ed
 ### 3. Progresiones y transformaciones
 - [ ] Progresiones por grados y por acordes, concatenación (`+`) y repetición.
 - [ ] Transposición de acorde y progresión, inversión (con su rango), arpegio con duración y modulación (dominante y relativa) preservando la función armónica.
-- [ ] Acordar con Eduardo la duración por defecto de un acorde en una progresión. Registrarla en `decisiones.md`.
+- [x] Acordar con Eduardo la duración por defecto de un acorde en una progresión. Registrarla en `decisiones.md`. (Negra, como la exportación de escalas; avisarle a Eduardo.)
 
 ### 4. SATB y `check`
 - [ ] Generalizar `musicRealizeSATB` para acordes calculados. Definir la regla de omisión para acordes de más de cuatro clases (por ejemplo, omitir la quinta y después la séptima) y documentarla.
@@ -56,7 +56,7 @@ Cada función devuelve un resultado o un código de error, sin imprimir nada. Ed
 Ya existe un prototipo: `exportLiteralScale` en `Generator.c` escribe un MIDI válido de una escala. Tomalo como base y probalo con `src/test/c/scale-midi.c`.
 
 ### 5. Contrato y MIDI general (temprano: Eduardo lo necesita para `export`)
-- [ ] Definir `Output.h` (contrato 3) y pasárselo a Eduardo.
+- [x] Definir `Output.h` (contrato 3) y pasárselo a Eduardo. (Ver `doc/stage-iii/salida.md`.)
 - [ ] Escritor MIDI con la lista de eventos: notas simultáneas (acordes), secuencias, cuatro canales para SATB, tempo y cambio de instrumento (`semanticInstrumentProgram`).
 - [ ] Errores de escritura: no sobrescribir, no dejar archivos a medio escribir (escribir a temporal y renombrar), código de salida 1.
 - [ ] Probarlo con eventos fijos, sin runtime. Extender `scale-midi.c` para comprobar alturas, tiempos y canales de acordes y progresiones.

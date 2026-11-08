@@ -1,10 +1,19 @@
 #include "Semantic.h"
-#include "MusicValidation.h"
+#include "../music/Music.h"
 #include <stdio.h>
 #include <ctype.h>
 #include <limits.h>
 #include <stdint.h>
 #include <string.h>
+
+/* The music library does not depend on the AST: its enums mirror the AST's by value. */
+_Static_assert(MUSIC_MODE_DORIAN == (int)MODE_DORIAN && MUSIC_MODE_LOCRIAN == (int)MODE_LOCRIAN &&
+    MUSIC_MODE_LYDIAN == (int)MODE_LYDIAN && MUSIC_MODE_MAJOR == (int)MODE_MAJOR &&
+    MUSIC_MODE_MINOR == (int)MODE_MINOR && MUSIC_MODE_MIXOLYDIAN == (int)MODE_MIXOLYDIAN &&
+    MUSIC_MODE_PHRYGIAN == (int)MODE_PHRYGIAN, "MusicMode must mirror Mode");
+_Static_assert(MUSIC_RULE_PARALLEL_FIFTHS == (int)CHECK_PARALLEL_FIFTHS &&
+    MUSIC_RULE_PARALLEL_OCTAVES == (int)CHECK_PARALLEL_OCTAVES &&
+    MUSIC_RULE_VOICE_CROSSING == (int)CHECK_VOICE_CROSSING, "MusicRule must mirror CheckRule");
 
 enum { TYPE_DEGREE = 11, TYPE_QUALITY, TYPE_MODE, TYPE_EMPTY_LIST, TYPE_CHORD_LIST, TYPE_DEGREE_LIST, TYPE_VECTOR = 20, TYPE_INVALID = -2 };
 
@@ -258,7 +267,7 @@ static int typeOf(Scope *scope, Expression *e) {
             }
             if (key && key->key.strict && note && note->type == NOTE_LITERAL) {
                 int pitch = literalPitch(note->text) + 12;
-                if (!musicInKey(&pitch, 1, tonic, key->key.mode)) {
+                if (!musicInKey(&pitch, 1, tonic, (MusicMode)key->key.mode)) {
                     fprintf(stderr, "Semantic error: chord contains a note outside the strict key.\n"); return TYPE_INVALID;
                 }
             }
@@ -506,7 +515,7 @@ static bool knownScale(Scope *scope, const Expression *expression, int scale[7])
     int tonic = 60 + pitchClass[key->key.tonic[0] - 'A'];
     if (key->key.tonic[1] == '#') ++tonic;
     else if (key->key.tonic[1] == 'b') --tonic;
-    return musicScale(tonic, key->key.mode, scale);
+    return musicScale(tonic, (MusicMode)key->key.mode, scale);
 }
 static bool knownChordMask(Scope *scope, const Expression *expression, unsigned short *mask) {
     const Expression *chord = knownExpression(scope, expression);

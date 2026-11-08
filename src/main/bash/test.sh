@@ -14,6 +14,7 @@ echo "Semantic analysis should accept..."
 echo ""
 
 ROOT_PATH="$PWD"
+MUSIC_SOURCES="src/main/c/backend/music/Music.c src/main/c/backend/music/MusicValidation.c src/main/c/backend/music/VoiceLeading.c"
 TEST_DIRECTORY=$(mktemp -d)
 trap 'rm -rf "$TEST_DIRECTORY"' EXIT
 for test in $(ls src/test/c/accept/); do
@@ -107,31 +108,38 @@ fi
 
 echo "Checking instrument mapping..."
 INSTRUMENT_TEST=$(mktemp)
-if ! cc -std=gnu99 src/test/c/semantic-instrument.c src/main/c/backend/semantic-analysis/Semantic.c src/main/c/backend/semantic-analysis/MusicValidation.c src/main/c/backend/semantic-analysis/VoiceLeading.c -o "$INSTRUMENT_TEST" || ! "$INSTRUMENT_TEST"; then
+if ! cc -std=gnu99 src/test/c/semantic-instrument.c src/main/c/backend/semantic-analysis/Semantic.c $MUSIC_SOURCES -o "$INSTRUMENT_TEST" || ! "$INSTRUMENT_TEST"; then
     echo -e "    instrument mapping, ${RED}failed${OFF}"
     STATUS=1
 fi
 rm -f "$INSTRUMENT_TEST"
 echo "Checking allocation failure..."
 OOM_TEST=$(mktemp)
-if ! cc -std=gnu99 src/test/c/semantic-oom.c src/main/c/backend/semantic-analysis/Semantic.c src/main/c/backend/semantic-analysis/MusicValidation.c src/main/c/backend/semantic-analysis/VoiceLeading.c -Wl,--wrap=malloc -o "$OOM_TEST" || ! "$OOM_TEST"; then
+if ! cc -std=gnu99 src/test/c/semantic-oom.c src/main/c/backend/semantic-analysis/Semantic.c $MUSIC_SOURCES -Wl,--wrap=malloc -o "$OOM_TEST" || ! "$OOM_TEST"; then
     echo -e "    allocation failure, ${RED}failed${OFF}"
     STATUS=1
 fi
 rm -f "$OOM_TEST"
 echo "Checking music validation..."
 MUSIC_TEST=$(mktemp)
-if ! cc -std=gnu99 src/test/c/music-validation.c src/main/c/backend/semantic-analysis/MusicValidation.c src/main/c/backend/semantic-analysis/VoiceLeading.c -o "$MUSIC_TEST" || ! "$MUSIC_TEST"; then
+if ! cc -std=gnu99 src/test/c/music-validation.c $MUSIC_SOURCES -o "$MUSIC_TEST" || ! "$MUSIC_TEST"; then
     echo -e "    music validation, ${RED}failed${OFF}"
     STATUS=1
 fi
 rm -f "$MUSIC_TEST"
 echo "Checking voice allocation failure..."
 VOICE_OOM_TEST=$(mktemp)
-if ! cc -std=gnu99 src/test/c/music-voice-oom.c src/main/c/backend/semantic-analysis/MusicValidation.c src/main/c/backend/semantic-analysis/VoiceLeading.c -Wl,--wrap=calloc -Wl,--wrap=realloc -o "$VOICE_OOM_TEST" || ! "$VOICE_OOM_TEST"; then
+if ! cc -std=gnu99 src/test/c/music-voice-oom.c $MUSIC_SOURCES -Wl,--wrap=calloc -Wl,--wrap=realloc -o "$VOICE_OOM_TEST" || ! "$VOICE_OOM_TEST"; then
     echo -e "    voice allocation failure, ${RED}failed${OFF}"
     STATUS=1
 fi
 rm -f "$VOICE_OOM_TEST"
+echo "Checking music model..."
+MODEL_TEST=$(mktemp)
+if ! cc -std=gnu99 -fsanitize=address src/test/c/music-model.c $MUSIC_SOURCES -Wl,--wrap=calloc -o "$MODEL_TEST" || ! "$MODEL_TEST"; then
+    echo -e "    music model, ${RED}failed${OFF}"
+    STATUS=1
+fi
+rm -f "$MODEL_TEST"
 echo "All done."
 exit $STATUS

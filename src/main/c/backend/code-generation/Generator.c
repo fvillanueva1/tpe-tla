@@ -1,5 +1,5 @@
 #include "Generator.h"
-#include "../semantic-analysis/MusicValidation.h"
+#include "../music/Music.h"
 #include "../semantic-analysis/Semantic.h"
 #include <stdio.h>
 #include <string.h>
@@ -56,7 +56,7 @@ static CompilationStatus exportLiteralScale(Program *program, bool *handled) {
     if (tonic[1] == '#') ++root;
     else if (tonic[1] == 'b') --root;
     int notes[7];
-    if (!musicScale(root, declaration->expression->key.mode, notes)) return FAILED;
+    if (!musicScale(root, (MusicMode)declaration->expression->key.mode, notes)) return FAILED;
     int bpm = export->tempo ? export->tempo->integer : 120;
     unsigned int micros = 60000000u / (unsigned int)bpm;
     int instrument = export->instrument ? semanticInstrumentProgram(export->instrument) : 0;

@@ -30,8 +30,8 @@ Cada función devuelve un resultado o un código de error, sin imprimir nada. Ed
 
 ### 1. Base (primero: desbloquea a Eduardo)
 - [x] Definir `Music.h` (contrato 1). Mover ahí `MusicValidation.c` y `VoiceLeading.c` y ajustar los includes de `Semantic.c`, sin cambiar su comportamiento: la suite tiene que seguir verde.
-- [ ] Notas y alteraciones, grafía, rango admitido (el mismo que valida la semántica) e intervalos (`aug4`, etc.).
-- [ ] Transposición de nota con error fuera de rango.
+- [x] Notas y alteraciones, grafía, rango admitido (el mismo que valida la semántica) e intervalos (`aug4`, etc.).
+- [x] Transposición de nota con error fuera de rango.
 
 ### 2. Tonalidades, escalas y acordes
 - [ ] Escalas de los siete modos (`musicScale` ya existe; revisar la grafía) y acceso por grado.

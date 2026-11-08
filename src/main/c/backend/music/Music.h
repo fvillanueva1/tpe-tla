@@ -43,7 +43,19 @@ typedef enum {
     MUSIC_DURATION_SIXTEENTH
 } MusicDuration;
 
-/** How a note is written: letter 'A'-'G' and accidental -1 (flat), 0 or +1 (sharp). */
+/** Result of the operations that can fail on their input. */
+typedef enum {
+    MUSIC_OK,
+    MUSIC_INVALID_ARGUMENT,
+    MUSIC_MISSING_OCTAVE,
+    MUSIC_OUT_OF_RANGE
+} MusicStatus;
+
+/**
+ * How a note is written: letter 'A'-'G' and accidental from -2 to +2 (flats
+ * are negative). The language writes -1, 0 and +1; transposition can produce
+ * double accidentals (E#4 + M3 = G##4).
+ */
 typedef struct {
     char letter;
     signed char accidental;
@@ -127,6 +139,40 @@ void musicProgressionDestroy(MusicProgression *progression);
 bool musicVoicingInit(MusicVoicing *voicing, size_t count);
 bool musicVoicingCopy(const MusicVoicing *source, MusicVoicing *target);
 void musicVoicingDestroy(MusicVoicing *voicing);
+
+/*
+ * Notes and intervals. A spelled octave can fall outside 0-8 while the pitch
+ * is in range (Cb9 = B8), so the range is always checked on the pitch.
+ */
+
+/** Parses a note lexeme with octave ("C#4"). MUSIC_MISSING_OCTAVE for "C#". */
+MusicStatus musicParseNote(const char *lexeme, MusicNote *note);
+/** Parses a spelling without octave ("Bb"), as a key tonic is written. */
+MusicStatus musicParseSpelling(const char *lexeme, MusicSpelling *spelling);
+/** Parses an interval lexeme ("P5", "aug4"). */
+MusicStatus musicParseInterval(const char *lexeme, MusicInterval *interval);
+
+/** Pitch class from 0 (C) to 11 (B); Cb is 11 and B# is 0. */
+int musicPitchClass(MusicSpelling spelling);
+/** The note with this spelling in the given written octave (Cb4 = 59). */
+MusicStatus musicNoteFromSpelling(MusicSpelling spelling, int octave, MusicNote *note);
+/** The note of a pitch, spelled with sharps (61 = C#4). */
+MusicStatus musicNoteFromPitch(int pitch, MusicNote *note);
+/** Written octave: 4 for Cb4 (pitch 59) and 3 for B#3 (pitch 60); MUSIC_INVALID_OCTAVE for a bad spelling. */
+#define MUSIC_INVALID_OCTAVE (-100)
+int musicNoteOctave(MusicNote note);
+
+/**
+ * Moves the note up or down by the interval, keeping a correct spelling:
+ * the letter moves by the interval's steps (C4 + aug4 = F#4, C4 + d5 = Gb4).
+ * MUSIC_OUT_OF_RANGE when the resulting pitch leaves C0-B8.
+ */
+MusicStatus musicTransposeNote(MusicNote note, MusicInterval interval, bool down, MusicNote *result);
+
+/** Longest text of a note: "C##-1" plus the terminator. */
+#define MUSIC_NOTE_TEXT_SIZE 8
+/** Writes the note as "C#4", "Bb3" or "G##4". */
+void musicFormatNote(MusicNote note, char text[MUSIC_NOTE_TEXT_SIZE]);
 
 /* Compute seven ascending MIDI pitches starting at the given tonic. */
 bool musicScale(int tonic, MusicMode mode, int notes[7]);

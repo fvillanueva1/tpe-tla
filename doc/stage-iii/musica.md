@@ -8,6 +8,7 @@ devuelve un resultado o un código de error y no imprime nada: el que la llama
 |---------|-----------|
 | `Music.h` | Modelo musical y todas las declaraciones públicas |
 | `Music.c` | Memoria de progresiones y voicings (crear, copiar, liberar) |
+| `Note.c` | Notas, grafía, intervalos y transposición |
 | `MusicValidation.c` | Escalas, pertenencia a tonalidad, tesitura, cruce, paralelas y `check` |
 | `VoiceLeading.c` | Realización SATB por programación dinámica |
 
@@ -20,7 +21,9 @@ descripción detallada sigue en `doc/stage-ii/semantica.md`.
 - **Altura:** número MIDI, C4 = 60. El lenguaje admite de C0 (12) a B8 (119),
   `MUSIC_LOWEST_PITCH` y `MUSIC_HIGHEST_PITCH`.
 - **`MusicSpelling`:** cómo se escribe una nota: letra `'A'`–`'G'` y
-  alteración `-1` (bemol), `0` o `+1` (sostenido).
+  alteración de `-2` a `+2` (bemoles negativos). El lenguaje solo escribe
+  `-1`, `0` y `+1`; la transposición puede producir dobles alteraciones
+  (`E#4 + M3 = G##4`).
 - **`MusicNote`:** altura más grafía. `Cb4` y `B3` tienen la misma altura (59)
   pero distinta grafía; la grafía hace falta para LilyPond y para transponer
   sin cambiar el nombre de la nota.
@@ -43,6 +46,43 @@ Las progresiones y los voicings son dueños de sus arreglos:
 de una vez. Si falta memoria devuelven `false` y dejan el valor vacío, sin
 memoria reservada.
 
+## Errores
+
+Las operaciones que pueden fallar por su entrada devuelven `MusicStatus`:
+`MUSIC_OK`, `MUSIC_INVALID_ARGUMENT` (lexema o dato inválido),
+`MUSIC_MISSING_OCTAVE` (una nota sin octava donde hace falta) o
+`MUSIC_OUT_OF_RANGE` (la altura queda fuera de C0–B8). Las funciones de
+Tadeo conservan sus códigos propios (`MusicVoiceResult` y
+`MusicValidationResult`).
+
+## Notas e intervalos
+
+- `musicParseNote("C#4")` da altura y grafía. Una nota sin octava devuelve
+  `MUSIC_MISSING_OCTAVE`; `Cb0` (11) y `B#8` (120) devuelven
+  `MUSIC_OUT_OF_RANGE`.
+- `musicParseSpelling("Bb")` lee una tónica, que se escribe sin octava.
+- `musicParseInterval("aug4")` da semitonos y pasos.
+- `musicPitchClass` da la clase de 0 a 11 (`Cb` = 11, `B#` = 0).
+- `musicNoteFromSpelling(grafía, octava)` arma una nota en una octava escrita:
+  así se obtiene la tónica en octava 4 para las escalas (`Cb` da 59, como antes).
+- `musicNoteFromPitch` deletrea una altura con sostenidos. Es la grafía por
+  defecto de las alturas calculadas sin grafía, como las de la realización SATB.
+- `musicNoteOctave` da la octava escrita: `Cb4` tiene altura 59 pero octava 4.
+  El rango siempre se comprueba sobre la altura, no sobre la octava escrita,
+  así que `Cb9` (= B8) es válida si sale de una transposición.
+- `musicTransposeNote(nota, intervalo, bajar, &resultado)` suma o resta los
+  semitonos y mueve la letra según los pasos, así la grafía queda correcta:
+  `C4 + aug4 = F#4`, `C4 + d5 = Gb4`, `A4 + m3 = C5`. Si hiciera falta una
+  alteración triple, deletrea con sostenidos. Un resultado fuera de C0–B8
+  devuelve `MUSIC_OUT_OF_RANGE` y no modifica el resultado.
+- `musicFormatNote` escribe la nota como `C#4`, `Bb3` o `G##4`, para `log`
+  y para los mensajes.
+
+La semántica usa estas funciones para validar notas literales, tónicas,
+transposiciones conocidas y `strict`. Antes tenía su propia tabla con C4 = 48
+y sumaba 12 en algunos lugares; ahora todo está en MIDI. El generador arma la
+tónica de la escala con `musicNoteFromSpelling`.
+
 ## Relación con el AST
 
 `MusicMode` y `MusicRule` repiten los valores de `Mode` y `CheckRule` del AST.
@@ -57,5 +97,8 @@ La semántica y el generador convierten con un cast, y `Semantic.c` tiene
   fallos de memoria de progresiones y voicings. Se compila con
   AddressSanitizer, así que una fuga en un camino de error hace fallar la
   suite.
+- `src/test/c/music-note.c`: lectura de notas, tónicas e intervalos,
+  clases de altura, octava escrita, transposición con su grafía (también con
+  dobles alteraciones y cruces de octava) y los límites C0 y B8.
 
 `test.sh` compila todos los tests de la biblioteca con `$MUSIC_SOURCES`.

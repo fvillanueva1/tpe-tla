@@ -43,7 +43,6 @@ incluye GCC, Flex, Bison, CMake y Make; no es necesario instalarlos en el host.
 Desde la raíz del repositorio:
 
 ```bash
-chmod u+x src/main/bash/*.sh
 docker compose build compiler
 docker compose run --rm compiler bash -lc 'src/main/bash/build.sh && src/main/bash/test.sh'
 ```

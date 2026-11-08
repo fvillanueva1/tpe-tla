@@ -14,7 +14,7 @@ echo "Semantic analysis should accept..."
 echo ""
 
 ROOT_PATH="$PWD"
-MUSIC_SOURCES="src/main/c/backend/music/Music.c src/main/c/backend/music/Note.c src/main/c/backend/music/Key.c src/main/c/backend/music/MusicValidation.c src/main/c/backend/music/VoiceLeading.c"
+MUSIC_SOURCES="src/main/c/backend/music/Music.c src/main/c/backend/music/Note.c src/main/c/backend/music/Key.c src/main/c/backend/music/Chord.c src/main/c/backend/music/MusicValidation.c src/main/c/backend/music/VoiceLeading.c"
 TEST_DIRECTORY=$(mktemp -d)
 trap 'rm -rf "$TEST_DIRECTORY"' EXIT
 for test in $(ls src/test/c/accept/); do
@@ -155,5 +155,12 @@ if ! cc -std=gnu99 -fsanitize=address src/test/c/music-key.c $MUSIC_SOURCES -o "
     STATUS=1
 fi
 rm -f "$KEY_TEST"
+echo "Checking chords..."
+CHORD_TEST=$(mktemp)
+if ! cc -std=gnu99 -fsanitize=address src/test/c/music-chord.c $MUSIC_SOURCES -o "$CHORD_TEST" || ! "$CHORD_TEST"; then
+    echo -e "    chords, ${RED}failed${OFF}"
+    STATUS=1
+fi
+rm -f "$CHORD_TEST"
 echo "All done."
 exit $STATUS

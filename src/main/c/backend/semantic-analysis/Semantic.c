@@ -489,35 +489,30 @@ static const Expression *knownExpression(Scope *scope, const Expression *e) {
     }
     return e;
 }
-static int literalDegree(const char *text) {
-    static const char *names[] = {"I", "II", "III", "IV", "V", "VI", "VII"};
-    char roman[4]; size_t length = 0;
-    while (text[length] && text[length] != 'd' && length < sizeof(roman) - 1) {
-        roman[length] = (char)toupper((unsigned char)text[length]); ++length;
-    }
-    roman[length] = '\0';
-    for (int i = 0; i < 7; ++i) if (!strcmp(roman, names[i])) return i;
-    return -1;
+static bool knownKey(Scope *scope, const Expression *expression, MusicKey *key) {
+    const Expression *literal = knownExpression(scope, expression);
+    if (!literal || literal->type != KEY_LITERAL) return false;
+    *key = (MusicKey){literalTonic(literal), (MusicMode)literal->key.mode, literal->key.strict};
+    return true;
 }
-static bool knownScale(Scope *scope, const Expression *expression, int scale[7]) {
-    const Expression *key = knownExpression(scope, expression);
-    if (!key || key->type != KEY_LITERAL) return false;
-    MusicNote tonic;
-    return musicNoteFromSpelling(literalTonic(key), 4, &tonic) == MUSIC_OK &&
-        musicScale(tonic.pitch, (MusicMode)key->key.mode, scale);
+/* Pitch classes of the chord on a zero-based degree, or 0 when it cannot be built. */
+static unsigned short degreeMask(MusicKey key, int degree, MusicChordSize size) {
+    MusicChord chord;
+    return musicDegreeChord(key, degree, size, &chord) == MUSIC_OK ? musicChordMask(&chord) : 0;
 }
 static bool knownChordMask(Scope *scope, const Expression *expression, unsigned short *mask) {
     const Expression *chord = knownExpression(scope, expression);
     if (!chord) return false;
     if (chord->type == TRIAD_CHORD || chord->type == SEVENTH_CHORD) {
-        int scale[7], degree = -1;
+        MusicKey key;
+        int degree = -1;
         const Expression *value = knownExpression(scope, chord->leftExpression);
-        if (!value || !knownScale(scope, chord->rightExpression, scale)) return false;
-        if (value->type == DEGREE_LITERAL) degree = literalDegree(value->text);
-        else if (value->type == INTEGER_LITERAL) degree = value->integer - 1;
-        if (degree < 0 || degree > 6) return false;
-        int tones = chord->type == TRIAD_CHORD ? 3 : 4;
-        for (int i = 0; i < tones; ++i) *mask |= 1u << (scale[(degree + 2 * i) % 7] % 12);
+        if (!value || !knownKey(scope, chord->rightExpression, &key)) return false;
+        if (value->type == DEGREE_LITERAL && musicParseDegree(value->text, &degree) != MUSIC_OK) return false;
+        if (value->type == INTEGER_LITERAL) degree = value->integer - 1;
+        unsigned short classes = degreeMask(key, degree, chord->type == TRIAD_CHORD ? MUSIC_TRIAD : MUSIC_SEVENTH);
+        if (!classes) return false;
+        *mask |= classes;
         return true;
     }
     if (chord->type != NOTES_CHORD) return false;
@@ -538,9 +533,9 @@ static bool checkKnownVoicing(Scope *scope, const Expression *expression, unsign
     if (!expression || expression->type != VOICE_EXPRESSION) return true;
     const Expression *progression = knownExpression(scope, expression->voice->progression);
     if (!progression) return true;
-    int scale[7]; bool degrees = progression->type == IN_EXPRESSION;
+    MusicKey key; bool degrees = progression->type == IN_EXPRESSION;
     if (degrees) {
-        if (progression->leftExpression->type != LIST_LITERAL || !knownScale(scope, progression->rightExpression, scale)) return true;
+        if (progression->leftExpression->type != LIST_LITERAL || !knownKey(scope, progression->rightExpression, &key)) return true;
         progression = progression->leftExpression;
     }
     if (progression->type != LIST_LITERAL) return true;
@@ -562,9 +557,9 @@ static bool checkKnownVoicing(Scope *scope, const Expression *expression, unsign
         const Expression *chord = knownExpression(scope, item->expression);
         if (degrees) {
             if (!chord || chord->type != DEGREE_LITERAL) { known = false; break; }
-            int degree = literalDegree(chord->text);
-            if (degree < 0) { known = false; break; }
-            for (int step = 0; step < 3; ++step) masks[index] |= 1u << (scale[(degree + 2 * step) % 7] % 12);
+            int degree;
+            if (musicParseDegree(chord->text, &degree) != MUSIC_OK) { known = false; break; }
+            masks[index] = degreeMask(key, degree, MUSIC_TRIAD);
             continue;
         }
         if (!knownChordMask(scope, chord, &masks[index])) known = false;

@@ -10,6 +10,7 @@ devuelve un resultado o un código de error y no imprime nada: el que la llama
 | `Music.c` | Memoria de progresiones y voicings (crear, copiar, liberar) |
 | `Note.c` | Notas, grafía, intervalos y transposición |
 | `Key.c` | Escalas con grafía, acceso por grado y relaciones tonales |
+| `Chord.c` | Grados, acordes por grado y por notas, fundamental, calidad y clases |
 | `MusicValidation.c` | Escalas, pertenencia a tonalidad, tesitura, cruce, paralelas y `check` |
 | `VoiceLeading.c` | Realización SATB por programación dinámica |
 
@@ -107,6 +108,37 @@ tónica de la escala con `musicNoteFromSpelling`.
 
 El generador arma la escala que exporta con `musicKeyScale`.
 
+## Acordes
+
+- **Grados:** `musicParseDegree` lee `I`–`VII`, `i`–`vii` y las minúsculas
+  con `dim` y devuelve 0–6. La mayúscula, la minúscula y `dim` son solo para
+  leer: la calidad sale siempre de la tonalidad, así que `ii`, `II` e `iidim`
+  son el mismo grado (en C mayor los tres dan D–F–A, menor). Así lo tenía
+  también la semántica.
+- **Por grado:** `musicDegreeChord(tonalidad, grado, tamaño, &acorde)` apila
+  terceras de la escala desde el grado: `MUSIC_TRIAD` (3 notas),
+  `MUSIC_SEVENTH` (4) o `MUSIC_NINTH` (5). Las notas suben desde la nota de la
+  escala (octava 4 o 5) y pasan a la octava siguiente al superar el séptimo
+  grado: `seventh on V of C major` = G4 B4 D5 F5, `ninth on I of C major` =
+  C4 E4 G4 B4 D5. La fundamental es la primera nota. Un grado fuera de 0–6
+  devuelve `MUSIC_OUT_OF_RANGE`; el lenguaje cuenta los grados enteros de 1 a
+  7, así que el que llama resta 1.
+- **Por notas:** `musicChordFromNotes` conserva el orden y las notas
+  repetidas. Vacío es `MUSIC_INVALID_ARGUMENT` y más de 16 notas,
+  `MUSIC_TOO_MANY_NOTES`. Como el acorde puede estar invertido, la
+  fundamental se busca: es la nota más grave que tiene arriba (en cualquier
+  octava) una tercera y una quinta justa; si ninguna la tiene, la más grave
+  con tercera y alguna quinta (disminuida o aumentada); si tampoco, la nota
+  más grave. `{E4, G4, C5}` tiene fundamental C5; `{D4, F4, B4}`, B4.
+- **Calidad** (`c.quality`): la de la tríada sobre la fundamental: mayor
+  (3M + 5J), menor (3m + 5J), disminuida (3m + 5d), aumentada (3M + 5A) u
+  otra. Un acorde de séptima o novena tiene la calidad de su tríada.
+- `musicChordMask` da las clases de altura como máscara de 12 bits, la entrada
+  de `musicRealizeSATB`, y `musicChordClassCount` cuántas clases distintas hay.
+
+La semántica arma las máscaras de los acordes por grado conocidos con estas
+funciones, en lugar de su copia propia del apilado de terceras.
+
 ## Relación con el AST
 
 `MusicMode` y `MusicRule` repiten los valores de `Mode` y `CheckRule` del AST.
@@ -127,5 +159,9 @@ La semántica y el generador convierten con un cast, y `Semantic.c` tiene
 - `src/test/c/music-key.c`: escalas de los siete modos con su grafía,
   tonalidades con alteraciones, acceso por grado y sus límites, y las tres
   relaciones tonales (también anidadas y conservando `strict`).
+- `src/test/c/music-chord.c`: lectura de grados, tríadas, séptimas y novenas
+  en varios modos con su calidad, acordes por notas invertidos, repetidos o
+  incompletos con su fundamental, máscaras y los límites (grado, tamaño,
+  cantidad de notas).
 
 `test.sh` compila todos los tests de la biblioteca con `$MUSIC_SOURCES`.

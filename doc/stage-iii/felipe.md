@@ -35,7 +35,7 @@ Cada función devuelve un resultado o un código de error, sin imprimir nada. Ed
 
 ### 2. Tonalidades, escalas y acordes
 - [x] Escalas de los siete modos (`musicScale` ya existe; revisar la grafía) y acceso por grado. También las relaciones tonales (`dominant of`, `subdominant of`, `relative minor of`).
-- [ ] Acordes explícitos y por grado: tríadas, séptimas y novenas, con la calidad según el modo. Grado inválido es error.
+- [x] Acordes explícitos y por grado: tríadas, séptimas y novenas, con la calidad según el modo. Grado inválido es error.
 - [ ] Propiedades que expone el lenguaje (ver `accept/properties.cad`).
 - [ ] `strict`: pertenencia de notas y acordes a la tonalidad, con valores calculados (`musicInKey` ya existe).
 

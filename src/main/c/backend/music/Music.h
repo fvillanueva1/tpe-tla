@@ -48,7 +48,8 @@ typedef enum {
     MUSIC_OK,
     MUSIC_INVALID_ARGUMENT,
     MUSIC_MISSING_OCTAVE,
-    MUSIC_OUT_OF_RANGE
+    MUSIC_OUT_OF_RANGE,
+    MUSIC_TOO_MANY_NOTES
 } MusicStatus;
 
 /**
@@ -195,6 +196,36 @@ MusicStatus musicSubdominantKey(MusicKey key, MusicKey *result);
  * whose mode is minor (D dorian -> A minor); a minor key is its own relative.
  */
 MusicStatus musicRelativeMinorKey(MusicKey key, MusicKey *result);
+
+/*
+ * Chords. A degree is zero-based (0 = I). Its case and the "dim" suffix are
+ * only for reading: the quality always comes from the key, so "ii", "II" and
+ * "iidim" are the same degree.
+ */
+
+/** Stacked thirds of a chord built on a degree. */
+typedef enum { MUSIC_TRIAD = 3, MUSIC_SEVENTH = 4, MUSIC_NINTH = 5 } MusicChordSize;
+
+/** Parses a degree lexeme ("V", "ii", "viidim") into 0-6. */
+MusicStatus musicParseDegree(const char *lexeme, int *degree);
+/**
+ * "triad on V of k" and the like: thirds of the scale stacked from the degree,
+ * ascending from the scale note (octave 4 or 5), with the next octave when they
+ * pass the seventh degree. MUSIC_OUT_OF_RANGE for a degree outside 0-6.
+ */
+MusicStatus musicDegreeChord(MusicKey key, int degree, MusicChordSize size, MusicChord *chord);
+/**
+ * "{C4, E4, G4}": keeps the order and the repeated notes. The root is the
+ * lowest note that has a third and a perfect fifth above it in the chord; if
+ * none has, the lowest with a third and any fifth; if none, the lowest note.
+ * MUSIC_INVALID_ARGUMENT when empty, MUSIC_TOO_MANY_NOTES over
+ * MUSIC_MAX_CHORD_NOTES.
+ */
+MusicStatus musicChordFromNotes(const MusicNote *notes, size_t count, MusicChord *chord);
+/** Bit i is set when pitch class i is in the chord (bit 0 = C), as musicRealizeSATB expects. */
+unsigned short musicChordMask(const MusicChord *chord);
+/** Number of different pitch classes. */
+int musicChordClassCount(const MusicChord *chord);
 
 /* Compute seven ascending MIDI pitches starting at the given tonic. */
 bool musicScale(int tonic, MusicMode mode, int notes[7]);

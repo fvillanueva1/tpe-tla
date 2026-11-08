@@ -181,6 +181,9 @@ static MusicSpelling literalTonic(const Expression *key) {
     musicParseSpelling(key->key.tonic, &tonic);
     return tonic;
 }
+static MusicKey literalKey(const Expression *key) {
+    return (MusicKey){literalTonic(key), (MusicMode)key->key.mode, key->key.strict};
+}
 /* Evaluate only side-effect-free integer literals; runtime values remain unknown. */
 static bool constantInteger(Scope *scope, Expression *e, int *result) {
     if (e->type == VARIABLE) {
@@ -246,7 +249,6 @@ static int typeOf(Scope *scope, Expression *e) {
         Scope *owner = scope;
         while (owner && !owner->hasKeyContext) owner = owner->parent;
         const Expression *key = owner ? owner->keyContext : NULL;
-        int tonic = key && key->key.strict ? musicPitchClass(literalTonic(key)) : 0;
         for (ExpressionList *item = e->elements; item; item = item->next) {
             if (!compatible(scope, item->expression, TYPE_NOTE)) return TYPE_INVALID;
             const Expression *note = item->expression;
@@ -255,8 +257,8 @@ static int typeOf(Scope *scope, Expression *e) {
                 note = symbol ? symbol->currentLiteral : NULL;
             }
             if (key && key->key.strict && note && note->type == NOTE_LITERAL) {
-                int pitch = literalPitch(note->text);
-                if (!musicInKey(&pitch, 1, tonic, (MusicMode)key->key.mode)) {
+                MusicNote value;
+                if (musicParseNote(note->text, &value) != MUSIC_OK || !musicNoteInKey(value, literalKey(key))) {
                     fprintf(stderr, "Semantic error: chord contains a note outside the strict key.\n"); return TYPE_INVALID;
                 }
             }
@@ -492,7 +494,7 @@ static const Expression *knownExpression(Scope *scope, const Expression *e) {
 static bool knownKey(Scope *scope, const Expression *expression, MusicKey *key) {
     const Expression *literal = knownExpression(scope, expression);
     if (!literal || literal->type != KEY_LITERAL) return false;
-    *key = (MusicKey){literalTonic(literal), (MusicMode)literal->key.mode, literal->key.strict};
+    *key = literalKey(literal);
     return true;
 }
 /* Pitch classes of the chord on a zero-based degree, or 0 when it cannot be built. */

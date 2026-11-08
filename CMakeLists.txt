@@ -39,6 +39,7 @@ if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
 		src/main/c/backend/music/Note.c
 		src/main/c/backend/music/Key.c
 		src/main/c/backend/music/Chord.c
+		src/main/c/backend/music/Property.c
 		src/main/c/backend/music/MusicValidation.c
 		src/main/c/backend/music/VoiceLeading.c
 		src/main/c/EntryPoint.c

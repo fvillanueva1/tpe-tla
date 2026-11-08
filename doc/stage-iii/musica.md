@@ -11,6 +11,7 @@ devuelve un resultado o un código de error y no imprime nada: el que la llama
 | `Note.c` | Notas, grafía, intervalos y transposición |
 | `Key.c` | Escalas con grafía, acceso por grado y relaciones tonales |
 | `Chord.c` | Grados, acordes por grado y por notas, fundamental, calidad y clases |
+| `Property.c` | Propiedades, nombres para `log` y pertenencia (`in`, `strict`) |
 | `MusicValidation.c` | Escalas, pertenencia a tonalidad, tesitura, cruce, paralelas y `check` |
 | `VoiceLeading.c` | Realización SATB por programación dinámica |
 
@@ -139,6 +140,35 @@ El generador arma la escala que exporta con `musicKeyScale`.
 La semántica arma las máscaras de los acordes por grado conocidos con estas
 funciones, en lugar de su copia propia del apilado de terceras.
 
+## Propiedades
+
+| Propiedad | Función | Resultado |
+|-----------|---------|-----------|
+| `n.octave` | `musicNoteOctave` | Octava escrita (`Cb5` → 5) |
+| `c.root` | `musicChordRoot` | La fundamental (ver acordes) |
+| `c.quality` | `musicChordQuality` | Calidad de la tríada; `other` si el acorde está vacío |
+| `k.tonic` | `musicKeyTonic` | La tónica en octava 4, la misma de `scale of k` (`Bb` → Bb4) |
+| `k.mode` | `musicKeyMode` | El modo |
+| `p.length` | campo `count` | Cantidad de acordes de la progresión |
+
+`musicModeName`, `musicQualityName` y `musicDurationName` dan el texto que
+imprime `log` (`major`, `diminished`, `eighth`); devuelven `NULL` para un
+valor desconocido.
+
+## Pertenencia y `strict`
+
+La pertenencia se decide por clase de altura, igual que `==` compara alturas:
+
+- `musicNoteInScale` (`n in scale of k`): `E7` está en la escala de C mayor
+  aunque la escala esté escrita en octava 4, y `Fb4` cuenta como `E4`.
+- `musicNoteInChord` (`n in c`): `C6` está en `{C4, E4, G4}`.
+- `musicNoteInKey` y `musicChordInKey` son la comprobación de `strict` para
+  valores calculados. Un acorde está en la tonalidad si todas sus notas lo
+  están; un acorde vacío no. Los acordes por grado siempre pertenecen a su
+  tonalidad (el menor es el natural: el V de A menor es E–G–B).
+
+La semántica valida `strict` sobre notas literales con `musicNoteInKey`.
+
 ## Relación con el AST
 
 `MusicMode` y `MusicRule` repiten los valores de `Mode` y `CheckRule` del AST.
@@ -163,5 +193,8 @@ La semántica y el generador convierten con un cast, y `Semantic.c` tiene
   en varios modos con su calidad, acordes por notas invertidos, repetidos o
   incompletos con su fundamental, máscaras y los límites (grado, tamaño,
   cantidad de notas).
+- `src/test/c/music-property.c`: cada propiedad (también con acordes
+  invertidos y vacíos), los nombres para `log`, la pertenencia a escala y
+  acorde por clase de altura y `strict` sobre notas y acordes calculados.
 
 `test.sh` compila todos los tests de la biblioteca con `$MUSIC_SOURCES`.

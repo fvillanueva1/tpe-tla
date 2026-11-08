@@ -227,6 +227,39 @@ unsigned short musicChordMask(const MusicChord *chord);
 /** Number of different pitch classes. */
 int musicChordClassCount(const MusicChord *chord);
 
+/*
+ * Properties of the language: "n.octave" is musicNoteOctave and "p.length"
+ * is the progression's count.
+ */
+
+/** "c.root": the root note of the chord. */
+MusicStatus musicChordRoot(const MusicChord *chord, MusicNote *root);
+/** "c.quality". MUSIC_QUALITY_OTHER for an empty or invalid chord. */
+MusicQuality musicChordQuality(const MusicChord *chord);
+/** "k.tonic": the tonic in octave 4, the octave of "scale of k". */
+MusicStatus musicKeyTonic(MusicKey key, MusicNote *tonic);
+/** "k.mode". */
+MusicMode musicKeyMode(MusicKey key);
+/** Names that "log" prints: "major", "dorian", "diminished", ... NULL for an unknown value. */
+const char *musicModeName(MusicMode mode);
+const char *musicQualityName(MusicQuality quality);
+const char *musicDurationName(MusicDuration duration);
+
+/*
+ * Membership, by pitch class: E5 is in the scale of C major although the
+ * scale is written in octave 4, and Fb4 counts as E4, as "==" compares
+ * pitches.
+ */
+
+/** "n in scale of k". */
+bool musicNoteInScale(MusicNote note, const MusicScale *scale);
+/** "n in c". */
+bool musicNoteInChord(MusicNote note, const MusicChord *chord);
+/** "strict": the note belongs to the key. */
+bool musicNoteInKey(MusicNote note, MusicKey key);
+/** "strict": every note of the chord belongs to the key; false for an empty chord. */
+bool musicChordInKey(const MusicChord *chord, MusicKey key);
+
 /* Compute seven ascending MIDI pitches starting at the given tonic. */
 bool musicScale(int tonic, MusicMode mode, int notes[7]);
 bool musicInKey(const int *pitches, size_t count, int tonic, MusicMode mode);

@@ -62,6 +62,9 @@ docker compose run --rm compiler bash -lc 'src/main/bash/run.sh src/test/c/accep
 También se puede abrir una consola con `docker compose run --rm compiler bash`
 y ejecutar allí los scripts de compilación, ejecución y tests.
 
+Por defecto el compilador solo muestra errores. Para ver los mensajes de
+depuración, definir `LOGGING_LEVEL=ALL` antes de `docker compose run`.
+
 ## Tests y pendientes
 
 Cada test es un programa pequeño enfocado en una construcción. Los prefijos

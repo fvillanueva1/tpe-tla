@@ -34,7 +34,7 @@ Cada función devuelve un resultado o un código de error, sin imprimir nada. Ed
 - [x] Transposición de nota con error fuera de rango.
 
 ### 2. Tonalidades, escalas y acordes
-- [ ] Escalas de los siete modos (`musicScale` ya existe; revisar la grafía) y acceso por grado.
+- [x] Escalas de los siete modos (`musicScale` ya existe; revisar la grafía) y acceso por grado. También las relaciones tonales (`dominant of`, `subdominant of`, `relative minor of`).
 - [ ] Acordes explícitos y por grado: tríadas, séptimas y novenas, con la calidad según el modo. Grado inválido es error.
 - [ ] Propiedades que expone el lenguaje (ver `accept/properties.cad`).
 - [ ] `strict`: pertenencia de notas y acordes a la tonalidad, con valores calculados (`musicInKey` ya existe).
@@ -67,6 +67,8 @@ Ya existe un prototipo: `exportLiteralScale` en `Generator.c` escribe un MIDI v�
 - [ ] Probar el contenido de un caso chico.
 
 ## Tu parte C: informe final (coordinación)
+
+> **Cambio de reparto:** el informe no lo hace Felipe. Su alcance llega hasta la parte B.
 
 - [ ] Armar el documento con las secciones de la consigna. Aplicar el feedback del Stage I: fecha, índice, numeración de páginas, texto justificado, ejemplos en figuras con leyenda y numeración separada de casos.
 - [ ] Actualizar los ejemplos del Stage I a la sintaxis actual. El 6.4 usa `v` como variable y no compila porque `v` es un grado reservado; el 6.2 usa `log "... {1}", grado`.

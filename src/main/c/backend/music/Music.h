@@ -174,6 +174,28 @@ MusicStatus musicTransposeNote(MusicNote note, MusicInterval interval, bool down
 /** Writes the note as "C#4", "Bb3" or "G##4". */
 void musicFormatNote(MusicNote note, char text[MUSIC_NOTE_TEXT_SIZE]);
 
+/*
+ * Keys and scales. A scale starts at the tonic in octave 4 (as "export" has
+ * always done) and spells each degree with the next letter: G major has F#,
+ * F major has Bb. The derived keys keep the mode and "strict" of the original,
+ * except the relative minor, which is minor.
+ */
+
+/** The seven notes of the key, ascending from its tonic in octave 4. */
+MusicStatus musicKeyScale(MusicKey key, MusicScale *scale);
+/** Zero-based access, as "(scale of k)[i]"; MUSIC_OUT_OF_RANGE outside 0-6. */
+MusicStatus musicScaleNote(const MusicScale *scale, int index, MusicNote *note);
+/** "dominant of k": the tonic a fifth above (C major -> G major, A minor -> E minor). */
+MusicStatus musicDominantKey(MusicKey key, MusicKey *result);
+/** "subdominant of k": the tonic a fourth above (C major -> F major). */
+MusicStatus musicSubdominantKey(MusicKey key, MusicKey *result);
+/**
+ * "relative minor of k": the minor key with the same notes. For major it is
+ * the sixth degree (C major -> A minor); for the other modes, the degree
+ * whose mode is minor (D dorian -> A minor); a minor key is its own relative.
+ */
+MusicStatus musicRelativeMinorKey(MusicKey key, MusicKey *result);
+
 /* Compute seven ascending MIDI pitches starting at the given tonic. */
 bool musicScale(int tonic, MusicMode mode, int notes[7]);
 bool musicInKey(const int *pitches, size_t count, int tonic, MusicMode mode);

@@ -9,6 +9,7 @@ devuelve un resultado o un código de error y no imprime nada: el que la llama
 | `Music.h` | Modelo musical y todas las declaraciones públicas |
 | `Music.c` | Memoria de progresiones y voicings (crear, copiar, liberar) |
 | `Note.c` | Notas, grafía, intervalos y transposición |
+| `Key.c` | Escalas con grafía, acceso por grado y relaciones tonales |
 | `MusicValidation.c` | Escalas, pertenencia a tonalidad, tesitura, cruce, paralelas y `check` |
 | `VoiceLeading.c` | Realización SATB por programación dinámica |
 
@@ -83,6 +84,29 @@ transposiciones conocidas y `strict`. Antes tenía su propia tabla con C4 = 48
 y sumaba 12 en algunos lugares; ahora todo está en MIDI. El generador arma la
 tónica de la escala con `musicNoteFromSpelling`.
 
+## Tonalidades y escalas
+
+- `musicKeyScale(tonalidad, &escala)` da las siete notas desde la tónica en
+  octava 4, como siempre hizo `export`. Cada grado usa la letra siguiente, así
+  que las alteraciones salen de la tonalidad y nunca se cambian por su
+  enarmónica: G mayor tiene F#5, F mayor tiene Bb4, Cb mayor va de Cb4 a Bb4 y
+  G# mayor tiene F##5. Las alturas son las de `musicScale`.
+- `musicScaleNote(&escala, i, &nota)` es el acceso `(scale of k)[i]`, de base
+  cero; fuera de 0–6 devuelve `MUSIC_OUT_OF_RANGE`.
+- Relaciones tonales. La tonalidad derivada conserva `strict` y se pueden
+  anidar (`relative minor of dominant of k`):
+  - `musicDominantKey`: la tónica una quinta justa arriba, mismo modo
+    (C mayor → G mayor, A menor → E menor).
+  - `musicSubdominantKey`: una cuarta justa arriba, mismo modo
+    (C mayor → F mayor).
+  - `musicRelativeMinorKey`: la tonalidad menor con las mismas notas. En
+    mayor es el sexto grado (C mayor → A menor, Eb mayor → C menor). En los
+    demás modos es el grado desde el cual los intervalos son los del modo menor
+    (D dórico → A menor, B locrio → A menor). Una tonalidad menor es su propia
+    relativa.
+
+El generador arma la escala que exporta con `musicKeyScale`.
+
 ## Relación con el AST
 
 `MusicMode` y `MusicRule` repiten los valores de `Mode` y `CheckRule` del AST.
@@ -100,5 +124,8 @@ La semántica y el generador convierten con un cast, y `Semantic.c` tiene
 - `src/test/c/music-note.c`: lectura de notas, tónicas e intervalos,
   clases de altura, octava escrita, transposición con su grafía (también con
   dobles alteraciones y cruces de octava) y los límites C0 y B8.
+- `src/test/c/music-key.c`: escalas de los siete modos con su grafía,
+  tonalidades con alteraciones, acceso por grado y sus límites, y las tres
+  relaciones tonales (también anidadas y conservando `strict`).
 
 `test.sh` compila todos los tests de la biblioteca con `$MUSIC_SOURCES`.

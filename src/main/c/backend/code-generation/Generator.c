@@ -50,12 +50,12 @@ static CompilationStatus exportLiteralScale(Program *program, bool *handled) {
         value->operand->type != VARIABLE || strcmp(value->operand->text, declaration->name) ||
         (export->tempo && export->tempo->type != INTEGER_LITERAL) || strchr(export->path, '\\')) return SUCCEEDED;
     *handled = true;
-    MusicSpelling spelling;
-    MusicNote tonic;
+    MusicKey key = {.mode = (MusicMode)declaration->expression->key.mode, .strict = declaration->expression->key.strict};
+    MusicScale keyScale;
+    if (musicParseSpelling(declaration->expression->key.tonic, &key.tonic) != MUSIC_OK ||
+        musicKeyScale(key, &keyScale) != MUSIC_OK) return FAILED;
     int notes[7];
-    if (musicParseSpelling(declaration->expression->key.tonic, &spelling) != MUSIC_OK ||
-        musicNoteFromSpelling(spelling, 4, &tonic) != MUSIC_OK ||
-        !musicScale(tonic.pitch, (MusicMode)declaration->expression->key.mode, notes)) return FAILED;
+    for (int i = 0; i < 7; ++i) notes[i] = keyScale.notes[i].pitch;
     int bpm = export->tempo ? export->tempo->integer : 120;
     unsigned int micros = 60000000u / (unsigned int)bpm;
     int instrument = export->instrument ? semanticInstrumentProgram(export->instrument) : 0;

@@ -27,8 +27,7 @@ typedef enum {
     OUTPUT_NO_MEMORY,
     /* The destination already exists; writers never overwrite. */
     OUTPUT_FILE_EXISTS,
-    OUTPUT_WRITE_ERROR,
-    OUTPUT_NOT_IMPLEMENTED
+    OUTPUT_WRITE_ERROR
 } OutputStatus;
 
 /** A note that sounds from "start" for "duration" ticks. The note keeps its spelling for LilyPond. */
@@ -80,14 +79,59 @@ OutputStatus outputAddProgression(OutputScore *score, const MusicProgression *pr
 OutputStatus outputAddVoicing(OutputScore *score, const MusicVoicing *voicing);
 
 /*
- * Writers. They write to a temporary file next to "path" and rename it only
- * when everything was written, so a failure never leaves a partial file, and
- * they never overwrite an existing file (OUTPUT_FILE_EXISTS).
+ * Encoders: the file contents in memory. The buffer is the caller's; it is
+ * left empty on failure.
  */
 
-/** Standard MIDI file: tempo, instrument and the events in their channels. */
+typedef struct {
+    unsigned char *data;
+    size_t length;
+    size_t capacity;
+} OutputBuffer;
+
+void outputBufferDestroy(OutputBuffer *buffer);
+/**
+ * Standard MIDI file, format 0: one track with the tempo, a program change
+ * for each channel in use and the events. A voicing keeps each voice in its
+ * own channel (soprano 0 ... bass 3). Velocity 64. OUTPUT_INVALID_ARGUMENT
+ * when the tempo does not fit MIDI's 24-bit field (below 4 BPM).
+ */
+OutputStatus outputEncodeMidi(const OutputScore *score, OutputBuffer *buffer);
+/**
+ * LilyPond score: one staff per channel in use (Soprano, Alto, Tenor and Bass
+ * for a voicing), notes with their spelling, simultaneous notes as chords and
+ * silences as rests. Durations must be multiples of a sixteenth (120 ticks);
+ * longer values are tied. OUTPUT_INVALID_ARGUMENT when two events of a
+ * channel overlap without starting and ending together.
+ */
+OutputStatus outputEncodeLilyPond(const OutputScore *score, OutputBuffer *buffer);
+
+/*
+ * Writers. Each file is written to a temporary file next to its destination
+ * and published only when every file of the call was written, so a failure
+ * never leaves a partial file nor some of the files. They never overwrite: if
+ * a destination exists (or is repeated in the call) nothing is written and
+ * they return OUTPUT_FILE_EXISTS.
+ */
+
+typedef enum { OUTPUT_FORMAT_MIDI, OUTPUT_FORMAT_LILYPOND } OutputFormat;
+
+typedef struct {
+    const OutputScore *score;
+    OutputFormat format;
+    const char *path;
+} OutputFile;
+
+/**
+ * Writes all the files or none: if publishing one fails, the ones already
+ * published are removed. "failed", when not NULL, receives the index of the
+ * file that failed. The runtime calls it once, at the end of a program that
+ * ran without errors, with every "export" of the program.
+ */
+OutputStatus outputWriteFiles(const OutputFile *files, size_t count, size_t *failed);
+/** A single MIDI file (outputWriteFiles with one file). */
 OutputStatus outputWriteMidi(const OutputScore *score, const char *path);
-/** LilyPond (.ly) score, one staff per channel. */
+/** A single LilyPond file. */
 OutputStatus outputWriteLilyPond(const OutputScore *score, const char *path);
 
 #endif

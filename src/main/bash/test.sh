@@ -14,7 +14,8 @@ echo "Semantic analysis should accept..."
 echo ""
 
 ROOT_PATH="$PWD"
-MUSIC_SOURCES="src/main/c/backend/music/Music.c src/main/c/backend/music/Note.c src/main/c/backend/music/Key.c src/main/c/backend/music/Chord.c src/main/c/backend/music/Property.c src/main/c/backend/music/MusicValidation.c src/main/c/backend/music/VoiceLeading.c"
+MUSIC_SOURCES="src/main/c/backend/music/Music.c src/main/c/backend/music/Note.c src/main/c/backend/music/Key.c src/main/c/backend/music/Chord.c src/main/c/backend/music/Property.c src/main/c/backend/music/Progression.c src/main/c/backend/music/Transform.c src/main/c/backend/music/Voicing.c src/main/c/backend/music/MusicValidation.c src/main/c/backend/music/VoiceLeading.c"
+OUTPUT_SOURCES="src/main/c/backend/output/Buffer.c src/main/c/backend/output/File.c src/main/c/backend/output/LilyPond.c src/main/c/backend/output/Midi.c src/main/c/backend/output/Score.c"
 TEST_DIRECTORY=$(mktemp -d)
 trap 'rm -rf "$TEST_DIRECTORY"' EXIT
 for test in $(ls src/test/c/accept/); do
@@ -40,7 +41,7 @@ for test in $(ls src/test/c/reject/); do
 	OUTPUT=$(cd "$TEST_WORK" && "$ROOT_PATH/.build/Flex-Bison-Compiler" < "$ROOT_PATH/src/test/c/reject/$test" 2>&1)
 	RESULT="$?"
 	case "$test" in
-		54-*|55-*|56-*|57-*|60-*|61-*|62-*|63-*|log-undeclared-*|scope-outside*|type-*|procedure-*|return-outside*|export-invalid-*)
+		54-*|55-*|56-*|57-*|58-*|59-*|60-*|61-*|62-*|63-*|log-undeclared-*|scope-outside*|type-*|procedure-*|return-outside*|export-invalid-*)
 			if [[ "$OUTPUT" != *"Semantic error:"* || "$OUTPUT" == *"Code generation is not implemented"* ]]; then
 				echo -e "    $test, ${RED}missing semantic diagnostic or generation was invoked${OFF}"
 				STATUS=1
@@ -52,6 +53,8 @@ for test in $(ls src/test/c/reject/); do
         type-declaration.cad) EXPECTED="expected integer, got boolean" ;;
         56-*) EXPECTED="parallel fifths at chord 2" ;;
         57-*) EXPECTED="parallel octaves at chord 2" ;;
+        58-*) EXPECTED="voice crossing at chord 1" ;;
+        59-*) EXPECTED="tessitura at chord 1" ;;
         *) EXPECTED="" ;;
     esac
     if [[ -n "$EXPECTED" && "$OUTPUT" != *"$EXPECTED"* ]]; then
@@ -171,10 +174,24 @@ fi
 rm -f "$PROPERTY_TEST"
 echo "Checking output score..."
 SCORE_TEST=$(mktemp)
-if ! cc -std=gnu99 -fsanitize=address src/test/c/output-score.c src/main/c/backend/output/Score.c $MUSIC_SOURCES -Wl,--wrap=realloc -o "$SCORE_TEST" || ! "$SCORE_TEST"; then
+if ! cc -std=gnu99 -fsanitize=address src/test/c/output-score.c $OUTPUT_SOURCES $MUSIC_SOURCES -Wl,--wrap=realloc -o "$SCORE_TEST" || ! "$SCORE_TEST"; then
     echo -e "    output score, ${RED}failed${OFF}"
     STATUS=1
 fi
 rm -f "$SCORE_TEST"
+echo "Checking progressions, transformations and voicings..."
+PROGRESSION_TEST=$(mktemp)
+if ! cc -std=gnu99 -fsanitize=address src/test/c/music-progression.c $MUSIC_SOURCES -Wl,--wrap=calloc -Wl,--wrap=malloc -o "$PROGRESSION_TEST" || ! "$PROGRESSION_TEST"; then
+    echo -e "    progressions, transformations and voicings, ${RED}failed${OFF}"
+    STATUS=1
+fi
+rm -f "$PROGRESSION_TEST"
+echo "Checking MIDI, LilyPond and file writing..."
+FILE_TEST=$(mktemp)
+if ! cc -std=gnu99 -fsanitize=address src/test/c/output-file.c $OUTPUT_SOURCES $MUSIC_SOURCES -o "$FILE_TEST" || ! "$FILE_TEST"; then
+    echo -e "    MIDI, LilyPond and file writing, ${RED}failed${OFF}"
+    STATUS=1
+fi
+rm -f "$FILE_TEST"
 echo "All done."
 exit $STATUS

@@ -103,6 +103,19 @@ MusicStatus musicTransposeNote(MusicNote note, MusicInterval interval, bool down
     return MUSIC_OK;
 }
 
+MusicStatus musicIntervalBetween(MusicNote from, MusicNote to, MusicInterval *interval, bool *down) {
+    if (!interval || !down || !validSpelling(from.spelling) || !validSpelling(to.spelling)) return MUSIC_INVALID_ARGUMENT;
+    int semitones = to.pitch - from.pitch;
+    int steps = letterIndex(to.spelling.letter) + 7 * musicNoteOctave(to) -
+        letterIndex(from.spelling.letter) - 7 * musicNoteOctave(from);
+    /* B#3 -> Cb4 goes up a letter but down a semitone: no interval says that. */
+    if ((semitones < 0 && steps > 0) || (semitones > 0 && steps < 0)) return MUSIC_INVALID_ARGUMENT;
+    *down = semitones < 0 || steps < 0;
+    interval->semitones = semitones < 0 ? -semitones : semitones;
+    interval->steps = steps < 0 ? -steps : steps;
+    return MUSIC_OK;
+}
+
 void musicFormatNote(MusicNote note, char text[MUSIC_NOTE_TEXT_SIZE]) {
     static const char *accidentals[] = {"bb", "b", "", "#", "##"};
     if (!text) return;

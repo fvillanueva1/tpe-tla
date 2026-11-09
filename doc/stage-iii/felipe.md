@@ -40,16 +40,16 @@ Cada función devuelve un resultado o un código de error, sin imprimir nada. Ed
 - [x] `strict`: pertenencia de notas y acordes a la tonalidad, con valores calculados (`musicInKey` ya existe).
 
 ### 3. Progresiones y transformaciones
-- [ ] Progresiones por grados y por acordes, concatenación (`+`) y repetición.
-- [ ] Transposición de acorde y progresión, inversión (con su rango), arpegio con duración y modulación (dominante y relativa) preservando la función armónica.
+- [x] Progresiones por grados y por acordes, concatenación (`+`) y repetición.
+- [x] Transposición de acorde y progresión, inversión (con su rango), arpegio con duración y modulación (dominante y relativa) preservando la función armónica.
 - [x] Acordar con Eduardo la duración por defecto de un acorde en una progresión. Registrarla en `decisiones.md`. (Negra, como la exportación de escalas; avisarle a Eduardo.)
 
 ### 4. SATB y `check`
-- [ ] Generalizar `musicRealizeSATB` para acordes calculados. Definir la regla de omisión para acordes de más de cuatro clases (por ejemplo, omitir la quinta y después la séptima) y documentarla.
-- [ ] Qué pasa si no hay realización válida: error de runtime con mensaje.
-- [ ] `check` sobre voicings calculados (`musicCheckVoicing` ya existe).
-- [ ] **Decidido:** se agrega el voicing explícito, una lista de acordes por notas en orden S, A, T, B: `voicing v = [{C5, G4, E4, C3}, ...];`. Hace falta porque `voice` nunca produce cruces ni notas fuera de tesitura, así que sin esto los casos 58 y 59 del Stage I no se pueden escribir. La gramática ya lo acepta. La semántica ya acepta una lista de acordes como `voicing` (hecho por Tadeo). Vos definís la conversión a `int[n][4]`: cada acorde debe tener exactamente 4 notas y si no, es error. La semántica ya lo chequea en los acordes literales; los calculados quedan para el runtime. `check` y tesitura se aplican sobre esa conversión sin redistribuir.
-- [ ] Rehacer `pending/58-voice-crossing.cad` y `59-tessitura.cad` con voicings explícitos que provoquen el error que nombran, y moverlos a `reject/`.
+- [x] Generalizar `musicRealizeSATB` para acordes calculados. Definir la regla de omisión para acordes de más de cuatro clases (por ejemplo, omitir la quinta y después la séptima) y documentarla.
+- [x] Qué pasa si no hay realización válida: error de runtime con mensaje.
+- [x] `check` sobre voicings calculados (`musicCheckVoicing` ya existe).
+- [x] **Decidido:** se agrega el voicing explícito, una lista de acordes por notas en orden S, A, T, B: `voicing v = [{C5, G4, E4, C3}, ...];`. Hace falta porque `voice` nunca produce cruces ni notas fuera de tesitura, así que sin esto los casos 58 y 59 del Stage I no se pueden escribir. La gramática ya lo acepta. La semántica ya acepta una lista de acordes como `voicing` (hecho por Tadeo). Vos definís la conversión a `int[n][4]`: cada acorde debe tener exactamente 4 notas y si no, es error. La semántica ya lo chequea en los acordes literales; los calculados quedan para el runtime. `check` y tesitura se aplican sobre esa conversión sin redistribuir.
+- [x] Rehacer `pending/58-voice-crossing.cad` y `59-tessitura.cad` con voicings explícitos que provoquen el error que nombran, y moverlos a `reject/`.
 
 ## Tu parte B: salida (`backend/output/`)
 
@@ -57,14 +57,14 @@ Ya existe un prototipo: `exportLiteralScale` en `Generator.c` escribe un MIDI v�
 
 ### 5. Contrato y MIDI general (temprano: Eduardo lo necesita para `export`)
 - [x] Definir `Output.h` (contrato 3) y pasárselo a Eduardo. (Ver `doc/stage-iii/salida.md`.)
-- [ ] Escritor MIDI con la lista de eventos: notas simultáneas (acordes), secuencias, cuatro canales para SATB, tempo y cambio de instrumento (`semanticInstrumentProgram`).
-- [ ] Errores de escritura: no sobrescribir, no dejar archivos a medio escribir (escribir a temporal y renombrar), código de salida 1.
-- [ ] Probarlo con eventos fijos, sin runtime. Extender `scale-midi.c` para comprobar alturas, tiempos y canales de acordes y progresiones.
-- [ ] Cuando el runtime produzca eventos, reemplazar `exportLiteralScale` por este escritor junto con Eduardo.
+- [x] Escritor MIDI con la lista de eventos: notas simultáneas (acordes), secuencias, cuatro canales para SATB, tempo y cambio de instrumento (`semanticInstrumentProgram`).
+- [x] Errores de escritura: no sobrescribir, no dejar archivos a medio escribir (escribir a temporal y renombrar), código de salida 1.
+- [x] Probarlo con eventos fijos, sin runtime. Extender `scale-midi.c` para comprobar alturas, tiempos y canales de acordes y progresiones. (Los acordes, progresiones y voicings se comprueban en `output-file.c` y `output-score.c`; `scale-midi.c` sigue comprobando la escala.)
+- [ ] Cuando el runtime produzca eventos, reemplazar `exportLiteralScale` por este escritor junto con Eduardo. (Hecho a medias: `exportLiteralScale` ya escribe con `outputWriteMidi`; falta que el runtime de Eduardo arme los eventos de cualquier `export` y llame a `outputWriteFiles` al final.)
 
 ### 6. `sheet` en LilyPond
-- [ ] Escribir `.ly` a partir de los mismos eventos, usando la grafía de las notas (por eso conviene que lo hagas vos). Para un voicing, cuatro voces.
-- [ ] Probar el contenido de un caso chico.
+- [x] Escribir `.ly` a partir de los mismos eventos, usando la grafía de las notas (por eso conviene que lo hagas vos). Para un voicing, cuatro voces.
+- [x] Probar el contenido de un caso chico.
 
 ## Tu parte C: informe final (coordinación)
 

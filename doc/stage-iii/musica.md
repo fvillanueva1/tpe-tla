@@ -12,6 +12,9 @@ devuelve un resultado o un código de error y no imprime nada: el que la llama
 | `Key.c` | Escalas con grafía, acceso por grado y relaciones tonales |
 | `Chord.c` | Grados, acordes por grado y por notas, fundamental, calidad y clases |
 | `Property.c` | Propiedades, nombres para `log` y pertenencia (`in`, `strict`) |
+| `Progression.c` | Progresiones por grados y por acordes, `+` y repetición |
+| `Transform.c` | Transposición de acordes, progresiones y tonalidades, inversión, arpegio y modulación |
+| `Voicing.c` | `voice` con regla de omisión, voicing explícito y `check` sobre un voicing |
 | `MusicValidation.c` | Escalas, pertenencia a tonalidad, tesitura, cruce, paralelas y `check` |
 | `VoiceLeading.c` | Realización SATB por programación dinámica |
 
@@ -37,6 +40,10 @@ descripción detallada sigue en `doc/stage-ii/semantica.md`.
 - **`MusicChord`:** hasta `MUSIC_MAX_CHORD_NOTES` (16) notas en el orden en que
   se escribieron o construyeron, el índice de la fundamental (`root`) y la
   calidad (`quality`). Es de tamaño fijo, así que se copia por asignación.
+  Un acorde construido por grado recuerda el grado (`size` distinto de 0 y
+  `degree` de 0 a 6) y su tonalidad (`hasKey`, `key`); así `modulate` puede
+  reconstruirlo sobre el mismo grado de otra tonalidad. Un acorde escrito por
+  notas tiene `size` 0 y `hasKey` falso.
 - **`MusicProgression`:** arreglo dinámico de `MusicStep` (acorde y duración).
 - **`MusicVoicing`:** `int[n][4]` en orden soprano, contralto, tenor y bajo, y
   una duración por acorde.
@@ -169,6 +176,75 @@ La pertenencia se decide por clase de altura, igual que `==` compara alturas:
 
 La semántica valida `strict` sobre notas literales con `musicNoteInKey`.
 
+## Progresiones
+
+Cada función arma una progresión nueva en `result`, que libera el que llama, y
+la deja vacía si falla. `result` tiene que ser una variable distinta de las
+entradas y lo que tuviera antes no se libera: para `p = p + q` el runtime arma
+en un temporal, destruye `p` y lo reemplaza.
+
+| Función | Construcción | Errores |
+|---------|--------------|---------|
+| `musicDegreeProgression` | `[I, V, I] in k`: una tríada por grado (0–6), una negra cada una | `MUSIC_OUT_OF_RANGE` por un grado inválido |
+| `musicChordProgression` | `[c1, c2]`: cada acorde una negra | Acorde vacío |
+| `musicConcatenate` | `p1 + p2` | Memoria |
+| `musicAppendChord` | `p + c`: el acorde se agrega con una negra | Acorde vacío, memoria |
+| `musicRepeat` | `p * n` | `n < 0` es `MUSIC_OUT_OF_RANGE`; `n = 0` da una progresión vacía |
+
+Los errores de memoria devuelven `MUSIC_NO_MEMORY`.
+
+## Transformaciones
+
+- **Transposición** (`c + M3`, `p - m2`): `musicTransposeChord` y
+  `musicTransposeProgression` mueven cada nota con su grafía. Un acorde por
+  grado conserva el grado y su tonalidad se mueve con él (`V` de C mayor + P5
+  es `V` de G mayor). `musicTransposeKey` mueve la tónica de una tonalidad.
+  Una nota fuera de C0–B8 da `MUSIC_OUT_OF_RANGE`.
+- **Inversión** (`invert c by n`): `n` veces, la nota más grave sube las
+  octavas necesarias para quedar por encima de la más aguda. El resultado se
+  escribe de la nota más grave a la más aguda: `{C4, E4, G4}` por 1 da
+  `{E4, G4, C5}`, por 2 `{G4, C5, E5}` y por 3 `{C5, E5, G5}`. `n` va de 0 a la
+  cantidad de notas, el mismo rango que valida la semántica con literales;
+  fuera de eso, o si una nota sale de C0–B8, `MUSIC_OUT_OF_RANGE`. La
+  fundamental y la calidad no cambian; el acorde olvida el grado (ya no es la
+  tríada apilada) pero conserva la tonalidad.
+- **Arpegio** (`arpeggiate c as d`): una progresión con las notas de la más
+  grave a la más aguda, una por paso, cada una con la duración `d`.
+- **Modulación** (`modulate p to k`): conserva la función armónica.
+  - Un acorde por grado se reconstruye sobre el mismo grado de `k`:
+    `[I, V]` de C mayor a A menor da `[i, v]` de A menor (A–C–E, E–G–B).
+  - Un acorde escrito por notas se transporta la distancia entre la tónica de
+    su tonalidad y la de `k`, en la dirección más cercana (a lo sumo un
+    tritono): de C mayor a G mayor, `{C4, E4, G4}` baja una cuarta a
+    `{G3, B3, D4}`. Si el acorde no tiene tonalidad, usa la del primer acorde de
+    la progresión que la tenga.
+  - Si ningún acorde tiene tonalidad (por ejemplo `[{C4, E4, G4}]`), devuelve
+    `MUSIC_MISSING_KEY`: no hay de dónde modular.
+  - Las duraciones no cambian.
+- `musicIntervalBetween(desde, hasta, ...)` da el intervalo con grafía que
+  lleva una nota a otra. Lo usa la modulación.
+
+## SATB y `check`
+
+- **`voice p as SATB`** (`musicVoiceProgression`): reparte cada acorde en
+  cuatro voces con `musicRealizeSATB` de Tadeo (tesituras fijas, sin cruces,
+  moviendo las voces lo menos posible). **Regla de omisión:** un acorde con más
+  de cuatro clases de altura pierde primero la quinta (justa, disminuida o
+  aumentada) y después la séptima. Una novena queda con fundamental, tercera,
+  séptima y novena. Si aun así tiene más de cuatro clases (un cluster),
+  `MUSIC_TOO_MANY_NOTES`. Si un acorde no entra en las tesituras,
+  `MUSIC_NO_REALIZATION`. Las duraciones de la progresión pasan al voicing.
+- **Voicing explícito** (`musicExplicitVoicing`): cada acorde da soprano,
+  contralto, tenor y bajo en ese orden, sin redistribuir, una negra cada uno.
+  Un acorde sin exactamente cuatro notas es `MUSIC_NOT_FOUR_VOICES`.
+- **`check v for ...`** (`musicCheckVoicingValue`): `musicCheckVoicing` sobre
+  un voicing. Siempre comprueba la tesitura y además las reglas pedidas;
+  devuelve la primera violación y el índice del acorde.
+
+La semántica verifica en compilación los voicings explícitos de notas
+literales (directos o en una variable inmutable) con estas funciones. Así los
+casos 58 (cruce) y 59 (tesitura) pasaron de `pending/` a `reject/`.
+
 ## Relación con el AST
 
 `MusicMode` y `MusicRule` repiten los valores de `Mode` y `CheckRule` del AST.
@@ -196,5 +272,9 @@ La semántica y el generador convierten con un cast, y `Semantic.c` tiene
 - `src/test/c/music-property.c`: cada propiedad (también con acordes
   invertidos y vacíos), los nombres para `log`, la pertenencia a escala y
   acorde por clase de altura y `strict` sobre notas y acordes calculados.
+- `src/test/c/music-progression.c`: progresiones, concatenación, repetición,
+  transposición, inversión, arpegio, modulación (por grado, por notas y sin
+  tonalidad), `voice` con su regla de omisión, voicings explícitos, `check` y
+  fallos de memoria (`--wrap=calloc` y `--wrap=malloc`).
 
 `test.sh` compila todos los tests de la biblioteca con `$MUSIC_SOURCES`.

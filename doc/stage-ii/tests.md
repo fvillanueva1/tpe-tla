@@ -73,7 +73,7 @@ nueve casos semánticos y cuatro escenarios musicales por concretar.
 
 ## Actualizacion de Stage III
 
-La suite incluye rechazos semanticos activos y exige el mensaje `Semantic error:` para ellos, ademas del codigo 1. Los casos 54 a 57 y 60 a 63, instrumento y tempo invalidos ya son activos. Los casos 58 y 59 permanecen en `pending/`: necesitan escenarios concluyentes o una forma de fijar las voces. Las tablas anteriores describen los snapshots historicos de Stage II.
+La suite incluye rechazos semanticos activos y exige el mensaje `Semantic error:` para ellos, ademas del codigo 1. Los casos 54 a 57 y 60 a 63, instrumento y tempo invalidos ya son activos. Los casos 58 y 59 pasaron a `reject/` con voicings explícitos, que fijan las voces: 58 exige "voice crossing at chord 1" y 59 "tessitura at chord 1". Las tablas anteriores describen los snapshots historicos de Stage II.
 
 Los casos de rangos cubren literales y expresiones constantes; `semantic-dynamic-values.cad` verifica que las expresiones dependientes de variables sigan siendo aceptadas estaticamente.
 

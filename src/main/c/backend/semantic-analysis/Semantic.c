@@ -529,9 +529,59 @@ static bool knownChordMask(Scope *scope, const Expression *expression, unsigned 
     for (int bit = 0; bit < 12; ++bit) if (*mask & (1u << bit)) ++classes;
     return classes <= VOICE_COUNT;
 }
+/* Reports the first SATB violation, numbering chords from one. */
+static bool reportVoicing(MusicValidationResult result, size_t failed) {
+    if (result == MUSIC_VALID) return true;
+    const char *reason = result == MUSIC_TESSITURA_ERROR ? "tessitura" :
+        result == MUSIC_VOICE_CROSSING_ERROR ? "voice crossing" :
+        result == MUSIC_PARALLEL_FIFTHS_ERROR ? "parallel fifths" :
+        result == MUSIC_PARALLEL_OCTAVES_ERROR ? "parallel octaves" : "invalid voicing";
+    fprintf(stderr, "Semantic error: %s at chord %zu.\n", reason, failed + 1);
+    return false;
+}
+/*
+ * An explicit voicing of literal notes ([{C5, G4, E4, C3}, ...]) is checked as
+ * written, without redistributing: tessitura always and the requested rules.
+ * Other lists are left for the runtime.
+ */
+static bool checkExplicitVoicing(Scope *scope, const Expression *list, unsigned int rules) {
+    size_t count = 0;
+    for (ExpressionList *item = list->elements; item; item = item->next) {
+        const Expression *chord = knownExpression(scope, item->expression);
+        if (!chord || chord->type != NOTES_CHORD) return true;
+        ++count;
+    }
+    if (!count) return true;
+    MusicChord *chords = calloc(count, sizeof(*chords));
+    if (!chords) { *scope->failure = OUT_OF_MEMORY; fprintf(stderr, "Semantic analysis: out of memory.\n"); return false; }
+    size_t index = 0;
+    for (ExpressionList *item = list->elements; item; item = item->next, ++index) {
+        MusicNote notes[MUSIC_MAX_CHORD_NOTES];
+        size_t length = 0;
+        for (ExpressionList *note = knownExpression(scope, item->expression)->elements; note; note = note->next) {
+            const Expression *value = knownExpression(scope, note->expression);
+            if (!value || value->type != NOTE_LITERAL || length == MUSIC_MAX_CHORD_NOTES ||
+                musicParseNote(value->text, &notes[length]) != MUSIC_OK) { free(chords); return true; }
+            ++length;
+        }
+        if (musicChordFromNotes(notes, length, &chords[index]) != MUSIC_OK) { free(chords); return true; }
+    }
+    MusicVoicing voicing;
+    MusicStatus status = musicExplicitVoicing(chords, count, &voicing);
+    free(chords);
+    if (status == MUSIC_NO_MEMORY) { *scope->failure = OUT_OF_MEMORY; fprintf(stderr, "Semantic analysis: out of memory.\n"); return false; }
+    /* A chord without four notes was already reported by the type check. */
+    if (status != MUSIC_OK) return true;
+    size_t failed = 0;
+    MusicValidationResult result = musicCheckVoicingValue(&voicing, rules, &failed);
+    bool ok = reportVoicing(result, failed);
+    musicVoicingDestroy(&voicing);
+    return ok;
+}
 static bool checkKnownVoicing(Scope *scope, const Expression *expression, unsigned int rules) {
     if (scope->parent) return true;
     expression = knownExpression(scope, expression);
+    if (expression && expression->type == LIST_LITERAL) return checkExplicitVoicing(scope, expression, rules);
     if (!expression || expression->type != VOICE_EXPRESSION) return true;
     const Expression *progression = knownExpression(scope, expression->voice->progression);
     if (!progression) return true;
@@ -576,13 +626,7 @@ static bool checkKnownVoicing(Scope *scope, const Expression *expression, unsign
         } else {
             size_t failed = 0;
             MusicValidationResult result = musicCheckVoicing((const int (*)[VOICE_COUNT])voices, count, rules, &failed);
-            if (result != MUSIC_VALID) {
-                const char *reason = result == MUSIC_TESSITURA_ERROR ? "tessitura" :
-                    result == MUSIC_VOICE_CROSSING_ERROR ? "voice crossing" :
-                    result == MUSIC_PARALLEL_FIFTHS_ERROR ? "parallel fifths" :
-                    result == MUSIC_PARALLEL_OCTAVES_ERROR ? "parallel octaves" : "invalid voicing";
-                fprintf(stderr, "Semantic error: %s at chord %zu.\n", reason, failed + 1); ok = false;
-            }
+            ok = reportVoicing(result, failed);
         }
     }
     free(masks); free(voices); return ok;
@@ -611,7 +655,7 @@ static bool statement(Scope *scope, Statement *s) {
              (s->dataType == TYPE_CHORD && (s->expression->type == NOTES_CHORD || s->expression->type == TRIAD_CHORD || s->expression->type == SEVENTH_CHORD)) ||
              (s->dataType == TYPE_KEY && s->expression->type == KEY_LITERAL) ||
              (s->dataType == TYPE_PROGRESSION && (s->expression->type == LIST_LITERAL || s->expression->type == IN_EXPRESSION)) ||
-             (s->dataType == TYPE_VOICING && s->expression->type == VOICE_EXPRESSION))))) scope->symbols->literal = s->expression;
+             (s->dataType == TYPE_VOICING && (s->expression->type == VOICE_EXPRESSION || s->expression->type == LIST_LITERAL)))))) scope->symbols->literal = s->expression;
         if (s->dataType == TYPE_VOICING && !s->isVector && !checkKnownVoicing(scope, s->expression, 0)) return false;
         if (s->dataType == TYPE_KEY && !s->isVector) {
             scope->hasKeyContext = true;

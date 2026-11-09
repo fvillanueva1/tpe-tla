@@ -133,18 +133,9 @@ static void memory(void) {
     outputScoreDestroy(&score);
 }
 
-static void writers(void) {
-    OutputScore score;
-    assert(outputScoreInit(&score, 120, 0) == OUTPUT_OK);
-    assert(outputWriteMidi(&score, "unused.mid") == OUTPUT_NOT_IMPLEMENTED);
-    assert(outputWriteLilyPond(&score, "unused.ly") == OUTPUT_NOT_IMPLEMENTED);
-    outputScoreDestroy(&score);
-}
-
 int main(void) {
     basics();
     values();
     memory();
-    writers();
     return 0;
 }

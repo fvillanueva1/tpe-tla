@@ -112,14 +112,3 @@ OutputStatus outputAddVoicing(OutputScore *score, const MusicVoicing *voicing) {
     }
     return OUTPUT_OK;
 }
-
-/* The writers come in their own commits; until then they report it. */
-OutputStatus outputWriteMidi(const OutputScore *score, const char *path) {
-    (void)score; (void)path;
-    return OUTPUT_NOT_IMPLEMENTED;
-}
-
-OutputStatus outputWriteLilyPond(const OutputScore *score, const char *path) {
-    (void)score; (void)path;
-    return OUTPUT_NOT_IMPLEMENTED;
-}

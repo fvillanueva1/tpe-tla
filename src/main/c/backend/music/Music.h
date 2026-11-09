@@ -52,7 +52,14 @@ typedef enum {
     MUSIC_INVALID_ARGUMENT,
     MUSIC_MISSING_OCTAVE,
     MUSIC_OUT_OF_RANGE,
-    MUSIC_TOO_MANY_NOTES
+    MUSIC_TOO_MANY_NOTES,
+    MUSIC_NO_MEMORY,
+    /* "voice" found no SATB distribution within the tessituras. */
+    MUSIC_NO_REALIZATION,
+    /* A chord of an explicit voicing does not have exactly four notes. */
+    MUSIC_NOT_FOUR_VOICES,
+    /* "modulate" got a progression whose chords do not say which key they are in. */
+    MUSIC_MISSING_KEY
 } MusicStatus;
 
 /**
@@ -99,15 +106,27 @@ typedef enum {
 /** Maximum number of notes in a chord, repeated notes included. */
 #define MUSIC_MAX_CHORD_NOTES 16
 
+/** Stacked thirds of a chord built on a degree; 0 for a chord written by notes. */
+typedef enum { MUSIC_TRIAD = 3, MUSIC_SEVENTH = 4, MUSIC_NINTH = 5 } MusicChordSize;
+
 /**
  * A chord: its notes, in the order they were written or built. "root" is the
  * index of the root note in "notes" and "quality" its triad quality.
+ *
+ * A chord built on a degree remembers it ("size" != 0, "degree" 0-6) and its
+ * key ("hasKey"), so "modulate" can rebuild it on the same degree of another
+ * key. Transformations that change the notes freely (inversion) forget the
+ * degree but keep the key.
  */
 typedef struct {
     MusicNote notes[MUSIC_MAX_CHORD_NOTES];
     size_t count;
     size_t root;
     MusicQuality quality;
+    MusicChordSize size;
+    int degree;
+    bool hasKey;
+    MusicKey key;
 } MusicChord;
 
 /** A chord of a progression and how long it lasts. */
@@ -177,6 +196,12 @@ MusicStatus musicTransposeNote(MusicNote note, MusicInterval interval, bool down
 #define MUSIC_NOTE_TEXT_SIZE 8
 /** Writes the note as "C#4", "Bb3" or "G##4". */
 void musicFormatNote(MusicNote note, char text[MUSIC_NOTE_TEXT_SIZE]);
+/**
+ * The spelled interval that takes "from" to "to" (C4 -> G4 = P5 up,
+ * C4 -> A3 = m3 down), so transposing "from" by it gives "to" with its
+ * spelling. Compound distances keep their octaves (C4 -> D5 = 14 / 8).
+ */
+MusicStatus musicIntervalBetween(MusicNote from, MusicNote to, MusicInterval *interval, bool *down);
 
 /*
  * Keys and scales. A scale starts at the tonic in octave 4 (as "export" has
@@ -205,9 +230,6 @@ MusicStatus musicRelativeMinorKey(MusicKey key, MusicKey *result);
  * only for reading: the quality always comes from the key, so "ii", "II" and
  * "iidim" are the same degree.
  */
-
-/** Stacked thirds of a chord built on a degree. */
-typedef enum { MUSIC_TRIAD = 3, MUSIC_SEVENTH = 4, MUSIC_NINTH = 5 } MusicChordSize;
 
 /** Parses a degree lexeme ("V", "ii", "viidim") into 0-6. */
 MusicStatus musicParseDegree(const char *lexeme, int *degree);
@@ -263,6 +285,86 @@ bool musicNoteInKey(MusicNote note, MusicKey key);
 /** "strict": every note of the chord belongs to the key; false for an empty chord. */
 bool musicChordInKey(const MusicChord *chord, MusicKey key);
 
+/*
+ * Progressions. Every function builds a new progression in "result", which
+ * the caller destroys, and leaves it empty on failure. "result" must be a
+ * different variable from the inputs, and what it held before is not freed:
+ * for "p = p + q" the caller builds into a temporary, destroys p and moves it.
+ */
+
+/** "[I, V, I] in k": a triad on each zero-based degree, a quarter each. */
+MusicStatus musicDegreeProgression(MusicKey key, const int *degrees, size_t count, MusicProgression *result);
+/** "[c1, c2]": each chord lasting a quarter. */
+MusicStatus musicChordProgression(const MusicChord *chords, size_t count, MusicProgression *result);
+/** "p1 + p2". */
+MusicStatus musicConcatenate(const MusicProgression *first, const MusicProgression *second, MusicProgression *result);
+/** "p + c": the chord is appended lasting a quarter. */
+MusicStatus musicAppendChord(const MusicProgression *progression, const MusicChord *chord, MusicProgression *result);
+/** "p * n": n >= 0 (MUSIC_OUT_OF_RANGE otherwise); 0 gives an empty progression. */
+MusicStatus musicRepeat(const MusicProgression *progression, int times, MusicProgression *result);
+
+/*
+ * Transformations. A failure leaves the result untouched (or empty, for a
+ * progression).
+ */
+
+/** "c + M3" / "c - M3": every note, keeping spelling, degree and key (the key moves too). */
+MusicStatus musicTransposeChord(const MusicChord *chord, MusicInterval interval, bool down, MusicChord *result);
+/** "p + M3" / "p - M3": every chord. */
+MusicStatus musicTransposeProgression(const MusicProgression *progression, MusicInterval interval, bool down,
+                                      MusicProgression *result);
+/** The key with its tonic moved by the interval, same mode. */
+MusicStatus musicTransposeKey(MusicKey key, MusicInterval interval, bool down, MusicKey *result);
+/**
+ * "invert c by n": n times, the lowest note goes up as many octaves as needed
+ * to be above the highest one. The result is written from the lowest note up.
+ * n goes from 0 to the number of notes (MUSIC_OUT_OF_RANGE otherwise, also when
+ * a note leaves C0-B8). The root and quality stay; the degree is forgotten.
+ */
+MusicStatus musicInvertChord(const MusicChord *chord, int times, MusicChord *result);
+/** "arpeggiate c as d": the notes from the lowest up, one after the other, each lasting "duration". */
+MusicStatus musicArpeggiate(const MusicChord *chord, MusicDuration duration, MusicProgression *result);
+/**
+ * "modulate p to k": keeps the harmonic function. A chord built on a degree is
+ * rebuilt on the same degree of "key" ([I, V] in C major to A minor gives
+ * [i, v] in A minor). Any other chord moves by the interval from the tonic of
+ * its key to the tonic of "key"; a chord without a key uses the key of the
+ * first chord of the progression that has one. MUSIC_MISSING_KEY when no
+ * chord has a key. Durations stay.
+ */
+MusicStatus musicModulate(const MusicProgression *progression, MusicKey key, MusicProgression *result);
+
+/*
+ * SATB voicings.
+ */
+
+/**
+ * "voice p as SATB": distributes every chord in four voices within the
+ * tessituras, without crossings and moving the voices as little as possible
+ * (musicRealizeSATB). A chord with more than four pitch classes first loses
+ * its fifth and then its seventh (a ninth keeps root, third, seventh and
+ * ninth); if it still has more than four, MUSIC_TOO_MANY_NOTES.
+ * MUSIC_NO_REALIZATION when a chord does not fit the tessituras.
+ * Durations stay. "result" is left empty on failure.
+ */
+MusicStatus musicVoiceProgression(const MusicProgression *progression, MusicVoicing *result);
+/**
+ * "voicing v = [{C5, G4, E4, C3}, ...]": each chord gives soprano, alto, tenor
+ * and bass in that order, with no redistribution, a quarter each.
+ * MUSIC_NOT_FOUR_VOICES when a chord does not have exactly four notes.
+ */
+MusicStatus musicExplicitVoicing(const MusicChord *chords, size_t count, MusicVoicing *result);
+/** "check v for ...": musicCheckVoicing over a voicing value. */
+typedef enum {
+    MUSIC_VALID,
+    MUSIC_INVALID_INPUT,
+    MUSIC_TESSITURA_ERROR,
+    MUSIC_VOICE_CROSSING_ERROR,
+    MUSIC_PARALLEL_FIFTHS_ERROR,
+    MUSIC_PARALLEL_OCTAVES_ERROR
+} MusicValidationResult;
+MusicValidationResult musicCheckVoicingValue(const MusicVoicing *voicing, unsigned int rules, size_t *failedChord);
+
 /* Compute seven ascending MIDI pitches starting at the given tonic. */
 bool musicScale(int tonic, MusicMode mode, int notes[7]);
 bool musicInKey(const int *pitches, size_t count, int tonic, MusicMode mode);
@@ -274,15 +376,6 @@ bool musicInTessitura(const int voices[VOICE_COUNT]);
 bool musicWithoutVoiceCrossing(const int voices[VOICE_COUNT]);
 bool musicWithoutParallelFifths(const int first[VOICE_COUNT], const int second[VOICE_COUNT]);
 bool musicWithoutParallelOctaves(const int first[VOICE_COUNT], const int second[VOICE_COUNT]);
-
-typedef enum {
-    MUSIC_VALID,
-    MUSIC_INVALID_INPUT,
-    MUSIC_TESSITURA_ERROR,
-    MUSIC_VOICE_CROSSING_ERROR,
-    MUSIC_PARALLEL_FIFTHS_ERROR,
-    MUSIC_PARALLEL_OCTAVES_ERROR
-} MusicValidationResult;
 
 /* "rules" is a MusicRule mask. failedChord, when non-NULL, receives the zero-based index of the failing chord. */
 MusicValidationResult musicCheckVoicing(const int (*chords)[VOICE_COUNT], size_t count,

@@ -46,7 +46,7 @@ MusicStatus musicDegreeChord(MusicKey key, int degree, MusicChordSize size, Musi
     if (!chord || (size != MUSIC_TRIAD && size != MUSIC_SEVENTH && size != MUSIC_NINTH)) return MUSIC_INVALID_ARGUMENT;
     if (degree < 0 || degree > 6) return MUSIC_OUT_OF_RANGE;
     if (musicKeyScale(key, &scale) != MUSIC_OK) return MUSIC_INVALID_ARGUMENT;
-    MusicChord result = {.count = (size_t)size, .root = 0};
+    MusicChord result = {.count = (size_t)size, .root = 0, .size = size, .degree = degree, .hasKey = true, .key = key};
     for (int i = 0; i < (int)size; ++i) {
         int step = degree + 2 * i;
         MusicNote note = scale.notes[step % 7];

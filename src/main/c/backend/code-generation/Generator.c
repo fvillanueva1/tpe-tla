@@ -1,5 +1,6 @@
 #include "Generator.h"
 #include "../music/Music.h"
+#include "../output/Output.h"
 #include "../semantic-analysis/Semantic.h"
 #include <stdio.h>
 #include <string.h>
@@ -54,29 +55,19 @@ static CompilationStatus exportLiteralScale(Program *program, bool *handled) {
     MusicScale keyScale;
     if (musicParseSpelling(declaration->expression->key.tonic, &key.tonic) != MUSIC_OK ||
         musicKeyScale(key, &keyScale) != MUSIC_OK) return FAILED;
-    int notes[7];
-    for (int i = 0; i < 7; ++i) notes[i] = keyScale.notes[i].pitch;
-    int bpm = export->tempo ? export->tempo->integer : 120;
-    unsigned int micros = 60000000u / (unsigned int)bpm;
-    int instrument = export->instrument ? semanticInstrumentProgram(export->instrument) : 0;
-    unsigned char midi[99] = {
-        'M','T','h','d', 0,0,0,6, 0,0, 0,1, 1,0xe0,
-        'M','T','r','k', 0,0,0,77,
-        0,0xff,0x51,3, (unsigned char)(micros >> 16), (unsigned char)(micros >> 8), (unsigned char)micros,
-        0,0xc0,(unsigned char)instrument
-    };
-    size_t pos = 32;
-    for (int i = 0; i < 7; ++i) {
-        midi[pos++] = 0; midi[pos++] = 0x90; midi[pos++] = (unsigned char)notes[i]; midi[pos++] = 64;
-        midi[pos++] = 0x83; midi[pos++] = 0x60; midi[pos++] = 0x80; midi[pos++] = (unsigned char)notes[i]; midi[pos++] = 0;
+    int bpm = export->tempo ? export->tempo->integer : OUTPUT_DEFAULT_TEMPO;
+    int instrument = export->instrument ? semanticInstrumentProgram(export->instrument) : OUTPUT_DEFAULT_INSTRUMENT;
+    OutputScore score;
+    OutputStatus status = outputScoreInit(&score, bpm, instrument);
+    if (status == OUTPUT_OK) status = outputAddScale(&score, &keyScale);
+    if (status == OUTPUT_OK) status = outputWriteMidi(&score, export->path);
+    outputScoreDestroy(&score);
+    switch (status) {
+    case OUTPUT_OK: return SUCCEEDED;
+    case OUTPUT_NO_MEMORY: logError(_logger, "Out of memory while writing MIDI output."); return OUT_OF_MEMORY;
+    case OUTPUT_FILE_EXISTS: logError(_logger, "Cannot create MIDI output (it already exists)."); return FAILED;
+    default: logError(_logger, "Cannot write MIDI output."); return FAILED;
     }
-    midi[pos++] = 0; midi[pos++] = 0xff; midi[pos++] = 0x2f; midi[pos++] = 0;
-    FILE *file = fopen(export->path, "wbx");
-    if (!file) { logError(_logger, "Cannot create MIDI output (it may already exist)."); return FAILED; }
-    bool ok = fwrite(midi, 1, pos, file) == pos;
-    if (fclose(file) != 0) ok = false;
-    if (!ok) { remove(export->path); logError(_logger, "Cannot write MIDI output."); return FAILED; }
-    return SUCCEEDED;
 }
 
 CompilationStatus executeGenerator(CompilerState * compilerState) {

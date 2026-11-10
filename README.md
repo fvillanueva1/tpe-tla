@@ -9,7 +9,7 @@ y generará artefactos reproducibles.
 
 ## Estado del proyecto
 
-El proyecto se encuentra en **Stage II: Frontend**. Está implementado en C con
+El proyecto se encuentra iniciando **Stage III: Backend**. Está implementado en C con
 Flex y Bison: reconoce programas Cadence y construye su árbol de sintaxis
 abstracta (AST), con destructores para liberar los nodos y sus hijos.
 La especificación está disponible como [PDF de Stage I](<doc/Cadence%20-%20Stage%20I.pdf>);
@@ -20,8 +20,8 @@ escalas, acordes, progresiones, vectores e índices, propiedades, operadores,
 transformaciones, control de flujo, procedimientos, `voice ... as SATB`,
 `check`, `export` a MIDI/sheet y `log` con interpolación por nombre.
 
-Stage II comprueba la sintaxis y construye el AST. Todavía no evalúa programas,
-resuelve variables, valida tipos o contrapunto, distribuye voces ni genera
+El frontend construye el AST y la primera pasada semántica valida nombres, alcances y algunos tipos. Todavía no evalúa programas,
+valida contrapunto, distribuye voces ni genera
 archivos MIDI/partituras. `log` tampoco imprime el mensaje del programa.
 Los nodos conservan esa información para las siguientes etapas.
 
@@ -70,9 +70,9 @@ como `==`, `aug4`, instrumentos e interpolación.
 
 | Carpeta | Contenido | Resultado esperado en Stage II |
 |---------|-----------|--------------------------------|
-| `src/test/c/accept/` | 53 programas de sintaxis válida | Código de salida 0 |
-| `src/test/c/reject/` | 27 errores léxicos o sintácticos | Código distinto de 0 |
-| `src/test/c/pending/` | 13 archivos semánticos pendientes | No se ejecutan en la suite |
+| `src/test/c/accept/` | Programas aceptados | Código de salida 0 |
+| `src/test/c/reject/` | Errores léxicos, sintácticos o semánticos | Código distinto de 0 |
+| `src/test/c/pending/` | Casos semánticos pendientes | No se ejecutan en la suite |
 
 `test.sh` recorre exclusivamente `accept/` y `reject/` y compara códigos de
 salida: no verifica resultados musicales ni el contenido de archivos.
@@ -144,3 +144,9 @@ Stage I y Stage II no incorpora un nuevo informe.
 Las entregas se integran en `development` mediante PRs revisados por otro
 integrante. La entrega a la cátedra debe identificar el grupo, los integrantes
 y el hash completo del commit de `development` después de integrar la revisión.
+
+## Avance de Stage III
+
+La primera pasada semántica valida nombres, redeclaraciones y alcances antes de invocar el generador. Su alcance y las validaciones pendientes se detallan en [análisis semántico](doc/stage-ii/semantica.md). El chequeo de tipos es parcial y la generación todavía no está implementada.
+
+

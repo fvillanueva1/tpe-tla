@@ -1,4 +1,5 @@
 #include "FlexActions.h"
+#include <limits.h>
 
 /* MODULE INTERNAL STATE */
 
@@ -92,7 +93,16 @@ CompilationStatus IgnoredLexemeAction() {
 
 CompilationStatus IntegerLexemeAction() {
 	Token * token = createToken(_lexicalAnalyzer, INTEGER);
-	token->semanticValue->integer = atoi(token->lexeme);
+	// strtoll satura, así que también detecta literales demasiado largos para long long.
+	long long value = strtoll(token->lexeme, NULL, 10);
+	if (value > INT_MAX) {
+		logError(_logger, "Integer literal out of range at line %d: %s", token->line, token->lexeme);
+		token->label = UNKNOWN;
+		pushToken(_lexicalAnalyzer, token);
+		destroyToken(token);
+		return FAILED;
+	}
+	token->semanticValue->integer = (int) value;
 	_logTokenAction(__FUNCTION__, token);
 	CompilationStatus status = pushToken(_lexicalAnalyzer, token);
 	destroyToken(token);

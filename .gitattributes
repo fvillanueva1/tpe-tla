@@ -11,6 +11,7 @@
 .prettierrc text eol=lf
 *.bat text eol=lf
 *.c text eol=lf
+*.cad text eol=lf
 *.cnf text eol=lf
 *.conf text eol=lf
 *.cpp text eol=lf
@@ -32,6 +33,7 @@
 *.lock text eol=lf
 *.md text eol=lf
 *.mjs text eol=lf
+*.out text eol=lf
 *.pem text eol=lf
 *.php text eol=lf
 *.prisma text eol=lf

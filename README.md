@@ -73,8 +73,8 @@ como `==`, `aug4`, instrumentos e interpolación.
 
 `test.sh` ejecuta `accept/` y `reject/` y exige el diagnostico semantico en los casos correspondientes. Comprueba el contenido MIDI de la primera exportacion de escala y las funciones de validacion musical; la evaluacion general sigue pendiente. Los casos 55 a 57 validan `strict` y paralelas con valores conocidos; los casos 58 y 59 siguen pendientes.
 
-Los archivos 56–59 son **escenarios por concretar**, no pruebas que ya
-garanticen quintas u octavas paralelas, cruce de voces o errores de tesitura.
+Los archivos 58 y 59 son **escenarios por concretar**, no pruebas que ya
+garanticen cruce de voces o errores de tesitura.
 Enumerar notas no fija su asignación a SATB; el algoritmo posterior puede
 elegir otras inversiones y octavas. Se deberá definir una entrada o realización
 que obligue a cada error. No se declara tesitura en la sintaxis: los rangos
@@ -114,7 +114,8 @@ log "Exportando {voces}";
 export voces as midi to "coral.mid" at 90 bpm with piano;
 ```
 
-Este programa se acepta y produce un AST; todavía no escribe `coral.mid`.
+Este programa se acepta con `--check`; sin ese flag falla porque la generación
+todavía no está soportada. No escribe `coral.mid`.
 Se usa `voces` porque `v` es un grado reservado. La comparación se escribe
 `==`, la cuarta aumentada `aug4` y los grados disminuidos con sufijo `dim`.
 

@@ -1,0 +1,2 @@
+voicing voces = voice [{C4, G4}, {D4, A4}] as SATB;
+check voces for voice_crossing;

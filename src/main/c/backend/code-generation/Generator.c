@@ -27,13 +27,27 @@ ModuleDestructor initializeGeneratorModule() {
 static CompilationStatus exportLiteralScale(Program *program, bool *handled) {
     *handled = false;
     StatementList *first = program->statements;
-    if (!first || !first->next || first->next->next) return SUCCEEDED;
-    Statement *declaration = first->statement, *output = first->next->statement;
+    if (!first || !first->next) return SUCCEEDED;
+    Statement *declaration = first->statement;
+    StatementList *last = first->next;
+    Statement *scale = NULL;
+    if (last->next) {
+        scale = last->statement;
+        last = last->next;
+    }
+    if (last->next) return SUCCEEDED;
+    Statement *output = last->statement;
     if (declaration->type != DECLARATION || declaration->dataType != TYPE_KEY || declaration->isVector ||
         declaration->expression->type != KEY_LITERAL || output->type != EXPORT_STATEMENT) return SUCCEEDED;
     Export *export = output->export;
-    if (export->format != EXPORT_MIDI || export->value->type != SCALE_OF_KEY ||
-        export->value->operand->type != VARIABLE || strcmp(export->value->operand->text, declaration->name) ||
+    Expression *value = export->value;
+    if (scale) {
+        if (scale->type != DECLARATION || scale->dataType != TYPE_SCALE || scale->isVector ||
+            value->type != VARIABLE || strcmp(value->text, scale->name)) return SUCCEEDED;
+        value = scale->expression;
+    }
+    if (export->format != EXPORT_MIDI || value->type != SCALE_OF_KEY ||
+        value->operand->type != VARIABLE || strcmp(value->operand->text, declaration->name) ||
         (export->tempo && export->tempo->type != INTEGER_LITERAL) || strchr(export->path, '\\')) return SUCCEEDED;
     *handled = true;
     static const int pitches[] = {9, 11, 0, 2, 4, 5, 7};
@@ -69,6 +83,9 @@ static CompilationStatus exportLiteralScale(Program *program, bool *handled) {
 CompilationStatus executeGenerator(CompilerState * compilerState) {
     bool handled;
     CompilationStatus status = exportLiteralScale(compilerState->abstractSyntaxtTree, &handled);
-    if (!handled) logWarning(_logger, "Code generation is not implemented for this program.");
+    if (!handled) {
+        logError(_logger, "Code generation is not implemented for this program.");
+        return FAILED;
+    }
     return status;
 }

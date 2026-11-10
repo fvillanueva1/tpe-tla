@@ -1,0 +1,4 @@
+key original = C major strict;
+key copia = original;
+original = G major;
+chord acorde = {C4, F#4, G4};

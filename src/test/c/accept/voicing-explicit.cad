@@ -1,0 +1,2 @@
+voicing voces = [{C5, G4, E4, C3}, {B4, G4, D4, G2}];
+check voces for voice_crossing;

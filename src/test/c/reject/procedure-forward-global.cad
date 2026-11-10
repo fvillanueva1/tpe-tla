@@ -1,0 +1,3 @@
+f();
+integer numero = 1;
+define f() { log "{numero}"; }

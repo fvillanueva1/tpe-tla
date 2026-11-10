@@ -1,0 +1,3 @@
+// Cada acorde tiene una unica clase de altura; todas las voces se mueven en octavas.
+voicing voces = voice [{C4}, {D4}] as SATB;
+check voces for parallel_octaves;

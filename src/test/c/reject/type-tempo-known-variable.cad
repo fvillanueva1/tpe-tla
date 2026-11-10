@@ -1,0 +1,3 @@
+integer tempo = 3;
+progression tema = [];
+export tema as midi to "tema.mid" at tempo bpm;

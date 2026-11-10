@@ -1,0 +1,2 @@
+define cuenta(integer numero) -> integer { if (numero > 0) { return cuenta(numero - 1); } else { return 0; } }
+integer resultado = cuenta(3);

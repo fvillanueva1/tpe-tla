@@ -1,0 +1,5 @@
+note nota = B8;
+define corregir() { nota = C4; return; }
+corregir();
+interval intervalo = M2;
+note resultado = nota + intervalo;

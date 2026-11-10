@@ -1,0 +1,3 @@
+chord acorde = {C4, E4, G4};
+integer veces = 4;
+chord resultado = invert acorde by veces;

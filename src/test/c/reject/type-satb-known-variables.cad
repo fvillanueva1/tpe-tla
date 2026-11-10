@@ -1,0 +1,5 @@
+chord primero = {C4, G4};
+chord segundo = {D4, A4};
+progression tema = [primero, segundo];
+voicing voces = voice tema as SATB;
+check voces for parallel_fifths;

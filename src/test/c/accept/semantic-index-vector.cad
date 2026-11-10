@@ -1,0 +1,5 @@
+integer[] numeros = [1, 2];
+integer resultado = numeros[1];
+integer[] mutable = [1];
+mutable = [1, 2];
+integer otro = mutable[1];

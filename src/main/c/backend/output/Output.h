@@ -111,7 +111,8 @@ OutputStatus outputEncodeLilyPond(const OutputScore *score, OutputBuffer *buffer
  * and published only when every file of the call was written, so a failure
  * never leaves a partial file nor some of the files. They never overwrite: if
  * a destination exists (or is repeated in the call) nothing is written and
- * they return OUTPUT_FILE_EXISTS.
+ * they return OUTPUT_FILE_EXISTS. File systems without hard links return
+ * OUTPUT_WRITE_ERROR rather than risk replacing a destination.
  */
 
 typedef enum { OUTPUT_FORMAT_MIDI, OUTPUT_FORMAT_LILYPOND } OutputFormat;

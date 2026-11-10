@@ -1,6 +1,7 @@
 #include "../../main/c/backend/output/Output.h"
 #include <assert.h>
 #include <dirent.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,6 +9,22 @@
 #include <unistd.h>
 
 static char directory[] = "/tmp/cadence-output-XXXXXX";
+static int failLinkAfter = -1;
+static bool createDestination;
+
+int __real_link(const char *, const char *);
+int __wrap_link(const char *source, const char *destination) {
+    if (failLinkAfter == 0) {
+        if (createDestination) {
+            FILE *file = fopen(destination, "wb");
+            assert(file && fputs("existing data", file) >= 0 && fclose(file) == 0);
+        }
+        errno = EOPNOTSUPP;
+        return -1;
+    }
+    if (failLinkAfter > 0) --failLinkAfter;
+    return __real_link(source, destination);
+}
 
 static MusicNote note(const char *lexeme) {
     MusicNote result;
@@ -176,6 +193,25 @@ static void files(void) {
     OutputFile invalid[] = {{&other, OUTPUT_FORMAT_MIDI, path("h.mid")}, {&score, OUTPUT_FORMAT_MIDI, path("i.mid")}};
     assert(outputWriteFiles(invalid, 2, &failed) == OUTPUT_INVALID_ARGUMENT && failed == 1 && entries() == 1);
     score.tempo = 120;
+
+    OutputFile badFormat[] = {{&score, (OutputFormat)99, path("invalid.mid")}};
+    assert(outputWriteFiles(badFormat, 1, &failed) == OUTPUT_INVALID_ARGUMENT && failed == 0 && entries() == 1);
+
+    /* A failed publication rolls back earlier files and every temporary. */
+    OutputFile unsupported[] = {{&score, OUTPUT_FORMAT_MIDI, path("first.mid")}, {&score, OUTPUT_FORMAT_MIDI, path("second.mid")}};
+    failLinkAfter = 1;
+    assert(outputWriteFiles(unsupported, 2, &failed) == OUTPUT_WRITE_ERROR && failed == 1 && entries() == 1);
+
+    /* A destination created during publication must survive unchanged. */
+    failLinkAfter = 0;
+    createDestination = true;
+    assert(outputWriteFiles(unsupported, 2, &failed) == OUTPUT_WRITE_ERROR && failed == 0 && entries() == 2);
+    file = fopen(unsupported[0].path, "rb");
+    assert(file && fread(data, 1, sizeof(data), file) == strlen("existing data"));
+    assert(!memcmp(data, "existing data", strlen("existing data")) && fclose(file) == 0);
+    assert(unlink(unsupported[0].path) == 0);
+    failLinkAfter = -1;
+    createDestination = false;
 
     OutputFile both[] = {{&score, OUTPUT_FORMAT_MIDI, path("e.mid")}, {&score, OUTPUT_FORMAT_LILYPOND, path("f.ly")}};
     assert(outputWriteFiles(both, 2, &failed) == OUTPUT_OK && entries() == 3);

@@ -46,16 +46,12 @@ static OutputStatus writeTemporary(const char *path, const OutputBuffer *buffer,
 
 /*
  * Gives the temporary file its final name without overwriting: link() fails if
- * the destination exists. File systems without hard links fall back to a check
- * and rename().
+ * the destination exists. Fail if the file system cannot publish safely.
  */
 static OutputStatus publish(const char *temporary, const char *path) {
     if (link(temporary, path) == 0) { unlink(temporary); return OUTPUT_OK; }
     if (errno == EEXIST) return OUTPUT_FILE_EXISTS;
-    if (errno != EPERM && errno != EXDEV && errno != EMLINK && errno != ENOSYS && errno != EOPNOTSUPP &&
-        errno != ENOTSUP && errno != EACCES) return OUTPUT_WRITE_ERROR;
-    if (exists(path)) return OUTPUT_FILE_EXISTS;
-    return rename(temporary, path) == 0 ? OUTPUT_OK : OUTPUT_WRITE_ERROR;
+    return OUTPUT_WRITE_ERROR;
 }
 
 OutputStatus outputWriteFiles(const OutputFile *files, size_t count, size_t *failed) {
@@ -74,7 +70,7 @@ OutputStatus outputWriteFiles(const OutputFile *files, size_t count, size_t *fai
     size_t index = 0;
     /* First every file goes to its temporary; nothing is visible yet. */
     for (; index < count && status == OUTPUT_OK; ++index) {
-        OutputBuffer buffer;
+        OutputBuffer buffer = {0};
         status = encode(&files[index], &buffer);
         if (status == OUTPUT_OK) status = writeTemporary(files[index].path, &buffer, &temporaries[index]);
         outputBufferDestroy(&buffer);

@@ -188,7 +188,7 @@ fi
 rm -f "$PROGRESSION_TEST"
 echo "Checking MIDI, LilyPond and file writing..."
 FILE_TEST=$(mktemp)
-if ! cc -std=gnu99 -fsanitize=address src/test/c/output-file.c $OUTPUT_SOURCES $MUSIC_SOURCES -o "$FILE_TEST" || ! "$FILE_TEST"; then
+if ! cc -std=gnu99 -fsanitize=address src/test/c/output-file.c $OUTPUT_SOURCES $MUSIC_SOURCES -Wl,--wrap=link -o "$FILE_TEST" || ! "$FILE_TEST"; then
     echo -e "    MIDI, LilyPond and file writing, ${RED}failed${OFF}"
     STATUS=1
 fi

@@ -108,7 +108,8 @@ ninguno**, que es lo que el runtime necesita al terminar un programa con varios
    `mkstemp`). Si algo falla, borra todos los temporales.
 3. Recién entonces publica cada temporal con su nombre final usando `link()`,
    que falla si el destino apareció mientras tanto, así nunca se sobrescribe.
-   En sistemas de archivos sin enlaces duros se comprueba y se usa `rename()`.
+   En sistemas de archivos sin enlaces duros devuelve `OUTPUT_WRITE_ERROR`:
+   no usa `rename()`, que podría reemplazar un destino creado por otro proceso.
    Si falla la publicación de uno, se borran los ya publicados y los
    temporales restantes.
 
@@ -137,7 +138,9 @@ código de salida (1 para errores de escritura, 2 para memoria).
   escala, de acordes con silencios, ligaduras y grafías, y de un voicing; y la
   escritura: contenido y permisos, no sobrescribir, todo o nada (un destino
   imposible, repetido o existente, un archivo que no se puede codificar) sin
-  dejar temporales.
+  dejar temporales. También rechaza formatos desconocidos sin liberar memoria
+  sin inicializar y simula fallos de `link()` para comprobar la limpieza del
+  lote y que un destino creado durante la publicación conserve su contenido.
 - `scale-midi.c` y la integración de `test.sh` comprueban que la escala se
   sigue exportando igual y que una segunda exportación al mismo archivo falla
   sin cambiarlo.

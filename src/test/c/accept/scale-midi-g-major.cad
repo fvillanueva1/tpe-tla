@@ -1,0 +1,2 @@
+key tonalidad = G major;
+export scale of tonalidad as midi to "sol.mid" with violin;

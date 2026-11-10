@@ -35,7 +35,7 @@ const int main(const int length, const char ** arguments) {
 		// ----------------------------------------------------------------------------------------
 		// Beginning of the Backend... ------------------------------------------------------------
 		compilationStatus = analyzeSemantics(program);
-		if (compilationStatus == SUCCEEDED) executeGenerator(&compilerState);
+		if (compilationStatus == SUCCEEDED) compilationStatus = executeGenerator(&compilerState);
 		// ...end of the Backend. -----------------------------------------------------------------
 		// ----------------------------------------------------------------------------------------
 	}

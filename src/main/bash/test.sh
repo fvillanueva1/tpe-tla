@@ -13,8 +13,13 @@ STATUS=0
 echo "Compiler should accept..."
 echo ""
 
+ROOT_PATH="$PWD"
+TEST_DIRECTORY=$(mktemp -d)
+trap 'rm -rf "$TEST_DIRECTORY"' EXIT
 for test in $(ls src/test/c/accept/); do
-	cat "src/test/c/accept/$test" | ".build/Flex-Bison-Compiler" >/dev/null 2>&1
+    TEST_WORK="$TEST_DIRECTORY/$test"
+    mkdir "$TEST_WORK"
+    (cd "$TEST_WORK" && "$ROOT_PATH/.build/Flex-Bison-Compiler" < "$ROOT_PATH/src/test/c/accept/$test") >/dev/null 2>&1
 	RESULT="$?"
 	if [ "$RESULT" == "0" ]; then
 		echo -e "    $test, ${GREEN}and it does${OFF} (status $RESULT)"
@@ -33,7 +38,7 @@ for test in $(ls src/test/c/reject/); do
 	RESULT="$?"
 	case "$test" in
 		54-*|60-*|61-*|62-*|63-*|log-undeclared-*|scope-outside*|type-*|procedure-*|return-outside*|export-invalid-*)
-			if [[ "$OUTPUT" != *"Semantic error:"* || "$OUTPUT" == *"Code generation is not implemented yet."* ]]; then
+			if [[ "$OUTPUT" != *"Semantic error:"* || "$OUTPUT" == *"Code generation is not implemented"* ]]; then
 				echo -e "    $test, ${RED}missing semantic diagnostic or generation was invoked${OFF}"
 				STATUS=1
 				continue
@@ -47,6 +52,32 @@ for test in $(ls src/test/c/reject/); do
 	fi
 done
 echo ""
+
+echo "Checking scale MIDI integration..."
+SCALE_WORK="$TEST_DIRECTORY/scale-integration"
+mkdir "$SCALE_WORK"
+if ! (cd "$SCALE_WORK" && "$ROOT_PATH/.build/Flex-Bison-Compiler" < "$ROOT_PATH/src/test/c/accept/30-export-scale.cad" >/dev/null 2>&1) ||
+   ! cc -std=gnu99 src/test/c/scale-midi.c -o "$TEST_DIRECTORY/scale-midi" ||
+   ! "$TEST_DIRECTORY/scale-midi" "$SCALE_WORK/escala.mid" C ||
+   ! (cd "$SCALE_WORK" && "$ROOT_PATH/.build/Flex-Bison-Compiler" < "$ROOT_PATH/src/test/c/accept/scale-midi-g-major.cad" >/dev/null 2>&1) ||
+   ! "$TEST_DIRECTORY/scale-midi" "$SCALE_WORK/sol.mid" G; then
+    echo -e "    scale MIDI, ${RED}failed${OFF}"
+    STATUS=1
+else
+    cp "$SCALE_WORK/escala.mid" "$SCALE_WORK/original.mid"
+    (cd "$SCALE_WORK" && "$ROOT_PATH/.build/Flex-Bison-Compiler" < "$ROOT_PATH/src/test/c/accept/30-export-scale.cad" >/dev/null 2>&1)
+    RESULT=$?
+    if [ "$RESULT" != 1 ] || ! cmp -s "$SCALE_WORK/escala.mid" "$SCALE_WORK/original.mid"; then
+        echo -e "    existing MIDI protection, ${RED}failed${OFF}"
+        STATUS=1
+    fi
+    printf '%s\n' 'key tonalidad = C major;' 'export scale of tonalidad as midi to "missing/output.mid";' > "$SCALE_WORK/write-failure.cad"
+    (cd "$SCALE_WORK" && "$ROOT_PATH/.build/Flex-Bison-Compiler" < write-failure.cad >/dev/null 2>&1)
+    if [ "$?" != 1 ]; then
+        echo -e "    MIDI write failure, ${RED}not reported${OFF}"
+        STATUS=1
+    fi
+fi
 
 echo "Checking instrument mapping..."
 INSTRUMENT_TEST=$(mktemp)

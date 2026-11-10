@@ -20,7 +20,7 @@ escalas, acordes, progresiones, vectores e índices, propiedades, operadores,
 transformaciones, control de flujo, procedimientos, `voice ... as SATB`,
 `check`, `export` a MIDI/sheet y `log` con interpolación por nombre.
 
-El frontend construye el AST y el analizador semantico verifica nombres, alcances y tipos. La evaluacion musical, la realizacion SATB y la generacion de MIDI o partituras siguen pendientes. El detalle y las limitaciones estan en [analisis semantico](doc/stage-ii/semantica.md).
+El frontend construye el AST y el analizador semantico verifica nombres, alcances y tipos. La evaluacion musical y la realizacion SATB siguen pendientes. La generacion MIDI soporta por ahora unicamente una tonalidad literal seguida de la exportacion de su escala; las demas salidas siguen pendientes. El detalle y las limitaciones estan en [analisis semantico](doc/stage-ii/semantica.md).
 
 ## Documentación
 
@@ -135,3 +135,7 @@ Stage I y Stage II no incorpora un nuevo informe.
 Las entregas se integran en `development` mediante PRs revisados por otro
 integrante. La entrega a la cátedra debe identificar el grupo, los integrantes
 y el hash completo del commit de `development` después de integrar la revisión.
+
+## Primera exportacion MIDI
+
+Un programa con dos sentencias, `key tonalidad = C major;` y `export scale of tonalidad as midi to "escala.mid" at 120 bpm;`, produce una escala MIDI de siete notas en octava 4. El tempo literal y el instrumento son opcionales; se usan 120 BPM y piano por defecto. La ruta no debe existir: el compilador devuelve error sin sobrescribirla. Por ahora no se admiten rutas con escapes ni expresiones calculadas de tempo en esta salida. Los demas programas se analizan pero no generan salida y producen una advertencia: el backend sigue incompleto.

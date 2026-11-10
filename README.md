@@ -40,7 +40,6 @@ incluye GCC, Flex, Bison, CMake y Make; no es necesario instalarlos en el host.
 Desde la raíz del repositorio:
 
 ```bash
-chmod u+x src/main/bash/*.sh
 docker compose build compiler
 docker compose run --rm compiler bash -lc 'src/main/bash/build.sh && src/main/bash/test.sh'
 ```
@@ -58,6 +57,9 @@ docker compose run --rm compiler bash -lc 'src/main/bash/run.sh src/test/c/accep
 
 También se puede abrir una consola con `docker compose run --rm compiler bash`
 y ejecutar allí los scripts de compilación, ejecución y tests.
+
+Por defecto el compilador solo muestra errores. Para ver los mensajes de
+depuración, definir `LOGGING_LEVEL=ALL` antes de `docker compose run`.
 
 ## Tests y pendientes
 

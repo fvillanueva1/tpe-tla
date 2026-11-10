@@ -54,6 +54,40 @@ int main(void) {
     assert(musicWithoutParallelOctaves(unison_first, unison_second));
     assert(!musicInTessitura(NULL));
     assert(!musicWithoutParallelFifths(NULL, second));
+    const unsigned short progression[] = {1u << 0, 1u << 2, 1u << 0};
+    int realized[3][VOICE_COUNT];
+    assert(musicRealizeSATB(progression, 3, realized) == MUSIC_VOICE_SUCCESS);
+    int movement = 0;
+    for (int i = 0; i < 3; ++i) {
+        assert(musicInTessitura(realized[i]));
+        assert(musicWithoutVoiceCrossing(realized[i]));
+        for (int v = 0; v < VOICE_COUNT; ++v) {
+            assert(progression[i] & (1u << (realized[i][v] % 12)));
+            if (i) { int delta = realized[i][v] - realized[i - 1][v]; movement += delta < 0 ? -delta : delta; }
+        }
+    }
+    assert(movement == 16);
+    const unsigned short triads[] = {(1u << 0) | (1u << 4) | (1u << 7),
+                                     (1u << 2) | (1u << 6) | (1u << 9),
+                                     (1u << 7) | (1u << 11) | (1u << 2)};
+    int triadVoices[3][VOICE_COUNT], triadMovement = 0;
+    assert(musicRealizeSATB(triads, 3, triadVoices) == MUSIC_VOICE_SUCCESS);
+    for (int i = 0; i < 3; ++i) {
+        unsigned short seen = 0;
+        assert(musicInTessitura(triadVoices[i]) && musicWithoutVoiceCrossing(triadVoices[i]));
+        for (int v = 0; v < VOICE_COUNT; ++v) {
+            seen |= 1u << (triadVoices[i][v] % 12);
+            if (i) { int delta = triadVoices[i][v] - triadVoices[i - 1][v]; triadMovement += delta < 0 ? -delta : delta; }
+        }
+        assert(seen == triads[i]);
+    }
+    assert(triadMovement == 10);
+    const unsigned short tooMany[] = {(1u << 0) | (1u << 2) | (1u << 4) | (1u << 7) | (1u << 10)};
+    assert(musicRealizeSATB(tooMany, 1, realized) == MUSIC_VOICE_INVALID_CHORD);
+    const unsigned short invalid[] = {0};
+    assert(musicRealizeSATB(invalid, 1, realized) == MUSIC_VOICE_INVALID_CHORD);
+    assert(musicRealizeSATB(NULL, 1, realized) == MUSIC_VOICE_INVALID_CHORD);
+    assert(musicRealizeSATB(NULL, 0, NULL) == MUSIC_VOICE_SUCCESS);
     size_t failed = 99;
     const int sequence[][VOICE_COUNT] = {{72, 67, 60, 48}, {74, 69, 62, 50}};
     assert(musicCheckVoicing(sequence, 2, CHECK_PARALLEL_FIFTHS, &failed) == MUSIC_PARALLEL_FIFTHS_ERROR && failed == 1);

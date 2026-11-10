@@ -95,10 +95,17 @@ fi
 rm -f "$OOM_TEST"
 echo "Checking music validation..."
 MUSIC_TEST=$(mktemp)
-if ! cc -std=gnu99 src/test/c/music-validation.c src/main/c/backend/semantic-analysis/MusicValidation.c -o "$MUSIC_TEST" || ! "$MUSIC_TEST"; then
+if ! cc -std=gnu99 src/test/c/music-validation.c src/main/c/backend/semantic-analysis/MusicValidation.c src/main/c/backend/semantic-analysis/VoiceLeading.c -o "$MUSIC_TEST" || ! "$MUSIC_TEST"; then
     echo -e "    music validation, ${RED}failed${OFF}"
     STATUS=1
 fi
 rm -f "$MUSIC_TEST"
+echo "Checking voice allocation failure..."
+VOICE_OOM_TEST=$(mktemp)
+if ! cc -std=gnu99 src/test/c/music-voice-oom.c src/main/c/backend/semantic-analysis/MusicValidation.c src/main/c/backend/semantic-analysis/VoiceLeading.c -Wl,--wrap=calloc -Wl,--wrap=realloc -o "$VOICE_OOM_TEST" || ! "$VOICE_OOM_TEST"; then
+    echo -e "    voice allocation failure, ${RED}failed${OFF}"
+    STATUS=1
+fi
+rm -f "$VOICE_OOM_TEST"
 echo "All done."
 exit $STATUS

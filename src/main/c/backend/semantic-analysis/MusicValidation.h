@@ -11,6 +11,10 @@ enum { VOICE_SOPRANO, VOICE_ALTO, VOICE_TENOR, VOICE_BASS, VOICE_COUNT };
 /* Compute seven ascending MIDI pitches starting at the given tonic. */
 bool musicScale(int tonic, Mode mode, int notes[7]);
 bool musicInKey(const int *pitches, size_t count, int tonic, Mode mode);
+
+/* Chords are 12-bit pitch-class masks (bit 0 = C); output is ordered SATB. */
+typedef enum { MUSIC_VOICE_SUCCESS, MUSIC_VOICE_INVALID_CHORD, MUSIC_VOICE_NO_MEMORY } MusicVoiceResult;
+MusicVoiceResult musicRealizeSATB(const unsigned short *chords, size_t count, int (*voices)[VOICE_COUNT]);
 bool musicInTessitura(const int voices[VOICE_COUNT]);
 bool musicWithoutVoiceCrossing(const int voices[VOICE_COUNT]);
 bool musicWithoutParallelFifths(const int first[VOICE_COUNT], const int second[VOICE_COUNT]);

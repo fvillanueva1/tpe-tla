@@ -26,7 +26,7 @@ consume el valor es responsable de liberarlo (hay un `%destructor`).
 
 ### Tipos
 
-`BOOLEAN_TYPE`, `CHORD_TYPE`, `INTEGER_TYPE`, `INTERVAL_TYPE`, `KEY_TYPE`,
+`BOOLEAN_TYPE`, `CHORD_TYPE`, `DURATION_TYPE`, `INTEGER_TYPE`, `INTERVAL_TYPE`, `KEY_TYPE`,
 `NOTE_TYPE`, `PROGRESSION_TYPE`, `SCALE_TYPE`, `STRING_TYPE`, `VOICING_TYPE`.
 
 `scale` es un solo token (`SCALE_TYPE`) en `scale s = ...` y en

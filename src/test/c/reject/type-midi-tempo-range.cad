@@ -1,0 +1,2 @@
+progression tema = [];
+export tema as midi to "tema.mid" at 1 bpm;

@@ -1,0 +1,2 @@
+key tonalidad = C major;
+chord acorde = triad on (3 + 5) of tonalidad;

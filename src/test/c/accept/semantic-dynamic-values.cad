@@ -1,0 +1,5 @@
+integer numero = 2;
+progression tema = [{C4, E4, G4}] * numero;
+key tonalidad = C major;
+chord acorde = triad on numero of tonalidad;
+export tema as midi to "tema.mid" at (90 + numero) bpm;

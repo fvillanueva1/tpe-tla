@@ -1,0 +1,2 @@
+integer resultado = doble(2);
+define doble(integer numero) -> integer { return numero * 2; }

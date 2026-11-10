@@ -1,0 +1,1 @@
+define funcion(boolean condicion) -> integer { if (condicion) { return 1; } }

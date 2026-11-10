@@ -70,3 +70,15 @@ Todos los rechazos activos terminaron con código 1, sin errores de AddressSanit
 
 Al finalizar no quedan archivos en `planned/`. `pending/` contiene 13 archivos:
 nueve casos semánticos y cuatro escenarios musicales por concretar.
+
+## Actualizacion de Stage III
+
+La suite incluye rechazos semanticos activos y exige el mensaje `Semantic error:` para ellos, ademas del codigo 1. Los casos 54 y 60 a 63, instrumento y tempo invalidos ya son activos. Los casos 55 a 59 permanecen en `pending/`: dependen del modelo musical, y los casos SATB necesitan entradas concluyentes. Las tablas anteriores describen los snapshots historicos de Stage II.
+
+Los casos de rangos cubren literales y expresiones constantes; `semantic-dynamic-values.cad` verifica que las expresiones dependientes de variables sigan siendo aceptadas estaticamente.
+
+Los rechazos de tipos tambien cubren parametros, limites de for, voice, check, duracion de arpegio, inversion, modulacion, relaciones tonales y vectores heterogeneos.
+
+Los casos de `duration` verifican declaracion, arpegio, vectores, parametros y retornos, y el rechazo de valores incompatibles.
+
+La prueba `semantic-oom.c` fuerza un fallo de reserva para verificar el codigo `OUT_OF_MEMORY` y se ejecuta desde `test.sh`.

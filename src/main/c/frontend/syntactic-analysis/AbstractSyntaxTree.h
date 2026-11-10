@@ -70,7 +70,8 @@ enum DataType {
 	TYPE_PROGRESSION,
 	TYPE_SCALE,
 	TYPE_STRING,
-	TYPE_VOICING
+	TYPE_VOICING,
+	TYPE_DURATION
 };
 
 enum ExpressionType {

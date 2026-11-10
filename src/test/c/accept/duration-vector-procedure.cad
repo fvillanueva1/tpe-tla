@@ -1,0 +1,2 @@
+define primero(duration[] ritmos) -> duration { return ritmos[0]; }
+duration ritmo = primero([eighth, quarter]);

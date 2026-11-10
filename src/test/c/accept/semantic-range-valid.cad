@@ -1,0 +1,2 @@
+chord acorde = invert {C4, E4, G4} by 3;
+note nota = C4 + M2;

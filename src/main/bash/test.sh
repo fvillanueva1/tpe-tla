@@ -62,5 +62,12 @@ if ! cc -std=gnu99 src/test/c/semantic-oom.c src/main/c/backend/semantic-analysi
     STATUS=1
 fi
 rm -f "$OOM_TEST"
+echo "Checking music validation..."
+MUSIC_TEST=$(mktemp)
+if ! cc -std=gnu99 src/test/c/music-validation.c src/main/c/backend/semantic-analysis/MusicValidation.c -o "$MUSIC_TEST" || ! "$MUSIC_TEST"; then
+    echo -e "    music validation, ${RED}failed${OFF}"
+    STATUS=1
+fi
+rm -f "$MUSIC_TEST"
 echo "All done."
 exit $STATUS

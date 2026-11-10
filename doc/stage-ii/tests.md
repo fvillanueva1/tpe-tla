@@ -82,3 +82,9 @@ Los rechazos de tipos tambien cubren parametros, limites de for, voice, check, d
 Los casos de `duration` verifican declaracion, arpegio, vectores, parametros y retornos, y el rechazo de valores incompatibles.
 
 La prueba `semantic-oom.c` fuerza un fallo de reserva para verificar el codigo `OUT_OF_MEMORY` y se ejecuta desde `test.sh`.
+
+`music-validation.c` prueba directamente pertenencia tonal, tesituras, cruce y movimiento paralelo sobre alturas MIDI; no reemplaza los casos Cadence pendientes de integrar.
+
+La validacion de secuencias SATB comprueba los resultados y el indice de error, las reglas opcionales, la tesitura obligatoria y las entradas invalidas.
+
+La prueba musical tambien comprueba escalas de los siete modos, cruce de octava y limites de salida.

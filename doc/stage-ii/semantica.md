@@ -21,3 +21,13 @@ La compilacion con avisos estrictos de `Semantic.c` no produce avisos propios; `
 El tipo `duration` permite declarar duraciones, vectores de duraciones y parametros o retornos de procedimientos; `arpeggiate` exige una duracion.
 
 Si no se puede reservar memoria para un simbolo, el analizador devuelve `OUT_OF_MEMORY` (codigo 2), distinto de un rechazo semantico (codigo 1).
+
+## Validaciones musicales para integracion
+
+`MusicValidation.h` ofrece funciones puras sobre alturas MIDI (C4 = 60) para pertenencia a tonalidad/modo, tesitura, cruce de voces y quintas u octavas paralelas. Los vectores SATB se ordenan soprano, contralto, tenor y bajo. Los rangos inclusivos elegidos son soprano C4-A5, contralto F3-D5, tenor C3-A4 y bajo E2-E4. Voces en unisono no se consideran cruzadas. Para paralelas, ambas voces deben moverse en el mismo sentido; se consideran intervalos compuestos equivalentes y las octavas requieren distancia minima de una octava en ambos acordes.
+
+Estas funciones ya se prueban con datos conocidos, pero aun no se invocan desde programas Cadence: falta la evaluacion musical y la realizacion SATB. Los casos `pending/55` a `59` siguen sin activarse. `musicInKey` recibe notas MIDI de C0 a B8, tonica como clase de altura de 0 a 11 y un modo; admite alteraciones enarmonicas por clase de altura.
+
+`musicCheckVoicing` valida una secuencia completa: siempre comprueba tesitura y aplica las reglas indicadas por la mascara `CheckRule`. Devuelve el primer tipo de violacion y, si se solicita, el indice del acorde donde aparece (para paralelas, el segundo acorde). Una secuencia vacia es valida; mascaras desconocidas y datos nulos no vacios son errores de entrada. Las funciones aun no realizan la distribucion SATB ni se invocan desde el AST.
+
+`musicScale` calcula las siete alturas MIDI ascendentes de una tonalidad y modo, con una tonica que incluye octava. Devuelve fallo si la escala excede C0-B8 o la entrada es invalida; no altera la salida en caso de error. La validacion de pertenencia reutiliza esas alturas. La eleccion de octava para exportar y la escritura del archivo siguen pendientes.

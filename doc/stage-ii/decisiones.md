@@ -222,3 +222,7 @@ En Stage III las operaciones musicales siguen estas reglas (detalle en `doc/stag
 - La fundamental de un acorde escrito por notas es la nota más grave que tiene una tercera y una quinta justa en el acorde (luego cualquier quinta, luego la nota más grave), así un acorde invertido conserva su fundamental.
 
 En Stage III el MIDI es formato 0: una sola pista con el tempo, un cambio de programa por canal usado y los eventos. Una línea simple usa el canal 0; un voicing usa un canal por voz (soprano 0, contralto 1, tenor 2, bajo 3), todos con el mismo instrumento. Una negra son 480 ticks. `sheet` escribe LilyPond con un pentagrama por canal (Soprano, Alto, Tenor y Bass para un voicing). Ninguna exportación sobrescribe un archivo existente, y todas las exportaciones de un programa se escriben juntas o ninguna (`doc/stage-iii/salida.md`).
+
+En Stage III una progresión también admite índice de base cero: `tema[0]`
+devuelve su acorde, como un vector de acordes. El acceso no cambia la duración
+del paso original; un acorde suelto exportado dura una negra.

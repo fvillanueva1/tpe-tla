@@ -301,6 +301,31 @@ static bool _evaluateList(Runtime * runtime, RuntimeScope * scope, const Express
 	return true;
 }
 
+/* A chord list acquires its declared type only at an assignment, argument or return. */
+static bool _coerce(Runtime * runtime, Value * value, int type, bool vector) {
+	if (vector) { value->type = type; return true; }
+	if (!value->isVector) return true;
+	if (type != TYPE_PROGRESSION) return true;
+	size_t count = value->vector.count;
+	MusicChord * chords = count ? calloc(count, sizeof(MusicChord)) : NULL;
+	if (count && !chords) return _outOfMemory(runtime);
+	for (size_t k = 0; k < count; ++k) chords[k] = value->vector.items[k].chord;
+	Value converted = {.type = type};
+	MusicStatus status = musicChordProgression(chords, count, &converted.progression);
+	free(chords);
+	if (!_musicStatus(runtime, status, "progression")) { destroyValue(&converted); return false; }
+	destroyValue(value);
+	*value = converted;
+	return true;
+}
+
+static bool _evaluateAs(Runtime * runtime, RuntimeScope * scope, const Expression * expression, int type, bool vector, Value * result) {
+	if (!_evaluate(runtime, scope, expression, result)) return false;
+	if (_coerce(runtime, result, type, vector)) return true;
+	destroyValue(result);
+	return false;
+}
+
 static bool _evaluateIndex(Runtime * runtime, RuntimeScope * scope, const Expression * expression, Value * result) {
 	Value vector;
 	int index;
@@ -316,6 +341,17 @@ static bool _evaluateIndex(Runtime * runtime, RuntimeScope * scope, const Expres
 		if (status != MUSIC_OK) return _error(runtime, "index %d is out of range for a scale of length 7", index);
 		return true;
 	}
+	if (!vector.isVector && vector.type == TYPE_PROGRESSION) {
+		size_t count = vector.progression.count;
+		if (index < 0 || (size_t) index >= count) {
+			destroyValue(&vector);
+			return _error(runtime, "index %d is out of range for a progression of length %zu", index, count);
+		}
+		result->type = TYPE_CHORD;
+		result->chord = vector.progression.steps[index].chord;
+		destroyValue(&vector);
+		return true;
+	}
 	if (index < 0 || (size_t) index >= vector.vector.count) {
 		size_t length = vector.vector.count;
 		destroyValue(&vector);
@@ -325,6 +361,73 @@ static bool _evaluateIndex(Runtime * runtime, RuntimeScope * scope, const Expres
 	vector.vector.items[index] = (Value) {.type = TYPE_INTEGER};
 	destroyValue(&vector);
 	return true;
+}
+
+/* Both operands are evaluated once, from left to right, and always released. */
+static bool _evaluateOperation(Runtime * runtime, RuntimeScope * scope, const Expression * expression, Value * result) {
+	Value left, right;
+	if (!_evaluate(runtime, scope, expression->leftExpression, &left)) return false;
+	if (!_evaluate(runtime, scope, expression->rightExpression, &right)) { destroyValue(&left); return false; }
+	MusicStatus status = MUSIC_OK;
+	const char * operation = "musical operation";
+	bool ok = true;
+	ExpressionType type = expression->type;
+	if (type == IN_EXPRESSION) {
+		if (right.type == TYPE_KEY) {
+			size_t count = left.vector.count;
+			int * degrees = count ? calloc(count, sizeof(int)) : NULL;
+			if (count && !degrees) ok = _outOfMemory(runtime);
+			else {
+				for (size_t k = 0; k < count; ++k) degrees[k] = left.vector.items[k].integer - 1;
+				result->type = TYPE_PROGRESSION;
+				status = musicDegreeProgression(right.key, degrees, count, &result->progression);
+				operation = "progression degree";
+			}
+			free(degrees);
+		} else {
+			result->type = TYPE_BOOLEAN;
+			result->boolean = right.type == TYPE_SCALE ? musicNoteInScale(left.note, &right.scale) : musicNoteInChord(left.note, &right.chord);
+		}
+	} else if (type == INVERSION) {
+		result->type = TYPE_CHORD;
+		status = musicInvertChord(&left.chord, right.integer, &result->chord);
+		operation = "inversion";
+	} else if (type == ARPEGGIATION) {
+		result->type = TYPE_PROGRESSION;
+		status = musicArpeggiate(&left.chord, (MusicDuration) right.duration, &result->progression);
+		operation = "arpeggiation";
+	} else if (type == MODULATION) {
+		ok = _coerce(runtime, &left, TYPE_PROGRESSION, false);
+		if (ok) {
+			result->type = TYPE_PROGRESSION;
+			status = musicModulate(&left.progression, right.key, &result->progression);
+			operation = "modulation";
+		}
+	} else if (!left.isVector && left.type == TYPE_INTEGER) {
+		ok = _arithmetic(runtime, type, left.integer, right.integer, &result->integer);
+	} else {
+		if (left.isVector) ok = _coerce(runtime, &left, TYPE_PROGRESSION, false);
+		if (ok && right.isVector) ok = _coerce(runtime, &right, TYPE_PROGRESSION, false);
+		if (ok && right.type == TYPE_INTERVAL) {
+			bool down = type == SUBTRACTION;
+			result->type = left.type;
+			operation = "transposition";
+			if (left.type == TYPE_NOTE) status = musicTransposeNote(left.note, right.interval, down, &result->note);
+			else if (left.type == TYPE_CHORD) status = musicTransposeChord(&left.chord, right.interval, down, &result->chord);
+			else status = musicTransposeProgression(&left.progression, right.interval, down, &result->progression);
+		} else if (ok) {
+			result->type = TYPE_PROGRESSION;
+			if (type == MULTIPLICATION) {
+				if (right.integer < 0) ok = _error(runtime, "repetition count cannot be negative (%d)", right.integer);
+				else status = musicRepeat(&left.progression, right.integer, &result->progression);
+				operation = "repetition";
+			} else if (right.type == TYPE_CHORD) status = musicAppendChord(&left.progression, &right.chord, &result->progression);
+			else status = musicConcatenate(&left.progression, &right.progression, &result->progression);
+		}
+	}
+	destroyValue(&left);
+	destroyValue(&right);
+	return ok && _musicStatus(runtime, status, operation);
 }
 
 /* Musical literals and operations with no context-dependent list conversion. */
@@ -434,6 +537,11 @@ static bool _evaluateMusic(Runtime * runtime, RuntimeScope * scope, const Expres
 			destroyValue(&object);
 			break;
 		}
+		case IN_EXPRESSION:
+		case INVERSION:
+		case ARPEGGIATION:
+		case MODULATION:
+			return _evaluateOperation(runtime, scope, expression, result);
 		default: return _error(runtime, "expression is not supported yet");
 	}
 	return _musicStatus(runtime, status, operation);
@@ -454,7 +562,7 @@ static bool _comparable(Runtime * runtime, RuntimeScope * scope, const Expressio
 	return true;
 }
 
-static bool _evaluate(Runtime * runtime, RuntimeScope * scope, const Expression * expression, Value * result) {
+static bool _evaluateUnchecked(Runtime * runtime, RuntimeScope * scope, const Expression * expression, Value * result) {
 	*result = (Value) {.type = TYPE_INTEGER};
 	if (!_checkStack(runtime)) return false;
 	switch (expression->type) {
@@ -524,15 +632,17 @@ static bool _evaluate(Runtime * runtime, RuntimeScope * scope, const Expression 
 		case ADDITION:
 		case SUBTRACTION:
 		case MULTIPLICATION:
-		case DIVISION: {
-			int left, right;
-			if (!_evaluateInteger(runtime, scope, expression->leftExpression, &left)
-				|| !_evaluateInteger(runtime, scope, expression->rightExpression, &right)) return false;
-			return _arithmetic(runtime, expression->type, left, right, &result->integer);
-		}
+		case DIVISION:
+			return _evaluateOperation(runtime, scope, expression, result);
 		default:
 			return _evaluateMusic(runtime, scope, expression, result);
 	}
+}
+
+static bool _evaluate(Runtime * runtime, RuntimeScope * scope, const Expression * expression, Value * result) {
+	bool ok = _evaluateUnchecked(runtime, scope, expression, result);
+	if (!ok) destroyValue(result);
+	return ok;
 }
 
 /* PROCEDURES */
@@ -562,9 +672,8 @@ static bool _call(Runtime * runtime, RuntimeScope * scope, const ProcedureCall *
 	bool ok = true;
 	for (; ok && parameter != NULL && argument != NULL; parameter = parameter->next, argument = argument->next) {
 		Value value;
-		ok = _evaluate(runtime, scope, argument->expression, &value);
+		ok = _evaluateAs(runtime, scope, argument->expression, parameter->parameter->dataType, parameter->parameter->isVector, &value);
 		if (!ok) break;
-		if (parameter->parameter->isVector) value.type = parameter->parameter->dataType;
 		if (!bindValue(&local, parameter->parameter->name, &value)) {
 			destroyValue(&value);
 			ok = _outOfMemory(runtime);
@@ -578,9 +687,11 @@ static bool _call(Runtime * runtime, RuntimeScope * scope, const ProcedureCall *
 	}
 	if (ok && runtime->hasReturned) {
 		runtime->hasReturned = false;
-		if (procedure->returnsVector) runtime->returned.type = procedure->returnType;
-		if (result != NULL) *result = runtime->returned;
-		else destroyValue(&runtime->returned);
+		Value returned = runtime->returned;
+		runtime->returned = (Value) {.type = TYPE_INTEGER};
+		ok = _coerce(runtime, &returned, procedure->returnType, procedure->returnsVector);
+		if (ok && result != NULL) *result = returned;
+		else destroyValue(&returned);
 	}
 	clearScope(&local);
 	return ok;
@@ -622,8 +733,7 @@ static Flow _execute(Runtime * runtime, RuntimeScope * scope, const Statement * 
 	switch (statement->type) {
 		case DECLARATION: {
 			Value value;
-			if (!_evaluate(runtime, scope, statement->expression, &value)) return FLOW_ERROR;
-			if (statement->isVector) value.type = statement->dataType;
+			if (!_evaluateAs(runtime, scope, statement->expression, statement->dataType, statement->isVector, &value)) return FLOW_ERROR;
 			return _bind(runtime, scope, statement->name, &value);
 		}
 		case ASSIGNMENT: {
@@ -635,7 +745,10 @@ static Flow _execute(Runtime * runtime, RuntimeScope * scope, const Statement * 
 				_error(runtime, "variable '%s' is not declared", statement->name);
 				return FLOW_ERROR;
 			}
-			if (binding->value.isVector) value.type = binding->value.type;
+			if (!_coerce(runtime, &value, binding->value.type, binding->value.isVector)) {
+				destroyValue(&value);
+				return FLOW_ERROR;
+			}
 			destroyValue(&binding->value);
 			binding->value = value;
 			return FLOW_NORMAL;

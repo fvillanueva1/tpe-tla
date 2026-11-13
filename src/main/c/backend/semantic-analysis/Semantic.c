@@ -315,7 +315,7 @@ static int typeOf(Scope *scope, Expression *e) {
             }
         }
         if (object == TYPE_SCALE) return TYPE_NOTE;
-        if (object == TYPE_CHORD_LIST) return TYPE_CHORD;
+        if (object == TYPE_CHORD_LIST || object == TYPE_PROGRESSION) return TYPE_CHORD;
         if (object == TYPE_DEGREE_LIST) return TYPE_DEGREE;
         if (object >= TYPE_VECTOR && object <= TYPE_VECTOR + TYPE_DURATION) return object - 20;
         fprintf(stderr, "Semantic error: value is not indexable.\n"); return -2;

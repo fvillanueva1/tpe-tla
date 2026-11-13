@@ -129,3 +129,11 @@ relaciones tonales, escalas, acordes por notas o grados, propiedades,
 comparaciones por altura/semitonos e índices de escalas. Los grados enteros
 son de 1 a 7; los índices siguen siendo de base cero. La integración con el
 generador permanece detrás del recorrido de soporte hasta completar la salida.
+
+Las listas de acordes se convierten a progresión al inicializar, asignar,
+pasar un argumento o devolver ese tipo. También se convierten al concatenar,
+repetir, transponer o modular. El evaluador ejecuta `in`, las transformaciones
+y el acceso por índice a progresiones; la semántica ahora admite ese acceso.
+Se conservan tonalidad, grafía y duración según el contrato de `Music.h`.
+Todos los operandos se evalúan una vez, de izquierda a derecha, y se liberan
+aun cuando el segundo operando falla.

@@ -639,8 +639,39 @@ static bool _evaluateUnchecked(Runtime * runtime, RuntimeScope * scope, const Ex
 	}
 }
 
+static bool _inStrictKey(const Value * value, MusicKey key) {
+	if (value->isVector) {
+		for (size_t k = 0; k < value->vector.count; ++k)
+			if (!_inStrictKey(&value->vector.items[k], key)) return false;
+	} else if (value->type == TYPE_CHORD) {
+		return musicChordInKey(&value->chord, key);
+	} else if (value->type == TYPE_PROGRESSION) {
+		for (size_t k = 0; k < value->progression.count; ++k)
+			if (!musicChordInKey(&value->progression.steps[k].chord, key)) return false;
+	} else if (value->type == TYPE_VOICING) {
+		for (size_t k = 0; k < value->voicing.count; ++k) {
+			for (size_t v = 0; v < VOICE_COUNT; ++v) {
+				MusicNote note;
+				if (musicNoteFromPitch(value->voicing.chords[k][v], &note) != MUSIC_OK || !musicNoteInKey(note, key)) return false;
+			}
+		}
+	}
+	return true;
+}
+
+static bool _validateStrict(Runtime * runtime, RuntimeScope * scope, const Value * value) {
+	for (; scope; scope = scope->parent) {
+		if (!scope->keyContext) continue;
+		MusicKey key = scope->keyContext->value.key;
+		if (key.strict && !_inStrictKey(value, key)) return _error(runtime, "chord contains a note outside the strict key");
+		break; /* A non-strict key also replaces an outer context. */
+	}
+	return true;
+}
+
 static bool _evaluate(Runtime * runtime, RuntimeScope * scope, const Expression * expression, Value * result) {
 	bool ok = _evaluateUnchecked(runtime, scope, expression, result);
+	if (ok) ok = _validateStrict(runtime, scope, result);
 	if (!ok) destroyValue(result);
 	return ok;
 }

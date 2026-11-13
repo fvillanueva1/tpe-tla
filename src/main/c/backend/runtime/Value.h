@@ -88,6 +88,8 @@ struct Binding {
 struct RuntimeScope {
 	Binding * bindings;
 	RuntimeScope * parent;
+	/* Binding of the most recently declared scalar key in this scope. */
+	Binding * keyContext;
 };
 
 /** Takes ownership of "value" on success; returns false when out of memory. */

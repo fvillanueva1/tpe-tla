@@ -137,3 +137,12 @@ y el acceso por índice a progresiones; la semántica ahora admite ese acceso.
 Se conservan tonalidad, grafía y duración según el contrato de `Music.h`.
 Todos los operandos se evalúan una vez, de izquierda a derecha, y se liberan
 aun cuando el segundo operando falla.
+
+`strict` se comprueba con valores reales al evaluar cada acorde, incluidos los
+de progresiones, vectores y voicings. Rige la última tonalidad escalar ligada
+en el alcance más interno; los parámetros de tonalidad se ligan en orden de
+la firma. Una tonalidad no estricta tapa el contexto exterior. Al asignar la
+tonalidad vigente cambia su valor; asignar otra anterior no cambia cuál rige.
+Los bloques restauran el contexto exterior al salir y los procedimientos
+heredan el contexto global, sin tomar tonalidades locales del llamador.
+Una violación informa `chord contains a note outside the strict key`.

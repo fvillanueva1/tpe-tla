@@ -226,3 +226,9 @@ En Stage III el MIDI es formato 0: una sola pista con el tempo, un cambio de pro
 En Stage III una progresión también admite índice de base cero: `tema[0]`
 devuelve su acorde, como un vector de acordes. El acceso no cambia la duración
 del paso original; un acorde suelto exportado dura una negra.
+
+El runtime comprueba `strict` también al obtener acordes calculados,
+progresiones y voicings. Los parámetros de tonalidad establecen contexto en
+orden de la firma; un procedimiento hereda el contexto global existente al
+llamarlo. Los bloques no cambian el contexto exterior salvo que asignen su
+tonalidad vigente.

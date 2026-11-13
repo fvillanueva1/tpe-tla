@@ -191,6 +191,7 @@ bool bindValue(RuntimeScope * scope, const char * name, Value * value) {
 	binding->value = *value;
 	binding->next = scope->bindings;
 	scope->bindings = binding;
+	if (!value->isVector && value->type == TYPE_KEY) scope->keyContext = binding;
 	return true;
 }
 
@@ -204,6 +205,7 @@ Binding * findBinding(RuntimeScope * scope, const char * name) {
 }
 
 void clearScope(RuntimeScope * scope) {
+	scope->keyContext = NULL;
 	while (scope->bindings != NULL) {
 		Binding * binding = scope->bindings;
 		scope->bindings = binding->next;

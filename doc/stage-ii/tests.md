@@ -58,7 +58,7 @@ Cada snapshot se compiló en una copia aislada con la imagen Docker del repo,
 GCC, Flex, Bison y los scripts originales. No hubo warnings ni conflictos.
 Todos los rechazos activos terminaron con código 1, sin errores de AddressSanitizer.
 
-| Commit de Eduardo | Aceptaciones activas | Rechazos activos |
+| Commit | Aceptaciones activas | Rechazos activos |
 |-------------------|----------------------|------------------|
 | 1: armonía y operadores | 28 | 1 |
 | 2: control y tests preparados | 39 | 1 |

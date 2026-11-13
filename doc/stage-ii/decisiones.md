@@ -109,7 +109,7 @@ que `not a == b` es `not (a == b)`. Los relacionales no son asociativos:
 - La misma representación sirve para literales string en expresiones y
   declaraciones. Los escapes conservan su lexema; su interpretación y la
   existencia de las variables se resuelven en Stage III.
-- Se consumen los tokens de Felipe sin cambiar el lexer. No se aceptan
+- Se consumen los tokens que ya produce el lexer, sin cambiarlo. No se aceptan
   expresiones entre llaves ni la sintaxis antigua `"{1}", variable`.
 
 ## Exportación

@@ -19,7 +19,7 @@ devuelve un resultado o un código de error y no imprime nada: el que la llama
 | `VoiceLeading.c` | Realización SATB por programación dinámica |
 
 `MusicValidation.c` y `VoiceLeading.c` vienen de `backend/semantic-analysis/`,
-donde los escribió Tadeo; se movieron sin cambiar su comportamiento. Su
+donde se escribieron para la semántica; se movieron sin cambiar su comportamiento. Su
 descripción detallada sigue en `doc/stage-ii/semantica.md`.
 
 ## Modelo (contrato con el runtime)
@@ -63,7 +63,7 @@ Las operaciones que pueden fallar por su entrada devuelven `MusicStatus`:
 `MUSIC_OK`, `MUSIC_INVALID_ARGUMENT` (lexema o dato inválido),
 `MUSIC_MISSING_OCTAVE` (una nota sin octava donde hace falta) o
 `MUSIC_OUT_OF_RANGE` (la altura queda fuera de C0–B8). Las funciones de
-Tadeo conservan sus códigos propios (`MusicVoiceResult` y
+la semántica conservan sus códigos propios (`MusicVoiceResult` y
 `MusicValidationResult`).
 
 ## Notas e intervalos
@@ -228,7 +228,7 @@ Los errores de memoria devuelven `MUSIC_NO_MEMORY`.
 ## SATB y `check`
 
 - **`voice p as SATB`** (`musicVoiceProgression`): reparte cada acorde en
-  cuatro voces con `musicRealizeSATB` de Tadeo (tesituras fijas, sin cruces,
+  cuatro voces con `musicRealizeSATB` (tesituras fijas, sin cruces,
   moviendo las voces lo menos posible). **Regla de omisión:** un acorde con más
   de cuatro clases de altura pierde primero la quinta (justa, disminuida o
   aumentada) y después la séptima. Una novena queda con fundamental, tercera,
@@ -254,7 +254,7 @@ La semántica y el generador convierten con un cast, y `Semantic.c` tiene
 
 ## Tests
 
-- `src/test/c/music-validation.c` y `music-voice-oom.c`: los de Tadeo, ahora
+- `src/test/c/music-validation.c` y `music-voice-oom.c`: los que venían de la semántica, ahora
   sobre `Music.h`.
 - `src/test/c/music-model.c`: creación, copia profunda, liberación repetida y
   fallos de memoria de progresiones y voicings. Se compila con

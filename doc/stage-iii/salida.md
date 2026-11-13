@@ -7,7 +7,7 @@
 2. Un **escritor** convierte la partitura en un archivo MIDI o LilyPond. Los
    escritores no conocen el lenguaje; solo escriben eventos.
 
-Todo está declarado en `Output.h` (contrato 3 entre Felipe y Eduardo).
+Todo está declarado en `Output.h`, la interfaz entre el runtime y la salida.
 
 | Archivo | Contenido |
 |---------|-----------|
@@ -187,10 +187,10 @@ cualquier entero positivo, igual que la semántica de `sheet`. La partitura
 común permite ese rango; `output-file.c` prueba que 60000001 BPM se puede
 codificar en LilyPond y se rechaza en MIDI.
 
-La corrección de identidad en `File.c`, módulo de salida de Felipe, se limita
+La corrección de identidad en `File.c` se limita
 al registro del inode del temporal y a la comprobación previa al rollback;
 no cambia codificadores ni el formato de las partituras.
 
-La corrección de limpieza en el módulo de Felipe mantiene los codificadores
+La corrección de limpieza en el módulo de salida mantiene los codificadores
 intactos: centraliza los borrados en `File.c`, comprueba sus resultados y
 agrega una variante de la API para entregar al runtime la ruta residual.

@@ -35,7 +35,8 @@ y [análisis semántico](doc/stage-ii/semantica.md).
 - [Tokens y nodos del AST](doc/stage-ii/tokens.md)
 - [Cobertura y clasificación de los tests](doc/stage-ii/tests.md)
 - [Runtime: ejecución del programa y errores](doc/stage-iii/runtime.md)
-- [Seguimiento del feedback del Stage I](doc/stage-iii/feedback-stage-i.md)
+- [Biblioteca musical](doc/stage-iii/musica.md)
+- [Salida MIDI y LilyPond](doc/stage-iii/salida.md)
 - [Consignas y material de la cátedra](doc/consignas/)
 
 La carpeta `doc/` contiene los entregables y, en `doc/consignas/`, el material
@@ -93,7 +94,7 @@ En los commits iniciales se prepararon tests de nuevas construcciones en
 `src/test/c/planned/`. Cada implementación los activó moviéndolos a `accept/`
 o `reject/`. Esa carpeta era temporal y ya no tiene archivos en el estado final;
 es distinta de `pending/`, que se conserva para Stage III. Cada uno de los ocho
-commits de Eduardo compila y pasa la suite activa de ese momento.
+commits de implementación compila y pasa la suite activa de ese momento.
 
 ## Revisión final del frontend
 
@@ -142,9 +143,7 @@ el AST. Los cambios de presentación del informe (fecha, índice, justificación
 paginación y figuras) corresponden al informe final: no se reentrega el PDF de
 Stage I y Stage II no incorpora un nuevo informe.
 
-El estado de cada punto del feedback y la lista de control del informe final
-están en [feedback-stage-i.md](doc/stage-iii/feedback-stage-i.md). Los
-operadores relacionales admitidos por tipo están en `decisiones.md`.
+Los operadores relacionales admitidos por tipo están en `decisiones.md`.
 
 Las entregas se integran en `development` mediante PRs revisados por otro
 integrante. La entrega a la cátedra debe identificar el grupo, los integrantes

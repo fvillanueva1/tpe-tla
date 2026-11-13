@@ -30,6 +30,7 @@
 *.js text eol=lf
 *.json text eol=lf
 *.l text eol=lf
+*.ly text eol=lf
 *.lock text eol=lf
 *.md text eol=lf
 *.mjs text eol=lf

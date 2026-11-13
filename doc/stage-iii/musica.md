@@ -47,8 +47,9 @@ descripción detallada sigue en `doc/stage-ii/semantica.md`.
 - **`MusicProgression`:** arreglo dinámico de `MusicStep` (acorde y duración).
 - **`MusicVoicing`:** `int[n][4]` en orden soprano, contralto, tenor y bajo, y
   una duración por acorde.
-- **`MusicDuration`:** `whole` a `sixteenth`. Reemplaza al `Duration` del
-  runtime, para que haya un solo enum.
+- **`MusicDuration`:** `whole` a `sixteenth`. El runtime conserva su propio
+  `Duration` (`Value.h`) con los mismos valores en el mismo orden y lo
+  convierte con un cast al llamar a la biblioteca.
 
 Las progresiones y los voicings son dueños de sus arreglos:
 `musicProgressionInit` / `musicVoicingInit` reservan `n` elementos en cero,

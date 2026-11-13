@@ -80,7 +80,7 @@ save(case, 'voces.ly', sheet([
 save(case, 'arpegio.mid', midi(blocks([[60], [64], [67]], duration=240)))
 save(case, 'arpegio.ly', sheet([(None, 'treble', "c'8 e'8 g'8 ")]))
 save(case, 'vacio.mid', midi([]))
-save(case, 'nota' + chr(92) + 'final.mid', midi(blocks([[60]])))
+save(case, 'nota{final}.mid', midi(blocks([[60]])))
 save(case, 'antes.ly', sheet([(None, 'treble', "c'4 ")]))
 
 case = 'runtime-export-snapshot'

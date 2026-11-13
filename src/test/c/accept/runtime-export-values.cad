@@ -14,7 +14,7 @@ export voces as sheet to "voces.ly";
 export arpegio as midi to "arpegio.mid";
 export arpegio as sheet to "arpegio.ly";
 export [] as midi to "vacio.mid";
-export C4 as midi to "nota\\final.mid";
+export C4 as midi to "nota\{final\}.mid";
 if (true) { export C4 as sheet to "antes.ly"; }
 acorde = {D4, F4, A4};
 tema = tema * 0;

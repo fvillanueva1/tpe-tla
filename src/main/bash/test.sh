@@ -129,6 +129,11 @@ for source in src/test/c/reject/*.cad; do
         runtime-stack-depth.cad) EXPECTED="the program nests too deeply for the available stack" ;;
         *) EXPECTED="" ;;
     esac
+    if [[ "$test" == runtime-strict-discarded-return.cad && "$OUTPUT" == *accepted* ]]; then
+        echo -e "    $test, ${RED}continues after the invalid discarded return${OFF}"
+        STATUS=1
+        continue
+    fi
     if [[ -n "$EXPECTED" && "$OUTPUT" != *"$EXPECTED"* ]]; then
         echo -e "    $test, ${RED}incorrect rule or chord diagnostic${OFF}"
         STATUS=1

@@ -1,0 +1,10 @@
+define chromatic() -> chord {
+    key libre = C major;
+    return {C#4, F4, G#4};
+}
+export C4 as midi to "pending.mid";
+if (true) {
+    key tonalidad = C major strict;
+    chromatic();
+    log "accepted";
+}

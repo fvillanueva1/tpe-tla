@@ -691,6 +691,8 @@ static bool _call(Runtime * runtime, RuntimeScope * scope, const ProcedureCall *
 		Value returned = runtime->returned;
 		runtime->returned = (Value) {.type = TYPE_INTEGER};
 		ok = _coerce(runtime, &returned, procedure->returnType, procedure->returnsVector);
+		/* A discarded return is still read in the caller's strict context. */
+		if (ok) ok = _validateStrict(runtime, scope, &returned);
 		if (ok && result != NULL) *result = returned;
 		else destroyValue(&returned);
 	}

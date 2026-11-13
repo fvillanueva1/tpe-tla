@@ -110,6 +110,13 @@ el de los bloques locales del llamador. Sus parámetros o declaraciones de
 tonalidad pueden reemplazarlo. Estas reglas completan el contexto que el
 analizador deja desconocido ante control de flujo y llamadas.
 
+El valor retornado se valida al ejecutar `return` en el contexto del cuerpo
+y, después de adecuar su tipo, en el contexto vigente del llamador, incluso
+si la llamada es una sentencia y descarta el resultado (`chromatic();`).
+Descartar un acorde cromático dentro de un bloque estricto falla antes de la
+siguiente sentencia y descarta las exportaciones pendientes, igual que usarlo
+en una expresión.
+
 Los argumentos se evalúan y validan en el contexto `strict` del llamador,
 de izquierda a derecha. Ligar un parámetro `key ... strict` establece el
 contexto para las lecturas y expresiones del cuerpo; no revalida los otros
@@ -211,7 +218,7 @@ stdout con `src/test/c/output/<caso>.out` (vacío si falta) y los archivos con
 caso. `generate-runtime-goldens.py` construye las referencias desde eventos
 esperados sin ejecutar Cadence; la suite nunca las regenera automáticamente.
 
-Los 154 rechazos exigen código 1 y ningún archivo. Los `runtime-*` exigen
+Los 155 rechazos exigen código 1 y ningún archivo. Los `runtime-*` exigen
 `Runtime error:`, sin `Semantic error:`, y el mensaje concreto. Los rechazos
 musicales encolan una exportación antes del error para comprobar el descarte.
 Los ocho casos `runtime-strict-interpolation-*` comprueban strings y `log`,
@@ -260,3 +267,8 @@ llamadas a reserva. Una ejecución tarda 5,447 s antes y 0,018 s después
 La medición enlaza los mismos objetos con `--wrap=malloc`, `--wrap=calloc`
 y `--wrap=realloc` y suma los tamaños solicitados, incluido el frontend;
 no representa memoria residente ni cuenta reservas internas de libc.
+
+`runtime-strict-discarded-return` devuelve un acorde cromático desde un
+procedimiento con tonalidad no estricta y descarta el resultado dentro de un
+bloque estricto del llamador. Exige el error de tonalidad, ausencia del log
+posterior y descarte de la exportación pendiente.

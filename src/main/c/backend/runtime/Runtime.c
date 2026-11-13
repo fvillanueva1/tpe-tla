@@ -1,5 +1,7 @@
 #include "Runtime.h"
 #include "Value.h"
+#include "../output/Output.h"
+#include "../semantic-analysis/Semantic.h"
 #include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -28,6 +30,12 @@ struct Procedure {
 };
 
 typedef struct {
+	OutputScore score;
+	OutputFormat format;
+	char * path;
+} PendingExport;
+
+typedef struct {
 	RuntimeScope global;
 	Procedure * procedures;
 	CompilationStatus status;
@@ -36,6 +44,9 @@ typedef struct {
 	bool hasReturned;
 	const char * stackBase;
 	size_t stackBudget;
+	PendingExport * exports;
+	size_t exportCount;
+	size_t exportCapacity;
 } Runtime;
 
 /* SUPPORTED CONSTRUCTS */
@@ -781,6 +792,72 @@ static Flow _executeFor(Runtime * runtime, RuntimeScope * scope, const For * loo
 	return FLOW_NORMAL;
 }
 
+/* Exports capture a score now; no writer runs until execution succeeds. */
+static bool _outputStatus(Runtime * runtime, OutputStatus status, const char * path) {
+	if (status == OUTPUT_OK) return true;
+	if (status == OUTPUT_NO_MEMORY) return _outOfMemory(runtime);
+	return _error(runtime, "cannot write '%s'%s", path, status == OUTPUT_FILE_EXISTS ? " (destination already exists or is repeated)" : "");
+}
+
+static bool _queueExport(Runtime * runtime, RuntimeScope * scope, const Export * output) {
+	Value value;
+	if (!_evaluate(runtime, scope, output->value, &value)) return false;
+	if (value.isVector && !_coerce(runtime, &value, TYPE_PROGRESSION, false)) { destroyValue(&value); return false; }
+	int tempo = OUTPUT_DEFAULT_TEMPO;
+	if (output->tempo && !_evaluateInteger(runtime, scope, output->tempo, &tempo)) { destroyValue(&value); return false; }
+	if (tempo < (output->format == EXPORT_MIDI ? 4 : 1) || (output->format == EXPORT_MIDI && tempo > 60000000)) {
+		destroyValue(&value);
+		return _error(runtime, "tempo %d is outside the export format's range", tempo);
+	}
+	int instrument = output->instrument ? semanticInstrumentProgram(output->instrument) : OUTPUT_DEFAULT_INSTRUMENT;
+	TextBuffer path = {0};
+	if (!appendText(&path, "", 0) || !_appendDecoded(&path, output->path)) {
+		free(path.text);
+		destroyValue(&value);
+		return _outOfMemory(runtime);
+	}
+	PendingExport pending = {.path = path.text, .format = output->format == EXPORT_MIDI ? OUTPUT_FORMAT_MIDI : OUTPUT_FORMAT_LILYPOND};
+	OutputStatus status = outputScoreInit(&pending.score, tempo, instrument);
+	if (status == OUTPUT_OK) {
+		switch (value.type) {
+			case TYPE_NOTE: status = outputAddNote(&pending.score, value.note); break;
+			case TYPE_SCALE: status = outputAddScale(&pending.score, &value.scale); break;
+			case TYPE_CHORD: status = outputAddChord(&pending.score, &value.chord); break;
+			case TYPE_PROGRESSION: status = outputAddProgression(&pending.score, &value.progression); break;
+			case TYPE_VOICING: status = outputAddVoicing(&pending.score, &value.voicing); break;
+			default: status = OUTPUT_INVALID_ARGUMENT; break;
+		}
+	}
+	destroyValue(&value);
+	bool ok = _outputStatus(runtime, status, pending.path);
+	if (ok && runtime->exportCount == runtime->exportCapacity) {
+		size_t capacity = runtime->exportCapacity ? runtime->exportCapacity * 2 : 8;
+		if (capacity < runtime->exportCapacity || capacity > SIZE_MAX / sizeof(PendingExport)) ok = _outOfMemory(runtime);
+		else {
+			PendingExport * grown = realloc(runtime->exports, capacity * sizeof(PendingExport));
+			if (!grown) ok = _outOfMemory(runtime);
+			else { runtime->exports = grown; runtime->exportCapacity = capacity; }
+		}
+	}
+	if (ok) runtime->exports[runtime->exportCount++] = pending;
+	else { outputScoreDestroy(&pending.score); free(pending.path); }
+	return ok;
+}
+
+static bool _writeExports(Runtime * runtime) {
+	if (!runtime->exportCount) return true;
+	OutputFile * files = calloc(runtime->exportCount, sizeof(OutputFile));
+	if (!files) return _outOfMemory(runtime);
+	for (size_t k = 0; k < runtime->exportCount; ++k) {
+		PendingExport * pending = &runtime->exports[k];
+		files[k] = (OutputFile) {&pending->score, pending->format, pending->path};
+	}
+	size_t failed = 0;
+	OutputStatus status = outputWriteFiles(files, runtime->exportCount, &failed);
+	free(files);
+	return _outputStatus(runtime, status, runtime->exports[failed].path);
+}
+
 static Flow _execute(Runtime * runtime, RuntimeScope * scope, const Statement * statement) {
 	if (!_checkStack(runtime)) return FLOW_ERROR;
 	switch (statement->type) {
@@ -844,6 +921,8 @@ static Flow _execute(Runtime * runtime, RuntimeScope * scope, const Statement * 
 				runtime->hasReturned = true;
 			}
 			return FLOW_RETURN;
+		case EXPORT_STATEMENT:
+			return _queueExport(runtime, scope, statement->export) ? FLOW_NORMAL : FLOW_ERROR;
 		case CHECK_STATEMENT: {
 			Value voicing;
 			if (!_evaluateAs(runtime, scope, statement->check->voicing, TYPE_VOICING, false, &voicing)) return FLOW_ERROR;
@@ -880,6 +959,12 @@ CompilationStatus executeProgram(Program * program) {
 	Runtime runtime = {.status = SUCCEEDED};
 	_measureStack(&runtime);
 	Flow flow = _executeStatements(&runtime, &runtime.global, program->statements);
+	if (flow != FLOW_ERROR && !_writeExports(&runtime)) flow = FLOW_ERROR;
+	for (size_t k = 0; k < runtime.exportCount; ++k) {
+		outputScoreDestroy(&runtime.exports[k].score);
+		free(runtime.exports[k].path);
+	}
+	free(runtime.exports);
 	if (runtime.hasReturned) destroyValue(&runtime.returned);
 	clearScope(&runtime.global);
 	while (runtime.procedures != NULL) {

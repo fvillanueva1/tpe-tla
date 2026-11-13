@@ -154,3 +154,12 @@ o recibirlo. `check` aplica las reglas solicitadas al valor actual e informa
 la primera violación, numerando acordes desde uno: `parallel fifths at chord 2`,
 `parallel octaves`, `voice crossing` o `tessitura`. Una lista vacía es válida.
 Los errores de realización o de cantidad de voces son errores de ejecución.
+
+Cada `export` evalúa el valor y el tempo y guarda una partitura independiente,
+con la ruta ya decodificada. Cambios posteriores de variables no alteran esa
+partitura. Las exportaciones se acumulan incluso dentro de ciclos o llamadas.
+Solo al terminar sin errores se invoca una vez `outputWriteFiles` con el lote
+completo. Un fallo previo libera las partituras sin escribir nada; un fallo
+de escritura revierte el lote y se informa como `cannot write 'ruta'`.
+Destinos repetidos o existentes fallan sin sobrescribir. MIDI exige de 4 a
+60000000 BPM; `sheet` admite cualquier entero positivo.

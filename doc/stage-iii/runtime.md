@@ -45,9 +45,9 @@ comprueba valores.
   que el resultado es el mismo que copiando primero la base. Si el índice
   llama a un procedimiento, se copia la base antes de evaluarlo:
   `tema[cambiar()]` selecciona sobre el valor anterior a `cambiar()`, aunque
-  reasigne `tema`. Solo se copia y valida el elemento
-  seleccionado, también en vectores de cualquier tipo; los demás acordes del
-  contenedor no se leen. Para otras bases se conserva el orden base, índice.
+  reasigne `tema`. En los dos casos solo se valida el elemento seleccionado,
+  también en vectores de cualquier tipo; los demás acordes del contenedor no
+  se validan. La lectura sin copia, además, copia únicamente ese elemento. Para otras bases se conserva el orden base, índice.
   Las propiedades sobre variables leen el binding sin copiarlo y conservan
   su validación estricta (incluida `.length` sobre toda la progresión).
 - **`for variable = desde to hasta`:** límites inclusivos evaluados una vez.

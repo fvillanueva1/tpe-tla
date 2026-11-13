@@ -1,0 +1,14 @@
+integer numero = 1;
+define sombra(integer numero) -> integer {
+    numero = numero + 10;
+    integer local = numero * 2;
+    return local;
+}
+integer resultado = sombra(numero);
+log "{numero} {resultado}";
+define usarGlobal() -> integer {
+    numero = numero + 5;
+    return numero;
+}
+integer otro = usarGlobal();
+log "{numero} {otro}";

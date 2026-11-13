@@ -1,4 +1,9 @@
 boolean menor = 1 < 2;
 boolean distinto = 3 != 3;
 boolean combinado = not 1 == 2 and 2 >= 2 or false;
+boolean mayor = 3 > 2;
+boolean noMayor = 2 > 2;
+boolean menorIgual = 2 <= 2;
+boolean noMenorIgual = 3 <= 2;
 log "{menor} {distinto} {combinado}";
+log "{mayor} {noMayor} {menorIgual} {noMenorIgual}";

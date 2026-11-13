@@ -83,6 +83,8 @@ for test in $(ls src/test/c/reject/); do
         57-*) EXPECTED="parallel octaves at chord 2" ;;
         runtime-division-by-zero.cad) EXPECTED="Runtime error: division by zero." ;;
         runtime-overflow.cad) EXPECTED="integer overflow in 2147483647 + 1" ;;
+        runtime-overflow-subtraction.cad) EXPECTED="integer overflow in -2147483647 - 2" ;;
+        runtime-overflow-multiplication.cad) EXPECTED="integer overflow in 65536 * 65536" ;;
         runtime-division-overflow.cad) EXPECTED="integer overflow in -2147483648 / -1" ;;
         runtime-index-range.cad) EXPECTED="index 3 is out of range for a vector of length 1" ;;
         runtime-negative-index.cad) EXPECTED="index -1 is out of range for a vector of length 1" ;;

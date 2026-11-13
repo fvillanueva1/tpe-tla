@@ -32,16 +32,20 @@ comprueba valores.
 
 ## Semántica de ejecución
 
-- **Operandos:** se evalúan una vez, de izquierda a derecha, salvo el acceso
-  indexado a una variable que se describe a continuación.
+- **Operandos:** se evalúan una vez, de izquierda a derecha, también en el
+  acceso indexado.
 - **Aritmética:** enteros de 32 bits, con comprobación de desborde. La división
   trunca hacia cero: `(0 - 7) / 2` da `-3`.
 - **Lógica:** `and` y `or` evalúan en cortocircuito.
 - **Índices:** de base cero en vectores, escalas y progresiones. Indexar una
   progresión devuelve el acorde; no modifica la duración del paso original.
-  Si la base es una variable, se evalúa primero el índice y luego se lee su
-  binding actual: `tema[cambiar()]` selecciona sobre el valor posterior a
-  `cambiar()`, incluso si reasigna `tema`. Solo se copia y valida el elemento
+  Si la base es una variable y el índice no llama a un procedimiento (es un
+  literal, una variable, aritmética, otro índice o una propiedad), el runtime
+  lee el binding sin copiarlo: el índice no puede cambiar la variable, así
+  que el resultado es el mismo que copiando primero la base. Si el índice
+  llama a un procedimiento, se copia la base antes de evaluarlo:
+  `tema[cambiar()]` selecciona sobre el valor anterior a `cambiar()`, aunque
+  reasigne `tema`. Solo se copia y valida el elemento
   seleccionado, también en vectores de cualquier tipo; los demás acordes del
   contenedor no se leen. Para otras bases se conserva el orden base, índice.
   Las propiedades sobre variables leen el binding sin copiarlo y conservan

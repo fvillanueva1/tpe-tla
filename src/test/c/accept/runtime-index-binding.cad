@@ -19,3 +19,17 @@ if (true) {
     note fundamental = mixto[0].root;
     log "{elegido} {fundamental}";
 }
+integer[] otros = [1, 2];
+define vaciar() -> integer {
+    otros = [];
+    return 0;
+}
+integer primero = otros[vaciar()];
+log "{primero} {otros}";
+define cero() -> integer { return 0; }
+if (true) {
+    key tonalidad = C major strict;
+    chord elegido = acordes[cero()];
+    note fundamental = mixto[cero()].root;
+    log "{elegido} {fundamental}";
+}

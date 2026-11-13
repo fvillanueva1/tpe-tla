@@ -291,18 +291,49 @@ static bool _readIndex(Runtime * runtime, const Value * vector, int index, Value
 	return copyValue(&vector->vector.items[index], result) || _outOfMemory(runtime);
 }
 
+/*
+ * True when evaluating the expression cannot change any variable: it has no
+ * procedure call. Unknown shapes count as impure, which only costs a copy.
+ */
+static bool _isPure(const Expression * expression) {
+	switch (expression->type) {
+		case INTEGER_LITERAL:
+		case VARIABLE:
+			return true;
+		case ADDITION:
+		case SUBTRACTION:
+		case MULTIPLICATION:
+		case DIVISION:
+		case INDEX_ACCESS:
+			return _isPure(expression->leftExpression) && _isPure(expression->rightExpression);
+		case PROPERTY_ACCESS:
+			return _isPure(expression->property.object);
+		default:
+			return false;
+	}
+}
+
 /* Do not reserve an indexed container in unrelated recursive expressions. */
 static __attribute__((noinline)) bool _evaluateIndex(Runtime * runtime, RuntimeScope * scope, const Expression * expression, Value * result) {
 	int index;
-	if (expression->leftExpression->type == VARIABLE) {
-		/* An index call may replace globals: evaluate it before borrowing the binding. */
+	if (expression->leftExpression->type == VARIABLE && _isPure(expression->rightExpression)) {
+		/* The index cannot change the variable, so reading it in place keeps the left-to-right order. */
 		if (!_evaluateInteger(runtime, scope, expression->rightExpression, &index)) return false;
 		Binding * binding = findBinding(scope, expression->leftExpression->text);
 		if (!binding) return _error(runtime, "variable '%s' has no value", expression->leftExpression->text);
 		return _readIndex(runtime, &binding->value, index, result);
 	}
 	Value vector;
-	if (!_evaluate(runtime, scope, expression->leftExpression, &vector)) return false;
+	if (expression->leftExpression->type == VARIABLE) {
+		/*
+		 * The index may call a procedure that changes the variable: snapshot it
+		 * first, unvalidated, so that only the selected element is checked, as in
+		 * the in-place path.
+		 */
+		Binding * binding = findBinding(scope, expression->leftExpression->text);
+		if (!binding) return _error(runtime, "variable '%s' has no value", expression->leftExpression->text);
+		if (!copyValue(&binding->value, &vector)) return _outOfMemory(runtime);
+	} else if (!_evaluate(runtime, scope, expression->leftExpression, &vector)) return false;
 	bool ok = _evaluateInteger(runtime, scope, expression->rightExpression, &index)
 		&& _readIndex(runtime, &vector, index, result);
 	destroyValue(&vector);

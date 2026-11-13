@@ -1,7 +1,8 @@
 # Casos de prueba de Stage II
 
-Cada archivo prueba una construcción pequeña; `test.sh` solo verifica el código
-de salida del compilador. La extensión `.cad` identifica programas Cadence.
+Cada archivo prueba una construcción pequeña. `test.sh` verifica el código de
+salida del compilador y, para los casos que el runtime ejecuta, también la
+salida estándar (ver `doc/stage-iii/runtime.md`). La extensión `.cad` identifica programas Cadence.
 
 Se incluye desde el primer commit el rechazo de un programa vacío para que
 las dos carpetas que recorre el runner existan y contengan tests reales.
@@ -115,7 +116,7 @@ Un alias tonal conserva su valor anterior cuando se reasigna la variable de orig
 
 Los rechazos de asignacion y operador verifican ademas los tipos incluidos en el diagnostico.
 
-La suite ejecuta aceptaciones semanticas con `--check`; las pruebas de generacion usan el modo normal y comprueban tanto la salida MIDI como el fallo explicito de programas aun no soportados. Los rechazos se ejecutan en directorios temporales con el modo normal.
+La suite ejecuta de verdad las aceptaciones que tienen un `src/test/c/output/<caso>.out` y compara su salida estandar; el resto corre con `--check`; las pruebas de generacion usan el modo normal y comprueban tanto la salida MIDI como el fallo explicito de programas aun no soportados. Los rechazos se ejecutan en directorios temporales con el modo normal.
 
 La integracion MIDI comprueba tambien una escala declarada y exportada por nombre.
 

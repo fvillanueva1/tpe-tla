@@ -51,8 +51,11 @@ musical esté disponible.
   `RUNTIME_MAX_CALL_DEPTH` (1000). Como el intérprete es recursivo, también mide
   la pila de C usada: si supera la mitad del límite del sistema (`RLIMIT_STACK`,
   como máximo 8 MB), corta con un error de ejecución en lugar de terminar con
-  un desborde de pila. Así un programa con menos de 1000 llamadas pero muchos
-  bloques anidados en cada una falla con un diagnóstico.
+  un desborde de pila. Cada bloque y cada expresión anidada del cuerpo suman
+  marcos de C a cada llamada, así que el límite de pila suele llegar antes que
+  el de 1000: con el binario compilado con AddressSanitizer, un cuerpo con dos
+  `if` anidados corta alrededor de las 945 llamadas y uno con seis, alrededor
+  de las 530. En ambos casos el programa termina con un diagnóstico.
 - **`log`:** imprime el mensaje en la salida estándar seguido de un salto de
   línea. Decodifica los escapes (`\"`, `\\`, `\{`, `\}`, `\n`, `\t`) e
   interpola cada `{variable}` con su valor actual. Los vectores se muestran como
@@ -74,7 +77,13 @@ Se detectan:
 | Recursión demasiado profunda | `procedure 'p' exceeds the maximum call depth of 1000` |
 | Anidamiento que agota la pila de C (bloques y expresiones dentro de muchas llamadas) | `the program nests too deeply for the available stack` |
 | No se puede escribir la salida de `log` | `cannot write the log output` |
-| Memoria insuficiente | `out of memory` (código 2) |
+| Memoria insuficiente | `out of memory` (código 2)* |
+
+\* El runtime devuelve el código 2 cuando falla una reserva, pero el binario se
+enlaza siempre con AddressSanitizer, que suele abortar el proceso (o el sistema
+lo termina) antes de que `malloc` devuelva `NULL`. Para ejercitar esa ruta hay
+que forzar el fallo de las reservas (por ejemplo, con `-Wl,--wrap=malloc`), no
+agotar la memoria real.
 
 ## Pendiente
 
@@ -88,9 +97,17 @@ Se detectan:
 
 `test.sh` ejecuta de verdad cada caso de `src/test/c/accept/` que tenga un
 `src/test/c/output/<caso>.out`, compara la salida estándar byte a byte y
-comprueba que no se escriba ningún archivo. Los casos sin `.out` siguen con
+comprueba que no se escriba ningún archivo. Un `.out` sin caso de aceptación
+con el mismo nombre hace fallar la suite, así un error de nombre no deja el
+caso en `--check` sin aviso. Ningún rechazo puede dejar archivos en su
+directorio de trabajo. Los casos sin `.out` siguen con
 `--check`. Los rechazos `src/test/c/reject/runtime-*.cad` exigen el diagnóstico
 `Runtime error:` (y ningún `Semantic error:`), además del mensaje concreto.
+Para la garantía de no ejecutar nada, `test.sh` corre programas que empiezan
+con `log "antes";` y tienen una nota dentro de un `if`, un `while`, un `for`,
+el cuerpo de un procedimiento, un parámetro, el tipo de retorno o un
+argumento: exige la salida estándar vacía y el mensaje de generación no
+implementada.
 `test.sh` cambia el código de salida de AddressSanitizer a 86 y rechaza
 cualquier reporte del sanitizador, así un error de memoria o una fuga no pasa
 por un rechazo esperado (código 1).

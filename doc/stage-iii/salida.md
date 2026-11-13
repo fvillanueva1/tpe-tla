@@ -98,33 +98,54 @@ producen.
 
 ## Escritura de archivos
 
-`outputWriteFiles(archivos, n, &falló)` escribe **todos los archivos o
-ninguno**, que es lo que el runtime necesita al terminar un programa con varios
-`export`:
+`outputWriteFiles(archivos, n, &falló)` prepara el lote antes de publicarlo
+y revierte sus publicaciones ante un fallo, incluido un fallo de limpieza.
+La garantía de **todos los archivos o ninguno** depende de que el sistema
+permita borrar los archivos y de que otros procesos no intervengan en la
+ventana de carrera descrita abajo. No ofrece aislamiento ni durabilidad
+frente a una caída del proceso o del sistema. El runtime lo usa al terminar
+un programa con varios `export`:
 
 1. Antes de escribir nada comprueba que ningún destino exista ni esté repetido
    en la llamada (`OUTPUT_FILE_EXISTS`).
 2. Escribe cada archivo a un temporal junto a su destino (`destino.XXXXXX`, con
-   `mkstemp`). Si algo falla, borra todos los temporales.
+   `mkstemp`). Si algo falla, intenta borrar todos los temporales, también
+   el que quedó escrito parcialmente.
 3. Recién entonces publica cada temporal con su nombre final usando `link()`,
    que falla si el destino apareció mientras tanto, así nunca se sobrescribe.
    En sistemas de archivos sin enlaces duros devuelve `OUTPUT_WRITE_ERROR`:
    no usa `rename()`, que podría reemplazar un destino creado por otro proceso.
-   Si falla la publicación de uno, se borran los ya publicados y los
-   temporales restantes. La reversión conserva la identidad (`st_dev`,
-   `st_ino`) tomada con `fstat()` del temporal y solo borra un destino si
+   Después intenta borrar todos los temporales. Si falla una publicación o
+   cualquier borrado de un temporal, intenta revertir todos los destinos ya
+   publicados, aunque otras limpiezas fallen. La reversión conserva la identidad
+   (`st_dev`, `st_ino`) tomada con `fstat()` del temporal y solo borra un destino si
    `lstat()` inmediatamente antes de `unlink()` confirma esa identidad.
    Si otro proceso lo reemplazó, conserva el reemplazo. Sin bloqueo queda
    una ventana de carrera entre la comprobación y el borrado; no se garantiza
    aislamiento frente a modificaciones concurrentes en esa ventana.
 
-`falló` recibe el índice del archivo que falló. Los archivos quedan con los
-permisos normales (`0666` menos la `umask`). `outputWriteMidi` y
-`outputWriteLilyPond` escriben un solo archivo con la misma garantía.
+Cada `unlink()` se comprueba: un archivo ya ausente (`ENOENT`) se considera
+limpio; otros errores devuelven `OUTPUT_WRITE_ERROR`, nunca éxito. Se intenta
+cada limpieza una vez y se continúa con todas las demás. Si el sistema rechaza
+borrados, pueden quedar temporales o destinos del lote; los reemplazos ajenos
+se conservan. En ese caso `falló` recibe el índice del primer fallo de
+limpieza; si la limpieza funciona, recibe el fallo original de escritura o
+publicación.
+
+`outputWriteFilesWithCleanup(archivos, n, &falló, &rutaResidual)` agrega la
+primera ruta cuya limpieza falló, incluida una comprobación de identidad que
+no pudo realizarse. El llamador libera esa cadena con `free()`. Puede haber
+más rutas residuales si fallaron varios borrados; la API informa la primera.
+El runtime usa esta variante y termina con código 1 y
+`Runtime error: cannot remove file '<ruta>'.` La API original y los helpers de
+un archivo conservan su firma y devuelven el mismo error, sin entregar la ruta.
+No se necesita otra reserva de memoria para informar un fallo de limpieza.
+Los archivos quedan con los permisos normales (`0666` menos la `umask`).
+`outputWriteMidi` y `outputWriteLilyPond` usan el mismo mecanismo.
 
 El runtime usa este módulo para todos los valores exportables. Cada `export`
 captura una partitura y solo al terminar sin errores entrega el lote a
-`outputWriteFiles`. No queda una ruta especial para escalas literales; los
+`outputWriteFilesWithCleanup`. No queda una ruta especial para escalas literales; los
 bytes MIDI de esas escalas siguen siendo los mismos. Ver `runtime.md`.
 
 ## Errores
@@ -147,6 +168,14 @@ código de salida (1 para errores de escritura, 2 para memoria).
   dejar temporales. También rechaza formatos desconocidos sin liberar memoria
   sin inicializar y simula fallos de `link()` para comprobar la limpieza del
   lote y que un destino creado durante la publicación conserve su contenido.
+  También reemplaza el primer destino antes de fallar el segundo enlace y
+  exige que el reemplazo sobreviva. Con `--wrap=unlink` fuerza fallos al borrar
+  temporales después de publicar y después de fallar la preparación, y al
+  borrar destinos durante rollback: comprueba estado, ruta residual y que se
+  intente limpiar el resto del lote.
+- `runtime-output-cleanup.c` inyecta un fallo de borrado de un temporal en una
+  ejecución real: exige código 1, el diagnóstico con la ruta y la reversión de
+  ambas publicaciones, conservando solo el temporal cuyo borrado falla.
 - `scale-midi.c` y la integración de `test.sh` comprueban que la escala se
   sigue exportando igual y que una segunda exportación al mismo archivo falla
   sin cambiarlo.
@@ -161,3 +190,7 @@ codificar en LilyPond y se rechaza en MIDI.
 La corrección de identidad en `File.c`, módulo de salida de Felipe, se limita
 al registro del inode del temporal y a la comprobación previa al rollback;
 no cambia codificadores ni el formato de las partituras.
+
+La corrección de limpieza en el módulo de Felipe mantiene los codificadores
+intactos: centraliza los borrados en `File.c`, comprueba sus resultados y
+agrega una variante de la API para entregar al runtime la ruta residual.

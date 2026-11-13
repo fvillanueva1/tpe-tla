@@ -33,6 +33,7 @@ static OutputStatus writeTemporary(const char *path, const OutputBuffer *buffer,
     memcpy(name + length, ".XXXXXX", sizeof(".XXXXXX"));
     int descriptor = mkstemp(name);
     if (descriptor < 0) { free(name); return OUTPUT_WRITE_ERROR; }
+    temporary->path = name; /* Keep the name even on write failure, for centralized cleanup. */
     /* mkstemp creates the file for the owner only; give it the usual permissions. */
     mode_t mask = umask(0);
     umask(mask);
@@ -44,9 +45,7 @@ static OutputStatus writeTemporary(const char *path, const OutputBuffer *buffer,
         if (ok) written += (size_t)result;
     }
     if (close(descriptor) != 0) ok = false;
-    if (!ok) { unlink(name); free(name); return OUTPUT_WRITE_ERROR; }
-    temporary->path = name;
-    return OUTPUT_OK;
+    return ok ? OUTPUT_OK : OUTPUT_WRITE_ERROR;
 }
 
 /*
@@ -54,13 +53,14 @@ static OutputStatus writeTemporary(const char *path, const OutputBuffer *buffer,
  * the destination exists. Fail if the file system cannot publish safely.
  */
 static OutputStatus publish(const char *temporary, const char *path) {
-    if (link(temporary, path) == 0) { unlink(temporary); return OUTPUT_OK; }
+    if (link(temporary, path) == 0) return OUTPUT_OK;
     if (errno == EEXIST) return OUTPUT_FILE_EXISTS;
     return OUTPUT_WRITE_ERROR;
 }
 
-OutputStatus outputWriteFiles(const OutputFile *files, size_t count, size_t *failed) {
+OutputStatus outputWriteFilesWithCleanup(const OutputFile *files, size_t count, size_t *failed, char **residualPath) {
     if (failed) *failed = 0;
+    if (residualPath) *residualPath = NULL;
     if (!files && count) return OUTPUT_INVALID_ARGUMENT;
     for (size_t i = 0; i < count; ++i) {
         if (failed) *failed = i;
@@ -72,33 +72,62 @@ OutputStatus outputWriteFiles(const OutputFile *files, size_t count, size_t *fai
     TemporaryFile *temporaries = calloc(count, sizeof(*temporaries));
     if (!temporaries) return OUTPUT_NO_MEMORY;
     OutputStatus status = OUTPUT_OK;
-    size_t index = 0;
     /* First every file goes to its temporary; nothing is visible yet. */
-    for (; index < count && status == OUTPUT_OK; ++index) {
+    for (size_t i = 0; i < count; ++i) {
         OutputBuffer buffer = {0};
-        status = encode(&files[index], &buffer);
-        if (status == OUTPUT_OK) status = writeTemporary(files[index].path, &buffer, &temporaries[index]);
+        status = encode(&files[i], &buffer);
+        if (status == OUTPUT_OK) status = writeTemporary(files[i].path, &buffer, &temporaries[i]);
         outputBufferDestroy(&buffer);
+        if (status != OUTPUT_OK) { if (failed) *failed = i; break; }
     }
     size_t published = 0;
-    if (status == OUTPUT_OK)
-        for (index = 0; index < count && status == OUTPUT_OK; ++index, ++published)
-            status = publish(temporaries[index].path, files[index].path);
-    if (status != OUTPUT_OK) {
-        if (failed) *failed = index - 1;
-        /* Undo: the files already published and every temporary left. */
-        for (size_t i = 0; i + 1 < published; ++i) {
-            struct stat current;
-            /* A replacement belongs to its creator, not to this batch. */
-            if (lstat(files[i].path, &current) == 0 &&
-                current.st_dev == temporaries[i].identity.st_dev &&
-                current.st_ino == temporaries[i].identity.st_ino) unlink(files[i].path);
+    if (status == OUTPUT_OK) {
+        for (; published < count; ++published) {
+            status = publish(temporaries[published].path, files[published].path);
+            if (status != OUTPUT_OK) { if (failed) *failed = published; break; }
         }
-        for (size_t i = 0; i < count; ++i) if (temporaries[i].path) unlink(temporaries[i].path);
+    }
+    /* Try every cleanup, even after an earlier removal failed. ENOENT is already clean. */
+    size_t cleanupIndex = count;
+    bool cleanupTemporary = false;
+    for (size_t i = 0; i < count; ++i) {
+        if (temporaries[i].path && unlink(temporaries[i].path) != 0 && errno != ENOENT) {
+            if (cleanupIndex == count) { cleanupIndex = i; cleanupTemporary = true; }
+            status = OUTPUT_WRITE_ERROR;
+        }
+    }
+    if (status != OUTPUT_OK) {
+        /* Also roll back publications when a temporary could not be removed. */
+        for (size_t i = 0; i < published; ++i) {
+            struct stat current;
+            bool cleanupFailed = false;
+            if (lstat(files[i].path, &current) != 0) cleanupFailed = errno != ENOENT;
+            /* A replacement belongs to its creator, not to this batch. */
+            else if (current.st_dev == temporaries[i].identity.st_dev &&
+                     current.st_ino == temporaries[i].identity.st_ino)
+                cleanupFailed = unlink(files[i].path) != 0 && errno != ENOENT;
+            if (cleanupFailed) {
+                if (cleanupIndex == count) cleanupIndex = i;
+                status = OUTPUT_WRITE_ERROR;
+            }
+        }
+    }
+    if (cleanupIndex != count) {
+        if (failed) *failed = cleanupIndex;
+        if (residualPath) {
+            /* The existing name buffer fits either path: no allocation can hide a cleanup failure. */
+            if (!cleanupTemporary) strcpy(temporaries[cleanupIndex].path, files[cleanupIndex].path);
+            *residualPath = temporaries[cleanupIndex].path;
+            temporaries[cleanupIndex].path = NULL;
+        }
     }
     for (size_t i = 0; i < count; ++i) free(temporaries[i].path);
     free(temporaries);
     return status;
+}
+
+OutputStatus outputWriteFiles(const OutputFile *files, size_t count, size_t *failed) {
+    return outputWriteFilesWithCleanup(files, count, failed, NULL);
 }
 
 OutputStatus outputWriteMidi(const OutputScore *score, const char *path) {

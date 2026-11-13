@@ -265,6 +265,13 @@ if ! cc -std=gnu99 -fsanitize=address src/test/c/runtime-oom.c src/main/c/backen
     STATUS=1
 fi
 rm -f "$RUNTIME_OOM_TEST"
+echo "Checking runtime cleanup failure..."
+RUNTIME_CLEANUP_TEST=$(mktemp)
+if ! cc -std=gnu99 -fsanitize=address src/test/c/runtime-output-cleanup.c src/main/c/backend/runtime/Runtime.c src/main/c/backend/runtime/Value.c src/main/c/backend/semantic-analysis/Semantic.c $MUSIC_SOURCES $OUTPUT_SOURCES -Wl,--wrap=unlink -o "$RUNTIME_CLEANUP_TEST" || ! "$RUNTIME_CLEANUP_TEST"; then
+    echo -e "    runtime cleanup failure, ${RED}failed${OFF}"
+    STATUS=1
+fi
+rm -f "$RUNTIME_CLEANUP_TEST"
 echo "Checking runtime values..."
 VALUE_TEST=$(mktemp)
 if ! cc -std=gnu99 -fsanitize=address src/test/c/runtime-value.c src/main/c/backend/runtime/Value.c $MUSIC_SOURCES -o "$VALUE_TEST" || ! "$VALUE_TEST"; then
@@ -323,7 +330,7 @@ fi
 rm -f "$PROGRESSION_TEST"
 echo "Checking MIDI, LilyPond and file writing..."
 FILE_TEST=$(mktemp)
-if ! cc -std=gnu99 -fsanitize=address src/test/c/output-file.c $OUTPUT_SOURCES $MUSIC_SOURCES -Wl,--wrap=link -o "$FILE_TEST" || ! "$FILE_TEST"; then
+if ! cc -std=gnu99 -fsanitize=address src/test/c/output-file.c $OUTPUT_SOURCES $MUSIC_SOURCES -Wl,--wrap=link -Wl,--wrap=unlink -o "$FILE_TEST" || ! "$FILE_TEST"; then
     echo -e "    MIDI, LilyPond and file writing, ${RED}failed${OFF}"
     STATUS=1
 fi

@@ -82,8 +82,6 @@ Los rechazos de tipos tambien cubren parametros, limites de for, voice, check, d
 
 Los casos de `duration` verifican declaracion, arpegio, vectores, parametros y retornos, y el rechazo de valores incompatibles.
 
-La prueba `semantic-oom.c` fuerza un fallo de reserva para verificar el codigo `OUT_OF_MEMORY` y se ejecuta desde `test.sh`.
-
 `music-validation.c` prueba directamente pertenencia tonal, tesituras, cruce y movimiento paralelo sobre alturas MIDI; no reemplaza los casos Cadence pendientes de integrar.
 
 La validacion de secuencias SATB comprueba los resultados y el indice de error, las reglas opcionales, la tesitura obligatoria y las entradas invalidas.
@@ -96,7 +94,7 @@ El caso 55 comprueba `strict` con una tonalidad y un acorde literales. Casos adi
 
 `strict` tambien verifica notas variables de valor literal inmutable; si hay alguna asignacion al mismo nombre en el programa, su valor se considera desconocido y queda para ejecucion.
 
-Las pruebas de realizacion SATB comprueban cobertura de notas, tesituras, ausencia de cruce, minimo de movimiento conocido, acordes imposibles y fallos de reserva.
+Las pruebas de realizacion SATB comprueban cobertura de notas, tesituras, ausencia de cruce, minimo de movimiento conocido, y acordes imposibles.
 
 Los casos 56 y 57 usan progresiones que fuerzan las paralelas bajo la realizacion de minimo movimiento. Se comprueba tambien una progresion referida por variables inmutables y la seleccion de reglas de `check`.
 
@@ -145,8 +143,6 @@ No se regeneran durante la suite. Una salida inesperada hace fallar el caso.
 Los programas de `demo/` son ejemplos para mostrar el lenguaje y no forman
 parte de la suite: `test.sh` no los recorre y sus salidas no se versionan.
 
-`runtime-value.c` comprueba copia profunda y liberación; `runtime-oom.c` fuerza
-cada reserva directa de una ejecución con nueve exportaciones, exige código 2
-y ningún archivo, y corre con ASan. Los errores posteriores a `export`
+`runtime-value.c` comprueba copia profunda y liberación. Los errores posteriores a `export`
 conservan los logs previos y no escriben archivos. La suite rechaza reportes
 de ASan incluso si el programa ya devolvió un código de rechazo esperado.

@@ -249,9 +249,6 @@ veinte bloques anidados exige la guarda de pila.
 `runtime-value.c` limita el tamaño de `Value` y comprueba copias independientes
 de acordes, escalas, progresiones dentro de vectores y los dos arreglos de un
 voicing, además de liberación repetida.
-`runtime-oom.c` fuerza por turno cada reserva directa de `malloc`, `calloc` y
-`realloc` de una ejecución con procedimientos, copias musicales, validaciones
-y nueve exportaciones. Exige código 2 y ningún archivo en cada fallo.
 
 El binario y las pruebas de memoria usan AddressSanitizer. `test.sh` fija su
 código de error en 86 y rechaza cualquier reporte: ni un fallo de memoria ni

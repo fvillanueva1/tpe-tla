@@ -173,8 +173,7 @@ código de salida (1 para errores de escritura, 2 para memoria).
 
 - `src/test/c/output-score.c`: partituras con eventos conocidos; alturas,
   inicios, duraciones y canales de notas, escalas, acordes, progresiones y
-  voicings; un fallo a mitad de un valor deja la partitura intacta (también
-  sin memoria, con `--wrap=realloc`) y los límites de cada campo.
+  voicings; un fallo a mitad de un valor deja la partitura intacta y los límites de cada campo.
 - `src/test/c/output-file.c`: el MIDI de un acorde byte a byte, los canales y
   cambios de programa de un voicing, el tempo mínimo; el LilyPond de una
   escala, de acordes con silencios, ligaduras y grafías, y de un voicing; y la
@@ -188,9 +187,6 @@ código de salida (1 para errores de escritura, 2 para memoria).
   temporales después de publicar y después de fallar la preparación, y al
   borrar destinos durante rollback: comprueba estado, ruta residual y que se
   intente limpiar el resto del lote.
-- `runtime-output-cleanup.c` inyecta un fallo de borrado de un temporal en una
-  ejecución real: exige código 1, el diagnóstico con la ruta y la reversión de
-  ambas publicaciones, conservando solo el temporal cuyo borrado falla.
 - `scale-midi.c` y la integración de `test.sh` comprueban que la escala se
   sigue exportando igual y que una segunda exportación al mismo archivo falla
   sin cambiarlo.

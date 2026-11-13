@@ -85,7 +85,7 @@ como `==`, `aug4`, instrumentos e interpolación.
 `test.sh` ejecuta `accept/` y `reject/` y exige el diagnostico semantico en los casos correspondientes. Comprueba el contenido MIDI de la primera exportacion de escala y las funciones de validacion musical; el runtime ejecuta también las expresiones musicales y acumula todas las exportaciones hasta finalizar sin errores. Los casos 55 a 59 validan `strict`, paralelas, cruce de voces y tesitura con valores conocidos; 58 y 59 usan voicings explícitos. También compila y ejecuta los tests de la biblioteca musical y de la salida (`doc/stage-iii/musica.md`, `doc/stage-iii/salida.md`).
 
 La suite actual tiene 106 aceptaciones ejecutadas y 155 rechazos, además de
-pruebas de las bibliotecas y de fallos de reserva. Los fixtures verifican MIDI
+pruebas de las bibliotecas. Los fixtures verifican MIDI
 y LilyPond byte a byte. Los casos 56–59, que en Stage II eran escenarios por
 concretar, ahora obligan a las paralelas o fijan un voicing explícito para
 comprobar cruce y tesitura. Ver [tests.md](doc/stage-ii/tests.md).

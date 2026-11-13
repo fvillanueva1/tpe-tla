@@ -155,6 +155,20 @@ static bool _outOfMemory(Runtime * runtime) {
 	return false;
 }
 
+static bool _musicStatus(Runtime * runtime, MusicStatus status, const char * operation) {
+	if (status == MUSIC_OK) return true;
+	if (status == MUSIC_NO_MEMORY) return _outOfMemory(runtime);
+	switch (status) {
+		case MUSIC_MISSING_OCTAVE: return _error(runtime, "note requires an octave");
+		case MUSIC_OUT_OF_RANGE: return _error(runtime, "%s is out of range", operation);
+		case MUSIC_TOO_MANY_NOTES: return _error(runtime, "%s has too many notes", operation);
+		case MUSIC_NO_REALIZATION: return _error(runtime, "voice has no SATB realization within the tessituras");
+		case MUSIC_NOT_FOUR_VOICES: return _error(runtime, "explicit voicing chords need four notes");
+		case MUSIC_MISSING_KEY: return _error(runtime, "cannot modulate a progression without a known key");
+		default: return _error(runtime, "invalid value for %s", operation);
+	}
+}
+
 /* NATIVE STACK */
 
 /**
@@ -295,6 +309,13 @@ static bool _evaluateIndex(Runtime * runtime, RuntimeScope * scope, const Expres
 		destroyValue(&vector);
 		return false;
 	}
+	if (!vector.isVector && vector.type == TYPE_SCALE) {
+		result->type = TYPE_NOTE;
+		MusicStatus status = musicScaleNote(&vector.scale, index, &result->note);
+		destroyValue(&vector);
+		if (status != MUSIC_OK) return _error(runtime, "index %d is out of range for a scale of length 7", index);
+		return true;
+	}
 	if (index < 0 || (size_t) index >= vector.vector.count) {
 		size_t length = vector.vector.count;
 		destroyValue(&vector);
@@ -303,6 +324,133 @@ static bool _evaluateIndex(Runtime * runtime, RuntimeScope * scope, const Expres
 	*result = vector.vector.items[index];
 	vector.vector.items[index] = (Value) {.type = TYPE_INTEGER};
 	destroyValue(&vector);
+	return true;
+}
+
+/* Musical literals and operations with no context-dependent list conversion. */
+static bool _evaluateMusic(Runtime * runtime, RuntimeScope * scope, const Expression * expression, Value * result) {
+	MusicStatus status = MUSIC_OK;
+	const char * operation = "musical expression";
+	switch (expression->type) {
+		case NOTE_LITERAL:
+			result->type = TYPE_NOTE;
+			status = musicParseNote(expression->text, &result->note);
+			operation = "note";
+			break;
+		case INTERVAL_LITERAL:
+			result->type = TYPE_INTERVAL;
+			status = musicParseInterval(expression->text, &result->interval);
+			operation = "interval";
+			break;
+		case DEGREE_LITERAL:
+			status = musicParseDegree(expression->text, &result->integer);
+			++result->integer; /* Integer degrees in the language are one-based. */
+			operation = "degree";
+			break;
+		case DIMINISHED_LITERAL:
+			result->type = VALUE_QUALITY;
+			result->quality = MUSIC_QUALITY_DIMINISHED;
+			break;
+		case KEY_LITERAL:
+			result->type = TYPE_KEY;
+			result->key.mode = (MusicMode) expression->key.mode;
+			result->key.strict = expression->key.strict;
+			status = musicParseSpelling(expression->key.tonic, &result->key.tonic);
+			operation = "key";
+			break;
+		case SCALE_OF_KEY:
+		case DOMINANT_OF_KEY:
+		case SUBDOMINANT_OF_KEY:
+		case RELATIVE_MINOR_OF_KEY: {
+			Value key;
+			if (!_evaluate(runtime, scope, expression->operand, &key)) return false;
+			result->type = expression->type == SCALE_OF_KEY ? TYPE_SCALE : TYPE_KEY;
+			if (expression->type == SCALE_OF_KEY) status = musicKeyScale(key.key, &result->scale);
+			else if (expression->type == DOMINANT_OF_KEY) status = musicDominantKey(key.key, &result->key);
+			else if (expression->type == SUBDOMINANT_OF_KEY) status = musicSubdominantKey(key.key, &result->key);
+			else status = musicRelativeMinorKey(key.key, &result->key);
+			destroyValue(&key);
+			operation = "key relation";
+			break;
+		}
+		case NOTES_CHORD: {
+			MusicNote notes[MUSIC_MAX_CHORD_NOTES];
+			size_t count = 0;
+			for (const ExpressionList * item = expression->elements; item; item = item->next) {
+				if (count == MUSIC_MAX_CHORD_NOTES) return _error(runtime, "chord has too many notes (maximum %d)", MUSIC_MAX_CHORD_NOTES);
+				Value note;
+				if (!_evaluate(runtime, scope, item->expression, &note)) return false;
+				notes[count++] = note.note;
+				destroyValue(&note);
+			}
+			result->type = TYPE_CHORD;
+			status = musicChordFromNotes(notes, count, &result->chord);
+			operation = "chord";
+			break;
+		}
+		case TRIAD_CHORD:
+		case SEVENTH_CHORD:
+		case NINTH_CHORD: {
+			int degree;
+			Value key;
+			if (!_evaluateInteger(runtime, scope, expression->leftExpression, &degree)) return false;
+			if (!_evaluate(runtime, scope, expression->rightExpression, &key)) return false;
+			if (degree < 1 || degree > 7) {
+				destroyValue(&key);
+				return _error(runtime, "chord degree %d must be between 1 and 7", degree);
+			}
+			MusicChordSize size = expression->type == TRIAD_CHORD ? MUSIC_TRIAD : expression->type == SEVENTH_CHORD ? MUSIC_SEVENTH : MUSIC_NINTH;
+			result->type = TYPE_CHORD;
+			status = musicDegreeChord(key.key, degree - 1, size, &result->chord);
+			destroyValue(&key);
+			operation = "degree chord";
+			break;
+		}
+		case PROPERTY_ACCESS: {
+			Value object;
+			if (!_evaluate(runtime, scope, expression->property.object, &object)) return false;
+			const char * name = expression->property.name;
+			operation = name;
+			if (!strcmp(name, "octave")) result->integer = musicNoteOctave(object.note);
+			else if (!strcmp(name, "root")) {
+				result->type = TYPE_NOTE;
+				status = musicChordRoot(&object.chord, &result->note);
+			} else if (!strcmp(name, "quality")) {
+				result->type = VALUE_QUALITY;
+				result->quality = musicChordQuality(&object.chord);
+			} else if (!strcmp(name, "tonic")) {
+				result->type = TYPE_NOTE;
+				status = musicKeyTonic(object.key, &result->note);
+			} else if (!strcmp(name, "mode")) {
+				result->type = VALUE_MODE;
+				result->mode = musicKeyMode(object.key);
+			} else if (!strcmp(name, "length")) {
+				if (object.progression.count > INT_MAX) {
+					destroyValue(&object);
+					return _error(runtime, "progression length exceeds the integer range");
+				}
+				result->integer = (int) object.progression.count;
+			}
+			destroyValue(&object);
+			break;
+		}
+		default: return _error(runtime, "expression is not supported yet");
+	}
+	return _musicStatus(runtime, status, operation);
+}
+
+/* Comparisons use pitch, semitones, quality or mode according to the type. */
+static bool _comparable(Runtime * runtime, RuntimeScope * scope, const Expression * expression, int * number) {
+	Value value;
+	if (!_evaluate(runtime, scope, expression, &value)) return false;
+	switch (value.type) {
+		case TYPE_NOTE: *number = value.note.pitch; break;
+		case TYPE_INTERVAL: *number = value.interval.semitones; break;
+		case VALUE_QUALITY: *number = value.quality; break;
+		case VALUE_MODE: *number = value.mode; break;
+		default: *number = value.integer; break;
+	}
+	destroyValue(&value);
 	return true;
 }
 
@@ -360,8 +508,8 @@ static bool _evaluate(Runtime * runtime, RuntimeScope * scope, const Expression 
 		case GREATER_THAN:
 		case GREATER_THAN_OR_EQUAL: {
 			int left, right;
-			if (!_evaluateInteger(runtime, scope, expression->leftExpression, &left)
-				|| !_evaluateInteger(runtime, scope, expression->rightExpression, &right)) return false;
+			if (!_comparable(runtime, scope, expression->leftExpression, &left)
+				|| !_comparable(runtime, scope, expression->rightExpression, &right)) return false;
 			result->type = TYPE_BOOLEAN;
 			switch (expression->type) {
 				case EQUALITY: result->boolean = left == right; break;
@@ -383,7 +531,7 @@ static bool _evaluate(Runtime * runtime, RuntimeScope * scope, const Expression 
 			return _arithmetic(runtime, expression->type, left, right, &result->integer);
 		}
 		default:
-			return _error(runtime, "expression is not supported yet");
+			return _evaluateMusic(runtime, scope, expression, result);
 	}
 }
 

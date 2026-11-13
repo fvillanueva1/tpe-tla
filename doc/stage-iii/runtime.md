@@ -123,3 +123,9 @@ con duraciones. Se ejecuta con AddressSanitizer.
 La prueba de recursión infinita acepta el límite de 1000 llamadas o la guarda
 de pila: el tamaño de los valores y la instrumentación de ASan determinan cuál
 se alcanza primero. La prueba con bloques anidados exige la guarda de pila.
+
+El evaluador musical ya resuelve literales de nota, intervalo y tonalidad,
+relaciones tonales, escalas, acordes por notas o grados, propiedades,
+comparaciones por altura/semitonos e índices de escalas. Los grados enteros
+son de 1 a 7; los índices siguen siendo de base cero. La integración con el
+generador permanece detrás del recorrido de soporte hasta completar la salida.

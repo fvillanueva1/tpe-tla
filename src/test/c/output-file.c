@@ -11,10 +11,19 @@
 static char directory[] = "/tmp/cadence-output-XXXXXX";
 static int failLinkAfter = -1;
 static bool createDestination;
+static const char *replaceDestination;
 
 int __real_link(const char *, const char *);
 int __wrap_link(const char *source, const char *destination) {
     if (failLinkAfter == 0) {
+        if (replaceDestination) {
+            /* rename keeps both inodes alive until replacement, avoiding inode reuse. */
+            char replacement[256];
+            snprintf(replacement, sizeof(replacement), "%s.replacement", source);
+            FILE *file = fopen(replacement, "wb");
+            assert(file && fputs("replacement data", file) >= 0 && fclose(file) == 0);
+            assert(rename(replacement, replaceDestination) == 0);
+        }
         if (createDestination) {
             FILE *file = fopen(destination, "wb");
             assert(file && fputs("existing data", file) >= 0 && fclose(file) == 0);
@@ -206,6 +215,16 @@ static void files(void) {
     OutputFile unsupported[] = {{&score, OUTPUT_FORMAT_MIDI, path("first.mid")}, {&score, OUTPUT_FORMAT_MIDI, path("second.mid")}};
     failLinkAfter = 1;
     assert(outputWriteFiles(unsupported, 2, &failed) == OUTPUT_WRITE_ERROR && failed == 1 && entries() == 1);
+
+    /* Another process replaces the first publication before the second fails. */
+    failLinkAfter = 1;
+    replaceDestination = unsupported[0].path;
+    assert(outputWriteFiles(unsupported, 2, &failed) == OUTPUT_WRITE_ERROR && failed == 1);
+    file = fopen(unsupported[0].path, "rb");
+    assert(file && fread(data, 1, sizeof(data), file) == strlen("replacement data"));
+    assert(!memcmp(data, "replacement data", strlen("replacement data")) && fclose(file) == 0);
+    assert(entries() == 2 && unlink(unsupported[0].path) == 0);
+    replaceDestination = NULL;
 
     /* A destination created during publication must survive unchanged. */
     failLinkAfter = 0;

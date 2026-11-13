@@ -19,8 +19,13 @@ static bool exists(const char *path) {
     return lstat(path, &information) == 0 || errno != ENOENT;
 }
 
+typedef struct {
+    char *path;
+    struct stat identity;
+} TemporaryFile;
+
 /* Writes the buffer to a new temporary file next to "path"; "temporary" receives its name. */
-static OutputStatus writeTemporary(const char *path, const OutputBuffer *buffer, char **temporary) {
+static OutputStatus writeTemporary(const char *path, const OutputBuffer *buffer, TemporaryFile *temporary) {
     size_t length = strlen(path);
     char *name = malloc(length + sizeof(".XXXXXX"));
     if (!name) return OUTPUT_NO_MEMORY;
@@ -31,7 +36,7 @@ static OutputStatus writeTemporary(const char *path, const OutputBuffer *buffer,
     /* mkstemp creates the file for the owner only; give it the usual permissions. */
     mode_t mask = umask(0);
     umask(mask);
-    bool ok = fchmod(descriptor, 0666 & ~mask) == 0;
+    bool ok = fstat(descriptor, &temporary->identity) == 0 && fchmod(descriptor, 0666 & ~mask) == 0;
     for (size_t written = 0; ok && written < buffer->length;) {
         ssize_t result = write(descriptor, buffer->data + written, buffer->length - written);
         if (result < 0 && errno == EINTR) continue;
@@ -40,7 +45,7 @@ static OutputStatus writeTemporary(const char *path, const OutputBuffer *buffer,
     }
     if (close(descriptor) != 0) ok = false;
     if (!ok) { unlink(name); free(name); return OUTPUT_WRITE_ERROR; }
-    *temporary = name;
+    temporary->path = name;
     return OUTPUT_OK;
 }
 
@@ -64,7 +69,7 @@ OutputStatus outputWriteFiles(const OutputFile *files, size_t count, size_t *fai
         if (exists(files[i].path)) return OUTPUT_FILE_EXISTS;
     }
     if (!count) return OUTPUT_OK;
-    char **temporaries = calloc(count, sizeof(*temporaries));
+    TemporaryFile *temporaries = calloc(count, sizeof(*temporaries));
     if (!temporaries) return OUTPUT_NO_MEMORY;
     OutputStatus status = OUTPUT_OK;
     size_t index = 0;
@@ -78,14 +83,20 @@ OutputStatus outputWriteFiles(const OutputFile *files, size_t count, size_t *fai
     size_t published = 0;
     if (status == OUTPUT_OK)
         for (index = 0; index < count && status == OUTPUT_OK; ++index, ++published)
-            status = publish(temporaries[index], files[index].path);
+            status = publish(temporaries[index].path, files[index].path);
     if (status != OUTPUT_OK) {
         if (failed) *failed = index - 1;
         /* Undo: the files already published and every temporary left. */
-        for (size_t i = 0; i + 1 < published; ++i) unlink(files[i].path);
-        for (size_t i = 0; i < count; ++i) if (temporaries[i]) unlink(temporaries[i]);
+        for (size_t i = 0; i + 1 < published; ++i) {
+            struct stat current;
+            /* A replacement belongs to its creator, not to this batch. */
+            if (lstat(files[i].path, &current) == 0 &&
+                current.st_dev == temporaries[i].identity.st_dev &&
+                current.st_ino == temporaries[i].identity.st_ino) unlink(files[i].path);
+        }
+        for (size_t i = 0; i < count; ++i) if (temporaries[i].path) unlink(temporaries[i].path);
     }
-    for (size_t i = 0; i < count; ++i) free(temporaries[i]);
+    for (size_t i = 0; i < count; ++i) free(temporaries[i].path);
     free(temporaries);
     return status;
 }

@@ -111,7 +111,12 @@ ninguno**, que es lo que el runtime necesita al terminar un programa con varios
    En sistemas de archivos sin enlaces duros devuelve `OUTPUT_WRITE_ERROR`:
    no usa `rename()`, que podría reemplazar un destino creado por otro proceso.
    Si falla la publicación de uno, se borran los ya publicados y los
-   temporales restantes.
+   temporales restantes. La reversión conserva la identidad (`st_dev`,
+   `st_ino`) tomada con `fstat()` del temporal y solo borra un destino si
+   `lstat()` inmediatamente antes de `unlink()` confirma esa identidad.
+   Si otro proceso lo reemplazó, conserva el reemplazo. Sin bloqueo queda
+   una ventana de carrera entre la comprobación y el borrado; no se garantiza
+   aislamiento frente a modificaciones concurrentes en esa ventana.
 
 `falló` recibe el índice del archivo que falló. Los archivos quedan con los
 permisos normales (`0666` menos la `umask`). `outputWriteMidi` y
@@ -152,3 +157,7 @@ El límite superior de tempo pertenece al codificador MIDI. LilyPond acepta
 cualquier entero positivo, igual que la semántica de `sheet`. La partitura
 común permite ese rango; `output-file.c` prueba que 60000001 BPM se puede
 codificar en LilyPond y se rechaza en MIDI.
+
+La corrección de identidad en `File.c`, módulo de salida de Felipe, se limita
+al registro del inode del temporal y a la comprobación previa al rollback;
+no cambia codificadores ni el formato de las partituras.

@@ -90,29 +90,6 @@ y LilyPond byte a byte. Los casos 56–59, que en Stage II eran escenarios por
 concretar, ahora obligan a las paralelas o fijan un voicing explícito para
 comprobar cruce y tesitura. Ver [tests.md](doc/stage-ii/tests.md).
 
-En los commits iniciales se prepararon tests de nuevas construcciones en
-`src/test/c/planned/`. Cada implementación los activó moviéndolos a `accept/`
-o `reject/`. Esa carpeta era temporal y ya no tiene archivos en el estado final;
-es distinta de `pending/`, que se conserva para Stage III. Cada uno de los ocho
-commits de implementación compila y pasa la suite activa de ese momento.
-
-## Revisión final del frontend
-
-Con toda la gramática integrada se hicieron las dos revisiones de cierre de
-Stage II, sobre la imagen Docker del repo (Bison 3.8.2):
-
-- **Conflictos de Bison:** `bison -Wcounterexamples` no emite ningún aviso y la
-  gramática conserva `%expect 0`. Con `-Wall` solo aparecen siete avisos
-  `-Wprecedence` (`BY`, `AS`, `TO`, `OF`, `NOT`, `DOT` y `OPEN_BRACKET` se
-  declaran con `%left`/`%right`/`%nonassoc` aunque no son asociativos). Son
-  cosméticos: no hay conflictos ni reglas inútiles, y no se modificaron.
-- **Destructores y memoria:** `destroyExpression` y `destroyStatement` cubren
-  todos los valores de `ExpressionType` y `StatementType`, y cada nodo auxiliar
-  (`Voice`, `Check`, `Export`, `Log`, `StringPart`, listas y procedimientos)
-  libera a sus hijos. Los 80 programas de `accept/` y `reject/` se ejecutaron
-  con AddressSanitizer y detección de fugas sin errores. La imagen no incluye
-  `valgrind`; AddressSanitizer cubre el mismo chequeo.
-
 ## Ejemplo
 
 ```text

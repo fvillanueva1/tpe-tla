@@ -251,14 +251,6 @@ llamada, vectores de enteros y strings y la lectura de un acorde diatónico
 junto a otros cromáticos. Los tres rechazos `runtime-strict-index-*`
 comprueban el acorde seleccionado y las propiedades directas de un acorde.
 
-En el contenedor con ASan y `-O3`, el programa de `runtime-index-large`
-baja de 18406427911 a 4587911 bytes solicitados y de 40382 a 30381
-llamadas a reserva. Una ejecución tarda 5,447 s antes y 0,018 s después
-(tiempo real con `time` de Bash, sin incluir compilación ni arranque de Docker).
-La medición enlaza los mismos objetos con `--wrap=malloc`, `--wrap=calloc`
-y `--wrap=realloc` y suma los tamaños solicitados, incluido el frontend;
-no representa memoria residente ni cuenta reservas internas de libc.
-
 `runtime-strict-discarded-return` devuelve un acorde cromático desde un
 procedimiento con tonalidad no estricta y descarta el resultado dentro de un
 bloque estricto del llamador. Exige el error de tonalidad, ausencia del log

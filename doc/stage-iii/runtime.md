@@ -146,3 +146,11 @@ tonalidad vigente cambia su valor; asignar otra anterior no cambia cuál rige.
 Los bloques restauran el contexto exterior al salir y los procedimientos
 heredan el contexto global, sin tomar tonalidades locales del llamador.
 Una violación informa `chord contains a note outside the strict key`.
+
+`voice` convierte la progresión y delega la distribución en
+`musicVoiceProgression`. Un voicing explícito toma las cuatro notas de cada
+acorde en orden S,A,T,B sin redistribuir. Se comprueba su tesitura al construirlo
+o recibirlo. `check` aplica las reglas solicitadas al valor actual e informa
+la primera violación, numerando acordes desde uno: `parallel fifths at chord 2`,
+`parallel octaves`, `voice crossing` o `tessitura`. Una lista vacía es válida.
+Los errores de realización o de cantidad de voces son errores de ejecución.

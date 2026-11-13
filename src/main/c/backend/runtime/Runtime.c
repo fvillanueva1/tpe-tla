@@ -301,19 +301,32 @@ static bool _evaluateList(Runtime * runtime, RuntimeScope * scope, const Express
 	return true;
 }
 
+static bool _reportVoicing(Runtime * runtime, const MusicVoicing * voicing, unsigned int rules) {
+	size_t failed = 0;
+	MusicValidationResult result = musicCheckVoicingValue(voicing, rules, &failed);
+	if (result == MUSIC_VALID) return true;
+	const char * reason = result == MUSIC_TESSITURA_ERROR ? "tessitura" :
+		result == MUSIC_VOICE_CROSSING_ERROR ? "voice crossing" :
+		result == MUSIC_PARALLEL_FIFTHS_ERROR ? "parallel fifths" :
+		result == MUSIC_PARALLEL_OCTAVES_ERROR ? "parallel octaves" : "invalid voicing";
+	return _error(runtime, "%s at chord %zu", reason, failed + 1);
+}
+
 /* A chord list acquires its declared type only at an assignment, argument or return. */
 static bool _coerce(Runtime * runtime, Value * value, int type, bool vector) {
 	if (vector) { value->type = type; return true; }
-	if (!value->isVector) return true;
-	if (type != TYPE_PROGRESSION) return true;
+	if (!value->isVector) return type != TYPE_VOICING || _reportVoicing(runtime, &value->voicing, 0);
+	if (type != TYPE_PROGRESSION && type != TYPE_VOICING) return true;
 	size_t count = value->vector.count;
 	MusicChord * chords = count ? calloc(count, sizeof(MusicChord)) : NULL;
 	if (count && !chords) return _outOfMemory(runtime);
 	for (size_t k = 0; k < count; ++k) chords[k] = value->vector.items[k].chord;
 	Value converted = {.type = type};
-	MusicStatus status = musicChordProgression(chords, count, &converted.progression);
+	MusicStatus status = type == TYPE_PROGRESSION ? musicChordProgression(chords, count, &converted.progression) :
+		musicExplicitVoicing(chords, count, &converted.voicing);
 	free(chords);
-	if (!_musicStatus(runtime, status, "progression")) { destroyValue(&converted); return false; }
+	if (!_musicStatus(runtime, status, type == TYPE_PROGRESSION ? "progression" : "voicing")) { destroyValue(&converted); return false; }
+	if (type == TYPE_VOICING && !_reportVoicing(runtime, &converted.voicing, 0)) { destroyValue(&converted); return false; }
 	destroyValue(value);
 	*value = converted;
 	return true;
@@ -535,6 +548,15 @@ static bool _evaluateMusic(Runtime * runtime, RuntimeScope * scope, const Expres
 				result->integer = (int) object.progression.count;
 			}
 			destroyValue(&object);
+			break;
+		}
+		case VOICE_EXPRESSION: {
+			Value progression;
+			if (!_evaluateAs(runtime, scope, expression->voice->progression, TYPE_PROGRESSION, false, &progression)) return false;
+			result->type = TYPE_VOICING;
+			status = musicVoiceProgression(&progression.progression, &result->voicing);
+			destroyValue(&progression);
+			operation = "voice";
 			break;
 		}
 		case IN_EXPRESSION:
@@ -822,6 +844,13 @@ static Flow _execute(Runtime * runtime, RuntimeScope * scope, const Statement * 
 				runtime->hasReturned = true;
 			}
 			return FLOW_RETURN;
+		case CHECK_STATEMENT: {
+			Value voicing;
+			if (!_evaluateAs(runtime, scope, statement->check->voicing, TYPE_VOICING, false, &voicing)) return FLOW_ERROR;
+			bool ok = _reportVoicing(runtime, &voicing.voicing, statement->check->rules);
+			destroyValue(&voicing);
+			return ok ? FLOW_NORMAL : FLOW_ERROR;
+		}
 		case LOG_STATEMENT: {
 			char * text;
 			if (!_interpolate(runtime, scope, statement->log->message, &text)) return FLOW_ERROR;

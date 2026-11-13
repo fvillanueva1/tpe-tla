@@ -48,7 +48,7 @@ typedef struct {
     int instrument;
 } OutputScore;
 
-/** An empty score; tempo in BPM (1 to 60000000) and General MIDI program (0 to 127). */
+/** An empty score; positive tempo in BPM (MIDI encoding enforces its own range) and General MIDI program (0 to 127). */
 OutputStatus outputScoreInit(OutputScore *score, int tempo, int instrument);
 /** Releases the events; it can be called more than once. */
 void outputScoreDestroy(OutputScore *score);
@@ -94,7 +94,7 @@ void outputBufferDestroy(OutputBuffer *buffer);
  * Standard MIDI file, format 0: one track with the tempo, a program change
  * for each channel in use and the events. A voicing keeps each voice in its
  * own channel (soprano 0 ... bass 3). Velocity 64. OUTPUT_INVALID_ARGUMENT
- * when the tempo does not fit MIDI's 24-bit field (below 4 BPM).
+ * when the tempo does not fit MIDI's 24-bit field (outside 4 to 60000000 BPM).
  */
 OutputStatus outputEncodeMidi(const OutputScore *score, OutputBuffer *buffer);
 /**

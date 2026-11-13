@@ -99,6 +99,11 @@ static void midi(void) {
     assert(outputScoreInit(&score, 120, 0) == OUTPUT_OK && outputEncodeMidi(&score, &buffer) == OUTPUT_OK);
     assert(buffer.length == 22 + 7 + 4 && buffer.data[21] == 11);
     outputBufferDestroy(&buffer);
+    score.tempo = 60000001;
+    assert(outputEncodeMidi(&score, &buffer) == OUTPUT_INVALID_ARGUMENT && !buffer.data);
+    assert(outputEncodeLilyPond(&score, &buffer) == OUTPUT_OK);
+    assert(contains(&buffer, "\\tempo 4 = 60000001"));
+    outputBufferDestroy(&buffer);
     score.tempo = 3;
     assert(outputEncodeMidi(&score, &buffer) == OUTPUT_INVALID_ARGUMENT && !buffer.data);
     outputScoreDestroy(&score);

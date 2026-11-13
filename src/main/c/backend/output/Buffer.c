@@ -33,7 +33,7 @@ bool outputBufferText(OutputBuffer *buffer, const char *text) {
 }
 
 bool outputValidScore(const OutputScore *score) {
-    if (!score || (!score->events && score->count) || score->tempo < 1 || score->tempo > 60000000 ||
+    if (!score || (!score->events && score->count) || score->tempo < 1 ||
         score->instrument < 0 || score->instrument > 127) return false;
     for (size_t i = 0; i < score->count; ++i) {
         const OutputEvent *e = &score->events[i];

@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 OutputStatus outputScoreInit(OutputScore *score, int tempo, int instrument) {
-    if (!score || tempo < 1 || tempo > 60000000 || instrument < 0 || instrument > 127) return OUTPUT_INVALID_ARGUMENT;
+    if (!score || tempo < 1 || instrument < 0 || instrument > 127) return OUTPUT_INVALID_ARGUMENT;
     *score = (OutputScore){.tempo = tempo, .instrument = instrument};
     return OUTPUT_OK;
 }

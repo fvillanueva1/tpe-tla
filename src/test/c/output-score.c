@@ -23,7 +23,7 @@ static void basics(void) {
     OutputScore score;
     assert(outputScoreInit(&score, OUTPUT_DEFAULT_TEMPO, OUTPUT_DEFAULT_INSTRUMENT) == OUTPUT_OK);
     assert(!score.count && !score.end && score.tempo == 120 && score.instrument == 0);
-    assert(outputScoreInit(&score, 0, 0) == OUTPUT_INVALID_ARGUMENT && outputScoreInit(&score, 60000001, 0) == OUTPUT_INVALID_ARGUMENT);
+    assert(outputScoreInit(&score, 0, 0) == OUTPUT_INVALID_ARGUMENT);
     assert(outputScoreInit(&score, 90, 128) == OUTPUT_INVALID_ARGUMENT && outputScoreInit(&score, 90, -1) == OUTPUT_INVALID_ARGUMENT);
     assert(outputScoreInit(NULL, 90, 0) == OUTPUT_INVALID_ARGUMENT);
 

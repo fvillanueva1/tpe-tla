@@ -26,7 +26,7 @@ Todo está declarado en `Output.h` (contrato 3 entre Felipe y Eduardo).
   1920 y una semicorchea 120 (`outputDurationTicks`).
 - Canales: una línea simple usa el canal 0 (`OUTPUT_MELODY_CHANNEL`); un
   voicing usa un canal por voz, de soprano (0) a bajo (3).
-- `OutputScore` guarda los eventos, el tempo (1 a 60000000 BPM), el
+- `OutputScore` guarda los eventos, el tempo (entero positivo), el
   instrumento (programa General MIDI 0–127) y `end`, el tick donde empieza el
   próximo valor. Si `export` no indica tempo o instrumento se usan 120 BPM y
   `piano` (`OUTPUT_DEFAULT_TEMPO`, `OUTPUT_DEFAULT_INSTRUMENT`).
@@ -64,7 +64,7 @@ bits.
 con
 
 1. el tempo (microsegundos por negra, campo de 24 bits: hace falta al menos
-   4 BPM, el mismo mínimo que valida la semántica);
+   4 BPM y como máximo 60000000 BPM, como valida la semántica);
 2. un cambio de programa (instrumento) por cada canal usado;
 3. los eventos ordenados por tick; en el mismo tick, primero terminan las
    notas que terminan y después empiezan las nuevas. Velocidad 64.
@@ -146,3 +146,8 @@ código de salida (1 para errores de escritura, 2 para memoria).
   sin cambiarlo.
 
 Todos se compilan con AddressSanitizer.
+
+El límite superior de tempo pertenece al codificador MIDI. LilyPond acepta
+cualquier entero positivo, igual que la semántica de `sheet`. La partitura
+común permite ese rango; `output-file.c` prueba que 60000001 BPM se puede
+codificar en LilyPond y se rechaza en MIDI.

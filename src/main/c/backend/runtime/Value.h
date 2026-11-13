@@ -35,8 +35,9 @@ struct Value {
 		MusicNote note;
 		MusicInterval interval;
 		MusicKey key;
-		MusicScale scale;
-		MusicChord chord;
+		/* Owned payloads; keep recursive interpreter frames small. */
+		MusicScale * scale;
+		MusicChord * chord;
 		MusicProgression progression;
 		MusicVoicing voicing;
 		MusicQuality quality;

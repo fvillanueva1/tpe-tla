@@ -44,6 +44,16 @@ bool copyValue(const Value * source, Value * target) {
 		target->vector.count = source->vector.count;
 		return true;
 	}
+	if (source->type == TYPE_SCALE) {
+		target->scale = malloc(sizeof(MusicScale));
+		if (target->scale == NULL) return false;
+		*target->scale = *source->scale;
+	}
+	if (source->type == TYPE_CHORD) {
+		target->chord = malloc(sizeof(MusicChord));
+		if (target->chord == NULL) return false;
+		*target->chord = *source->chord;
+	}
 	if (source->type == TYPE_PROGRESSION) return musicProgressionCopy(&source->progression, &target->progression);
 	if (source->type == TYPE_VOICING) return musicVoicingCopy(&source->voicing, &target->voicing);
 	if (source->type == TYPE_STRING) {
@@ -59,6 +69,14 @@ void destroyValue(Value * value) {
 		free(value->vector.items);
 		value->vector.items = NULL;
 		value->vector.count = 0;
+	}
+	else if (value->type == TYPE_SCALE) {
+		free(value->scale);
+		value->scale = NULL;
+	}
+	else if (value->type == TYPE_CHORD) {
+		free(value->chord);
+		value->chord = NULL;
 	}
 	else if (value->type == TYPE_PROGRESSION) musicProgressionDestroy(&value->progression);
 	else if (value->type == TYPE_VOICING) musicVoicingDestroy(&value->voicing);
@@ -131,9 +149,9 @@ bool appendValue(TextBuffer * buffer, const Value * value) {
 			break;
 		}
 		case TYPE_SCALE:
-			return appendNotes(buffer, value->scale.notes, 7, false);
+			return appendNotes(buffer, value->scale->notes, 7, false);
 		case TYPE_CHORD:
-			return appendNotes(buffer, value->chord.notes, value->chord.count, true);
+			return appendNotes(buffer, value->chord->notes, value->chord->count, true);
 		case TYPE_PROGRESSION:
 		case TYPE_VOICING: {
 			if (!appendText(buffer, "[", 1)) return false;

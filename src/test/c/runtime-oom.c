@@ -48,11 +48,15 @@ int main(void) {
     Expression zero = {.type = INTEGER_LITERAL, .integer = 0};
     Expression indexed = {.type = INDEX_ACCESS, .leftExpression = &voiceVector, .rightExpression = &zero};
     Expression note = {.type = NOTE_LITERAL, .text = "C4"};
+    Expression scale = {.type = SCALE_OF_KEY, .operand = &keyVariable};
+    Expression scaleVariable = {.type = VARIABLE, .text = "escala"};
+    Expression chord = {.type = TRIAD_CHORD, .leftExpression = &tonic, .rightExpression = &keyVariable};
+    Expression chordVariable = {.type = VARIABLE, .text = "acorde"};
     Export midi = {.value = &indexed, .format = EXPORT_MIDI, .path = "voces.mid"};
     Export sheet = {.value = &variable, .format = EXPORT_SHEET, .path = "tema.ly"};
     Export extra[7];
     char paths[7][20];
-    Statement statements[16] = {
+    Statement statements[20] = {
         {.type = DECLARATION, .dataType = TYPE_KEY, .name = "tonalidad", .expression = &key},
         {.type = DECLARATION, .dataType = TYPE_PROGRESSION, .name = "tema", .expression = &progression},
         {.type = PROCEDURE_DEFINITION, .procedureDefinition = &procedure},
@@ -61,15 +65,19 @@ int main(void) {
         {.type = DECLARATION, .dataType = TYPE_VOICING, .isVector = true, .name = "vectorVoces", .expression = &voiceList},
         {.type = CHECK_STATEMENT, .check = &(Check){.voicing = &indexed, .rules = CHECK_VOICE_CROSSING}},
         {.type = EXPORT_STATEMENT, .export = &midi},
-        {.type = EXPORT_STATEMENT, .export = &sheet}
+        {.type = EXPORT_STATEMENT, .export = &sheet},
+        {.type = DECLARATION, .dataType = TYPE_SCALE, .name = "escala", .expression = &scale},
+        {.type = DECLARATION, .dataType = TYPE_SCALE, .name = "copiaEscala", .expression = &scaleVariable},
+        {.type = DECLARATION, .dataType = TYPE_CHORD, .name = "acorde", .expression = &chord},
+        {.type = DECLARATION, .dataType = TYPE_CHORD, .name = "copiaAcorde", .expression = &chordVariable}
     };
-    StatementList sequence[16];
+    StatementList sequence[20];
     for (size_t k = 0; k < 7; ++k) {
         snprintf(paths[k], sizeof(paths[k]), "extra%zu.mid", k);
         extra[k] = (Export){.value = &note, .format = EXPORT_MIDI, .path = paths[k]};
-        statements[k + 9] = (Statement){.type = EXPORT_STATEMENT, .export = &extra[k]};
+        statements[k + 13] = (Statement){.type = EXPORT_STATEMENT, .export = &extra[k]};
     }
-    for (size_t k = 0; k < 16; ++k) sequence[k] = (StatementList){&statements[k], k + 1 < 16 ? &sequence[k + 1] : NULL};
+    for (size_t k = 0; k < 20; ++k) sequence[k] = (StatementList){&statements[k], k + 1 < 20 ? &sequence[k + 1] : NULL};
     Program program = {sequence};
     allocation = 0;
     assert(executeProgram(&program) == SUCCEEDED);

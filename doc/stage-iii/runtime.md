@@ -10,9 +10,11 @@ exportación de escalas, que conserva los bytes MIDI anteriores.
 
 `Value.h` / `Value.c` representan todos los tipos declarables: enteros,
 booleanos, strings, duraciones, notas, intervalos, tonalidades, escalas,
-acordes, progresiones y voicings, y sus vectores. Nota, intervalo, tonalidad,
-escala y acorde usan las estructuras de tamaño fijo de `Music.h`.
-Progresiones y voicings poseen sus arreglos. Calidad y modo son tipos internos
+acordes, progresiones y voicings, y sus vectores. Nota, intervalo y tonalidad
+usan estructuras pequeñas de `Music.h`. Escalas y acordes poseen un puntero a
+su estructura en el heap; progresiones y voicings poseen sus arreglos.
+Así `sizeof(Value)` es 32 bytes en el contenedor de pruebas de 64 bits, en lugar
+de 184. Las copias de escalas y acordes también reservan su propio payload. Calidad y modo son tipos internos
 de expresión; los grados literales se evalúan como enteros de 1 a 7.
 
 Las copias son profundas, también para progresiones y voicings dentro de
@@ -45,7 +47,15 @@ comprueba valores.
   llamador. La profundidad máxima es `RUNTIME_MAX_CALL_DEPTH` (1000).
   Además se limita el uso de pila de C a la mitad de `RLIMIT_STACK`, tomando
   como máximo un límite de 8 MB. Según el tamaño del cuerpo y la instrumentación
-  de AddressSanitizer, la guarda de pila puede alcanzarse antes de 1000 llamadas.
+  de AddressSanitizer, la guarda de pila puede alcanzarse antes de 1000 llamadas
+  con muchos bloques anidados. En el contenedor de pruebas (GCC 14.2.0,
+  AArch64, `-O3 -fsanitize=address`, pila de 8 MB), la cuenta descendente desde
+  999 termina correctamente, también con dos `if` anidados en cada llamada:
+  son 1000 llamadas activas, contando el caso base. Antes de reducir `Value`,
+  los máximos eran 661 y 300 respectivamente. Con `-fstack-usage`, `_execute`
+  baja de 3792 a 960 bytes, `_evaluateUnchecked` de 1680 a 720 y `_call` de
+  848 a 464. Los helpers de exportación, `for` e índices evitan que GCC
+  reserve sus temporales en todos los frames recursivos.
 - **Comparaciones:** notas por altura MIDI (`C#4 == Db4`), intervalos por
   semitonos (`aug4 == d5`), enteros por valor; modo y calidad admiten igualdad
   y desigualdad. No se compara la representación binaria de las estructuras.
@@ -164,7 +174,7 @@ de reserva; no se intenta agotar la memoria real con ASan.
 
 ## Tests
 
-`test.sh` ejecuta las 102 aceptaciones en directorios temporales. Compara
+`test.sh` ejecuta las 103 aceptaciones en directorios temporales. Compara
 stdout con `src/test/c/output/<caso>.out` (vacío si falta) y los archivos con
 `src/test/c/artifacts/<caso>/`. Falla ante archivos inesperados o fixtures sin
 caso. `generate-runtime-goldens.py` construye las referencias desde eventos
@@ -184,11 +194,14 @@ MIDI byte a byte, errores de escritura y protección de destinos existentes.
 
 También se prueba que `--check` no imprime ni exporta y que un error posterior
 a `export`, dentro de bloques o procedimientos, no deja archivos y conserva
-`log "antes"` en stdout. La recursión infinita acepta el límite de llamadas o
-la guarda de pila; la prueba con bloques anidados exige la guarda de pila.
+`log "antes"` en stdout. La recursión infinita exige el diagnóstico exacto del
+límite de 1000 llamadas. `runtime-recursion-depth` exige que la cuenta desde
+999 imprima cero, tanto directa como con dos `if` anidados. La prueba con
+veinte bloques anidados exige la guarda de pila.
 
-`runtime-value.c` comprueba copias independientes de progresiones dentro de
-vectores, los dos arreglos de un voicing y liberación repetida.
+`runtime-value.c` limita el tamaño de `Value` y comprueba copias independientes
+de acordes, escalas, progresiones dentro de vectores y los dos arreglos de un
+voicing, además de liberación repetida.
 `runtime-oom.c` fuerza por turno cada reserva directa de `malloc`, `calloc` y
 `realloc` de una ejecución con procedimientos, copias musicales, validaciones
 y nueve exportaciones. Exige código 2 y ningún archivo en cada fallo.

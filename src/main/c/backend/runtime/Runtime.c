@@ -234,7 +234,7 @@ static bool _coerce(Runtime * runtime, Value * value, int type, bool vector) {
 	size_t count = value->vector.count;
 	MusicChord * chords = count ? calloc(count, sizeof(MusicChord)) : NULL;
 	if (count && !chords) return _outOfMemory(runtime);
-	for (size_t k = 0; k < count; ++k) chords[k] = value->vector.items[k].chord;
+	for (size_t k = 0; k < count; ++k) chords[k] = *value->vector.items[k].chord;
 	Value converted = {.type = type};
 	MusicStatus status = type == TYPE_PROGRESSION ? musicChordProgression(chords, count, &converted.progression) :
 		musicExplicitVoicing(chords, count, &converted.voicing);
@@ -253,7 +253,19 @@ static bool _evaluateAs(Runtime * runtime, RuntimeScope * scope, const Expressio
 	return false;
 }
 
-static bool _evaluateIndex(Runtime * runtime, RuntimeScope * scope, const Expression * expression, Value * result) {
+/* Only chords and scales exceed a few pointers; their values own the payload. */
+static bool _allocateMusic(Runtime * runtime, Value * value, int type) {
+	value->type = type;
+	if (type == TYPE_CHORD) {
+		value->chord = calloc(1, sizeof(MusicChord));
+		return value->chord != NULL || _outOfMemory(runtime);
+	}
+	value->scale = calloc(1, sizeof(MusicScale));
+	return value->scale != NULL || _outOfMemory(runtime);
+}
+
+/* Do not reserve an indexed container in unrelated recursive expressions. */
+static __attribute__((noinline)) bool _evaluateIndex(Runtime * runtime, RuntimeScope * scope, const Expression * expression, Value * result) {
 	Value vector;
 	int index;
 	if (!_evaluate(runtime, scope, expression->leftExpression, &vector)) return false;
@@ -263,7 +275,7 @@ static bool _evaluateIndex(Runtime * runtime, RuntimeScope * scope, const Expres
 	}
 	if (!vector.isVector && vector.type == TYPE_SCALE) {
 		result->type = TYPE_NOTE;
-		MusicStatus status = musicScaleNote(&vector.scale, index, &result->note);
+		MusicStatus status = musicScaleNote(vector.scale, index, &result->note);
 		destroyValue(&vector);
 		if (status != MUSIC_OK) return _error(runtime, "index %d is out of range for a scale of length 7", index);
 		return true;
@@ -274,8 +286,8 @@ static bool _evaluateIndex(Runtime * runtime, RuntimeScope * scope, const Expres
 			destroyValue(&vector);
 			return _error(runtime, "index %d is out of range for a progression of length %zu", index, count);
 		}
-		result->type = TYPE_CHORD;
-		result->chord = vector.progression.steps[index].chord;
+		if (!_allocateMusic(runtime, result, TYPE_CHORD)) { destroyValue(&vector); return false; }
+		*result->chord = vector.progression.steps[index].chord;
 		destroyValue(&vector);
 		return true;
 	}
@@ -313,15 +325,15 @@ static bool _evaluateOperation(Runtime * runtime, RuntimeScope * scope, const Ex
 			free(degrees);
 		} else {
 			result->type = TYPE_BOOLEAN;
-			result->boolean = right.type == TYPE_SCALE ? musicNoteInScale(left.note, &right.scale) : musicNoteInChord(left.note, &right.chord);
+			result->boolean = right.type == TYPE_SCALE ? musicNoteInScale(left.note, right.scale) : musicNoteInChord(left.note, right.chord);
 		}
 	} else if (type == INVERSION) {
-		result->type = TYPE_CHORD;
-		status = musicInvertChord(&left.chord, right.integer, &result->chord);
+		ok = _allocateMusic(runtime, result, TYPE_CHORD);
+		if (ok) status = musicInvertChord(left.chord, right.integer, result->chord);
 		operation = "inversion";
 	} else if (type == ARPEGGIATION) {
 		result->type = TYPE_PROGRESSION;
-		status = musicArpeggiate(&left.chord, (MusicDuration) right.duration, &result->progression);
+		status = musicArpeggiate(left.chord, (MusicDuration) right.duration, &result->progression);
 		operation = "arpeggiation";
 	} else if (type == MODULATION) {
 		ok = _coerce(runtime, &left, TYPE_PROGRESSION, false);
@@ -340,7 +352,10 @@ static bool _evaluateOperation(Runtime * runtime, RuntimeScope * scope, const Ex
 			result->type = left.type;
 			operation = "transposition";
 			if (left.type == TYPE_NOTE) status = musicTransposeNote(left.note, right.interval, down, &result->note);
-			else if (left.type == TYPE_CHORD) status = musicTransposeChord(&left.chord, right.interval, down, &result->chord);
+			else if (left.type == TYPE_CHORD) {
+				ok = _allocateMusic(runtime, result, TYPE_CHORD);
+				if (ok) status = musicTransposeChord(left.chord, right.interval, down, result->chord);
+			}
 			else status = musicTransposeProgression(&left.progression, right.interval, down, &result->progression);
 		} else if (ok) {
 			result->type = TYPE_PROGRESSION;
@@ -348,7 +363,7 @@ static bool _evaluateOperation(Runtime * runtime, RuntimeScope * scope, const Ex
 				if (right.integer < 0) ok = _error(runtime, "repetition count cannot be negative (%d)", right.integer);
 				else status = musicRepeat(&left.progression, right.integer, &result->progression);
 				operation = "repetition";
-			} else if (right.type == TYPE_CHORD) status = musicAppendChord(&left.progression, &right.chord, &result->progression);
+			} else if (right.type == TYPE_CHORD) status = musicAppendChord(&left.progression, right.chord, &result->progression);
 			else status = musicConcatenate(&left.progression, &right.progression, &result->progression);
 		}
 	}
@@ -395,7 +410,10 @@ static bool _evaluateMusic(Runtime * runtime, RuntimeScope * scope, const Expres
 			Value key;
 			if (!_evaluate(runtime, scope, expression->operand, &key)) return false;
 			result->type = expression->type == SCALE_OF_KEY ? TYPE_SCALE : TYPE_KEY;
-			if (expression->type == SCALE_OF_KEY) status = musicKeyScale(key.key, &result->scale);
+			if (expression->type == SCALE_OF_KEY) {
+				if (!_allocateMusic(runtime, result, TYPE_SCALE)) { destroyValue(&key); return false; }
+				status = musicKeyScale(key.key, result->scale);
+			}
 			else if (expression->type == DOMINANT_OF_KEY) status = musicDominantKey(key.key, &result->key);
 			else if (expression->type == SUBDOMINANT_OF_KEY) status = musicSubdominantKey(key.key, &result->key);
 			else status = musicRelativeMinorKey(key.key, &result->key);
@@ -413,8 +431,8 @@ static bool _evaluateMusic(Runtime * runtime, RuntimeScope * scope, const Expres
 				notes[count++] = note.note;
 				destroyValue(&note);
 			}
-			result->type = TYPE_CHORD;
-			status = musicChordFromNotes(notes, count, &result->chord);
+			if (!_allocateMusic(runtime, result, TYPE_CHORD)) return false;
+			status = musicChordFromNotes(notes, count, result->chord);
 			operation = "chord";
 			break;
 		}
@@ -430,8 +448,8 @@ static bool _evaluateMusic(Runtime * runtime, RuntimeScope * scope, const Expres
 				return _error(runtime, "chord degree %d must be between 1 and 7", degree);
 			}
 			MusicChordSize size = expression->type == TRIAD_CHORD ? MUSIC_TRIAD : expression->type == SEVENTH_CHORD ? MUSIC_SEVENTH : MUSIC_NINTH;
-			result->type = TYPE_CHORD;
-			status = musicDegreeChord(key.key, degree - 1, size, &result->chord);
+			if (!_allocateMusic(runtime, result, TYPE_CHORD)) { destroyValue(&key); return false; }
+			status = musicDegreeChord(key.key, degree - 1, size, result->chord);
 			destroyValue(&key);
 			operation = "degree chord";
 			break;
@@ -444,10 +462,10 @@ static bool _evaluateMusic(Runtime * runtime, RuntimeScope * scope, const Expres
 			if (!strcmp(name, "octave")) result->integer = musicNoteOctave(object.note);
 			else if (!strcmp(name, "root")) {
 				result->type = TYPE_NOTE;
-				status = musicChordRoot(&object.chord, &result->note);
+				status = musicChordRoot(object.chord, &result->note);
 			} else if (!strcmp(name, "quality")) {
 				result->type = VALUE_QUALITY;
-				result->quality = musicChordQuality(&object.chord);
+				result->quality = musicChordQuality(object.chord);
 			} else if (!strcmp(name, "tonic")) {
 				result->type = TYPE_NOTE;
 				status = musicKeyTonic(object.key, &result->note);
@@ -580,7 +598,7 @@ static bool _inStrictKey(const Value * value, MusicKey key) {
 		for (size_t k = 0; k < value->vector.count; ++k)
 			if (!_inStrictKey(&value->vector.items[k], key)) return false;
 	} else if (value->type == TYPE_CHORD) {
-		return musicChordInKey(&value->chord, key);
+		return musicChordInKey(value->chord, key);
 	} else if (value->type == TYPE_PROGRESSION) {
 		for (size_t k = 0; k < value->progression.count; ++k)
 			if (!musicChordInKey(&value->progression.steps[k].chord, key)) return false;
@@ -680,7 +698,8 @@ static Flow _bind(Runtime * runtime, RuntimeScope * scope, const char * name, Va
 	return FLOW_ERROR;
 }
 
-static Flow _executeFor(Runtime * runtime, RuntimeScope * scope, const For * loop) {
+/* Only for loops need a counter value and an iteration scope on the stack. */
+static __attribute__((noinline)) Flow _executeFor(Runtime * runtime, RuntimeScope * scope, const For * loop) {
 	int from, to;
 	if (!_evaluateInteger(runtime, scope, loop->from, &from) || !_evaluateInteger(runtime, scope, loop->to, &to)) return FLOW_ERROR;
 	/* Both bounds are inclusive and evaluated once; the counter is not the variable. */
@@ -702,7 +721,8 @@ static bool _outputStatus(Runtime * runtime, OutputStatus status, const char * p
 	return _error(runtime, "cannot write '%s'%s", path, status == OUTPUT_FILE_EXISTS ? " (destination already exists or is repeated)" : "");
 }
 
-static bool _queueExport(Runtime * runtime, RuntimeScope * scope, const Export * output) {
+/* Keep the score and path temporaries out of every recursive statement frame. */
+static __attribute__((noinline)) bool _queueExport(Runtime * runtime, RuntimeScope * scope, const Export * output) {
 	Value value;
 	if (!_evaluate(runtime, scope, output->value, &value)) return false;
 	if (value.isVector && !_coerce(runtime, &value, TYPE_PROGRESSION, false)) { destroyValue(&value); return false; }
@@ -724,8 +744,8 @@ static bool _queueExport(Runtime * runtime, RuntimeScope * scope, const Export *
 	if (status == OUTPUT_OK) {
 		switch (value.type) {
 			case TYPE_NOTE: status = outputAddNote(&pending.score, value.note); break;
-			case TYPE_SCALE: status = outputAddScale(&pending.score, &value.scale); break;
-			case TYPE_CHORD: status = outputAddChord(&pending.score, &value.chord); break;
+			case TYPE_SCALE: status = outputAddScale(&pending.score, value.scale); break;
+			case TYPE_CHORD: status = outputAddChord(&pending.score, value.chord); break;
 			case TYPE_PROGRESSION: status = outputAddProgression(&pending.score, &value.progression); break;
 			case TYPE_VOICING: status = outputAddVoicing(&pending.score, &value.voicing); break;
 			default: status = OUTPUT_INVALID_ARGUMENT; break;

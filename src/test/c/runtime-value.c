@@ -4,6 +4,30 @@
 #include <string.h>
 
 int main(void) {
+    /* A musical payload must not enlarge every recursive interpreter frame. */
+    assert(sizeof(Value) <= 4 * sizeof(void *));
+    Value chord = {.type = TYPE_CHORD, .chord = calloc(1, sizeof(MusicChord))};
+    Value scale = {.type = TYPE_SCALE, .scale = calloc(1, sizeof(MusicScale))};
+    assert(chord.chord && scale.scale);
+    MusicNote tonic;
+    assert(musicParseNote("C4", &tonic) == MUSIC_OK);
+    assert(musicChordFromNotes(&tonic, 1, chord.chord) == MUSIC_OK);
+    scale.scale->notes[0] = tonic;
+    Value copiedChord, copiedScale;
+    assert(copyValue(&chord, &copiedChord));
+    assert(copyValue(&scale, &copiedScale));
+    assert(copiedChord.chord != chord.chord && copiedScale.scale != scale.scale);
+    chord.chord->notes[0].pitch = 61;
+    scale.scale->notes[0].pitch = 61;
+    destroyValue(&chord);
+    destroyValue(&scale);
+    assert(copiedChord.chord->notes[0].pitch == 60);
+    assert(copiedScale.scale->notes[0].pitch == 60);
+    destroyValue(&copiedChord);
+    destroyValue(&copiedChord);
+    destroyValue(&copiedScale);
+    destroyValue(&copiedScale);
+
     Value original = {.type = TYPE_PROGRESSION, .isVector = true};
     original.vector.count = 1;
     original.vector.items = calloc(1, sizeof(Value));

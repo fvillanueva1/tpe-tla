@@ -1,0 +1,4 @@
+define aceptar(key contexto, chord acorde) {
+    log "aceptado";
+}
+aceptar(C major strict, {C#4, F4, G#4});

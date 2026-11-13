@@ -1,0 +1,6 @@
+define primero(integer[] numeros, integer buscado) -> integer {
+    for paso = 0 to 2 { if (numeros[paso] == buscado) { return paso; } }
+    return 0 - 1;
+}
+integer posicion = primero([4, 5, 6], 5);
+log "{posicion}";

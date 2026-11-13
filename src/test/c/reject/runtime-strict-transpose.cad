@@ -1,0 +1,2 @@
+export C4 as midi to "pendiente.mid";
+key tonalidad = C major strict; chord acorde = {C4, E4, G4} + M2;

@@ -1,0 +1,35 @@
+progression tema = [{C4, E4, G4}];
+integer[] numeros = [1, 2];
+string[] textos = ["original", "otro"];
+define cambiar() -> integer {
+    tema = [{D4, F4, A4}];
+    numeros = [7, 8];
+    textos = ["nuevo", "final"];
+    return 0;
+}
+note raiz = tema[cambiar()].root;
+integer numero = numeros[cambiar()];
+string texto = textos[cambiar()];
+log "{raiz} {numero} {texto}";
+chord[] acordes = [{C4, E4, G4}, {C#4, F4, G#4}];
+progression mixto = [{C4, E4, G4}, {C#4, F4, G#4}];
+if (true) {
+    key tonalidad = C major strict;
+    chord elegido = acordes[0];
+    note fundamental = mixto[0].root;
+    log "{elegido} {fundamental}";
+}
+integer[] otros = [1, 2];
+define vaciar() -> integer {
+    otros = [];
+    return 0;
+}
+integer primero = otros[vaciar()];
+log "{primero} {otros}";
+define cero() -> integer { return 0; }
+if (true) {
+    key tonalidad = C major strict;
+    chord elegido = acordes[cero()];
+    note fundamental = mixto[cero()].root;
+    log "{elegido} {fundamental}";
+}

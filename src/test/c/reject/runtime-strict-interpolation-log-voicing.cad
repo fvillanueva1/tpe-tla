@@ -1,0 +1,6 @@
+export C4 as midi to "pendiente.mid";
+voicing diatonico = [{G4, E4, C4, C3}];
+voicing cromatico = [{G#4, F4, C#4, C#3}];
+voicing[] voces = [diatonico, cromatico];
+key contexto = C major strict;
+log "prefijo {voces} sufijo";

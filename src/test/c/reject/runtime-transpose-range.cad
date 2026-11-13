@@ -1,0 +1,2 @@
+export C4 as midi to "pendiente.mid";
+define nota() -> note { return B8; } note fuera = nota() + M2;

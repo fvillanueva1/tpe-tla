@@ -1,0 +1,2 @@
+export C4 as midi to "pendiente.mid";
+define numero() -> integer { return 0 - 1; } progression tema = [{C4, E4, G4}] * numero();

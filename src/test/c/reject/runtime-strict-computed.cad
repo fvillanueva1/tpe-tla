@@ -1,0 +1,2 @@
+export C4 as midi to "pendiente.mid";
+define obtener() -> key { return C major strict; } key tonalidad = obtener(); note nota = C4 + aug4; chord acorde = {nota};

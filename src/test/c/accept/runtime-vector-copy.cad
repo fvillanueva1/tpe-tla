@@ -1,0 +1,4 @@
+define cambiar(integer[] numeros) { numeros = [9]; log "{numeros}"; return; }
+integer[] originales = [1, 2];
+cambiar(originales);
+log "{originales}";

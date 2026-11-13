@@ -1,0 +1,24 @@
+define construir(key tonalidad) -> progression { return [V, I] in tonalidad; }
+define modificar(progression[] temas) -> progression[] {
+    temas = [temas[0] * 2];
+    return temas;
+}
+define distribuir(progression tema) -> voicing { return voice tema as SATB; }
+define explicito(note soprano) -> voicing { return [{soprano, G4, E4, C3}]; }
+define copiar(voicing[] voces) -> voicing[] { return voces; }
+define acordes() -> chord[] { return [{C4, E4, G4}]; }
+define escalas(scale[] lista) -> scale[] { return lista; }
+define nada() -> progression { return []; }
+progression original = construir(C major);
+progression[] originales = [original, nada()];
+progression[] copia = modificar(originales);
+voicing voces = distribuir(original);
+voicing[] conjunto = copiar([voces, explicito(C5)]);
+voicing primero = conjunto[0];
+check primero for voice_crossing;
+chord[] lista = acordes();
+scale[] guardadas = escalas([scale of G major]);
+log "{originales}";
+log "{copia}";
+log "{conjunto}";
+log "{lista} {guardadas}";

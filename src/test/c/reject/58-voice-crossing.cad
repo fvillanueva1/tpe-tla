@@ -1,0 +1,3 @@
+// Voicing explícito: la contralto (G4) queda por encima de la soprano (C4).
+voicing voces = [{C4, G4, E4, C3}];
+check voces for voice_crossing;

@@ -1,0 +1,8 @@
+define profunda(integer restante) -> integer {
+    if (restante == 0) { return 0; }
+    if (true) { if (true) { if (true) { if (true) { if (true) { if (true) { if (true) { if (true) { if (true) { if (true) { if (true) { if (true) { if (true) { if (true) { if (true) { if (true) { if (true) { if (true) { if (true) { if (true) {
+        return profunda(restante - 1);
+    } } } } } } } } } } } } } } } } } } } }
+    return 0;
+}
+integer resultado = profunda(999);

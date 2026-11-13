@@ -1,10 +1,19 @@
 #include "Semantic.h"
-#include "MusicValidation.h"
+#include "../music/Music.h"
 #include <stdio.h>
 #include <ctype.h>
 #include <limits.h>
 #include <stdint.h>
 #include <string.h>
+
+/* The music library does not depend on the AST: its enums mirror the AST's by value. */
+_Static_assert(MUSIC_MODE_DORIAN == (int)MODE_DORIAN && MUSIC_MODE_LOCRIAN == (int)MODE_LOCRIAN &&
+    MUSIC_MODE_LYDIAN == (int)MODE_LYDIAN && MUSIC_MODE_MAJOR == (int)MODE_MAJOR &&
+    MUSIC_MODE_MINOR == (int)MODE_MINOR && MUSIC_MODE_MIXOLYDIAN == (int)MODE_MIXOLYDIAN &&
+    MUSIC_MODE_PHRYGIAN == (int)MODE_PHRYGIAN, "MusicMode must mirror Mode");
+_Static_assert(MUSIC_RULE_PARALLEL_FIFTHS == (int)CHECK_PARALLEL_FIFTHS &&
+    MUSIC_RULE_PARALLEL_OCTAVES == (int)CHECK_PARALLEL_OCTAVES &&
+    MUSIC_RULE_VOICE_CROSSING == (int)CHECK_VOICE_CROSSING, "MusicRule must mirror CheckRule");
 
 enum { TYPE_DEGREE = 11, TYPE_QUALITY, TYPE_MODE, TYPE_EMPTY_LIST, TYPE_CHORD_LIST, TYPE_DEGREE_LIST, TYPE_VECTOR = 20, TYPE_INVALID = -2 };
 
@@ -161,23 +170,19 @@ static bool block(Scope *parent, StatementList *list) {
     Scope local = {.parent = parent, .program = parent->program, .procedure = parent->procedure, .failure = parent->failure}; bool ok = statements(&local, list); clear(&local); return ok;
 }
 /* List literals keep their ambiguity until an expected type is available. */
-static int literalPitch(const char *note) {
-    static const int pitch[] = {9, 11, 0, 2, 4, 5, 7};
-    int value = pitch[note[0] - 'A'];
-    const char *p = note + 1;
-    if (*p == '#') { ++value; ++p; }
-    else if (*p == 'b') { --value; ++p; }
-    if (*p < '0' || *p > '8' || p[1]) return -10000;
-    return (*p - '0') * 12 + value;
+/* MIDI pitch of a note literal, or -1 when it is not a valid note with octave. */
+static int literalPitch(const char *lexeme) {
+    MusicNote note;
+    return musicParseNote(lexeme, &note) == MUSIC_OK ? note.pitch : -1;
 }
-static int literalInterval(const char *interval) {
-    static const struct { const char *name; int semitones; } intervals[] = {
-        {"P1", 0}, {"m2", 1}, {"M2", 2}, {"m3", 3}, {"M3", 4}, {"P4", 5},
-        {"aug4", 6}, {"d5", 6}, {"P5", 7}, {"m6", 8}, {"M6", 9}, {"m7", 10}, {"M7", 11}, {"P8", 12}
-    };
-    for (size_t i = 0; i < sizeof(intervals) / sizeof(intervals[0]); ++i)
-        if (!strcmp(interval, intervals[i].name)) return intervals[i].semitones;
-    return -1;
+/* The tonic of a key literal; the lexer only produces valid spellings. */
+static MusicSpelling literalTonic(const Expression *key) {
+    MusicSpelling tonic = {'C', 0};
+    musicParseSpelling(key->key.tonic, &tonic);
+    return tonic;
+}
+static MusicKey literalKey(const Expression *key) {
+    return (MusicKey){literalTonic(key), (MusicMode)key->key.mode, key->key.strict};
 }
 /* Evaluate only side-effect-free integer literals; runtime values remain unknown. */
 static bool constantInteger(Scope *scope, Expression *e, int *result) {
@@ -227,28 +232,23 @@ static int typeOf(Scope *scope, Expression *e) {
     case INTEGER_LITERAL: return TYPE_INTEGER;
     case BOOLEAN_LITERAL: return TYPE_BOOLEAN;
     case NOTE_LITERAL: {
-        int pitch = literalPitch(e->text);
-        if (pitch == -10000) { fprintf(stderr, "Semantic error: note requires an octave.\n"); return TYPE_INVALID; }
-        if (pitch < 0 || pitch > 107) { fprintf(stderr, "Semantic error: note is out of range.\n"); return TYPE_INVALID; }
+        MusicNote note;
+        MusicStatus status = musicParseNote(e->text, &note);
+        if (status == MUSIC_MISSING_OCTAVE) { fprintf(stderr, "Semantic error: note requires an octave.\n"); return TYPE_INVALID; }
+        if (status != MUSIC_OK) { fprintf(stderr, "Semantic error: note is out of range.\n"); return TYPE_INVALID; }
         return TYPE_NOTE;
     }
     case INTERVAL_LITERAL: return TYPE_INTERVAL;
-    case KEY_LITERAL:
-        if (literalPitch(e->key.tonic) != -10000) { fprintf(stderr, "Semantic error: key tonic cannot have an octave.\n"); return TYPE_INVALID; }
+    case KEY_LITERAL: {
+        MusicSpelling tonic;
+        if (musicParseSpelling(e->key.tonic, &tonic) != MUSIC_OK) { fprintf(stderr, "Semantic error: key tonic cannot have an octave.\n"); return TYPE_INVALID; }
         return TYPE_KEY;
+    }
     case STRING_LITERAL: return TYPE_STRING;
     case NOTES_CHORD: {
         Scope *owner = scope;
         while (owner && !owner->hasKeyContext) owner = owner->parent;
         const Expression *key = owner ? owner->keyContext : NULL;
-        static const int pitchClass[] = {9, 11, 0, 2, 4, 5, 7};
-        int tonic = 0;
-        if (key && key->key.strict) {
-            tonic = pitchClass[key->key.tonic[0] - 'A'];
-            if (key->key.tonic[1] == '#') ++tonic;
-            else if (key->key.tonic[1] == 'b') --tonic;
-            tonic = (tonic + 12) % 12;
-        }
         for (ExpressionList *item = e->elements; item; item = item->next) {
             if (!compatible(scope, item->expression, TYPE_NOTE)) return TYPE_INVALID;
             const Expression *note = item->expression;
@@ -257,8 +257,8 @@ static int typeOf(Scope *scope, Expression *e) {
                 note = symbol ? symbol->currentLiteral : NULL;
             }
             if (key && key->key.strict && note && note->type == NOTE_LITERAL) {
-                int pitch = literalPitch(note->text) + 12;
-                if (!musicInKey(&pitch, 1, tonic, key->key.mode)) {
+                MusicNote value;
+                if (musicParseNote(note->text, &value) != MUSIC_OK || !musicNoteInKey(value, literalKey(key))) {
                     fprintf(stderr, "Semantic error: chord contains a note outside the strict key.\n"); return TYPE_INVALID;
                 }
             }
@@ -315,7 +315,7 @@ static int typeOf(Scope *scope, Expression *e) {
             }
         }
         if (object == TYPE_SCALE) return TYPE_NOTE;
-        if (object == TYPE_CHORD_LIST) return TYPE_CHORD;
+        if (object == TYPE_CHORD_LIST || object == TYPE_PROGRESSION) return TYPE_CHORD;
         if (object == TYPE_DEGREE_LIST) return TYPE_DEGREE;
         if (object >= TYPE_VECTOR && object <= TYPE_VECTOR + TYPE_DURATION) return object - 20;
         fprintf(stderr, "Semantic error: value is not indexable.\n"); return -2;
@@ -392,10 +392,12 @@ static int typeOf(Scope *scope, Expression *e) {
             if (note->type == VARIABLE) { Symbol *symbol = findSymbol(scope, note->text); note = symbol ? symbol->currentLiteral : NULL; }
             if (intervalExpression->type == VARIABLE) { Symbol *symbol = findSymbol(scope, intervalExpression->text); intervalExpression = symbol ? symbol->currentLiteral : NULL; }
             if (a == TYPE_NOTE && note && intervalExpression && note->type == NOTE_LITERAL && intervalExpression->type == INTERVAL_LITERAL) {
-                int pitch = literalPitch(note->text), interval = literalInterval(intervalExpression->text);
-                if (pitch >= 0 && interval >= 0) {
-                    int result = pitch + (e->type == ADDITION ? interval : -interval);
-                    if (result < 0 || result > 107) { fprintf(stderr, "Semantic error: transposed note is out of range.\n"); return TYPE_INVALID; }
+                MusicNote value, transposed;
+                MusicInterval interval;
+                if (musicParseNote(note->text, &value) == MUSIC_OK &&
+                    musicParseInterval(intervalExpression->text, &interval) == MUSIC_OK &&
+                    musicTransposeNote(value, interval, e->type == SUBTRACTION, &transposed) == MUSIC_OUT_OF_RANGE) {
+                    fprintf(stderr, "Semantic error: transposed note is out of range.\n"); return TYPE_INVALID;
                 }
             }
             return a;
@@ -489,37 +491,30 @@ static const Expression *knownExpression(Scope *scope, const Expression *e) {
     }
     return e;
 }
-static int literalDegree(const char *text) {
-    static const char *names[] = {"I", "II", "III", "IV", "V", "VI", "VII"};
-    char roman[4]; size_t length = 0;
-    while (text[length] && text[length] != 'd' && length < sizeof(roman) - 1) {
-        roman[length] = (char)toupper((unsigned char)text[length]); ++length;
-    }
-    roman[length] = '\0';
-    for (int i = 0; i < 7; ++i) if (!strcmp(roman, names[i])) return i;
-    return -1;
+static bool knownKey(Scope *scope, const Expression *expression, MusicKey *key) {
+    const Expression *literal = knownExpression(scope, expression);
+    if (!literal || literal->type != KEY_LITERAL) return false;
+    *key = literalKey(literal);
+    return true;
 }
-static bool knownScale(Scope *scope, const Expression *expression, int scale[7]) {
-    const Expression *key = knownExpression(scope, expression);
-    if (!key || key->type != KEY_LITERAL) return false;
-    static const int pitchClass[] = {9, 11, 0, 2, 4, 5, 7};
-    int tonic = 60 + pitchClass[key->key.tonic[0] - 'A'];
-    if (key->key.tonic[1] == '#') ++tonic;
-    else if (key->key.tonic[1] == 'b') --tonic;
-    return musicScale(tonic, key->key.mode, scale);
+/* Pitch classes of the chord on a zero-based degree, or 0 when it cannot be built. */
+static unsigned short degreeMask(MusicKey key, int degree, MusicChordSize size) {
+    MusicChord chord;
+    return musicDegreeChord(key, degree, size, &chord) == MUSIC_OK ? musicChordMask(&chord) : 0;
 }
 static bool knownChordMask(Scope *scope, const Expression *expression, unsigned short *mask) {
     const Expression *chord = knownExpression(scope, expression);
     if (!chord) return false;
     if (chord->type == TRIAD_CHORD || chord->type == SEVENTH_CHORD) {
-        int scale[7], degree = -1;
+        MusicKey key;
+        int degree = -1;
         const Expression *value = knownExpression(scope, chord->leftExpression);
-        if (!value || !knownScale(scope, chord->rightExpression, scale)) return false;
-        if (value->type == DEGREE_LITERAL) degree = literalDegree(value->text);
-        else if (value->type == INTEGER_LITERAL) degree = value->integer - 1;
-        if (degree < 0 || degree > 6) return false;
-        int tones = chord->type == TRIAD_CHORD ? 3 : 4;
-        for (int i = 0; i < tones; ++i) *mask |= 1u << (scale[(degree + 2 * i) % 7] % 12);
+        if (!value || !knownKey(scope, chord->rightExpression, &key)) return false;
+        if (value->type == DEGREE_LITERAL && musicParseDegree(value->text, &degree) != MUSIC_OK) return false;
+        if (value->type == INTEGER_LITERAL) degree = value->integer - 1;
+        unsigned short classes = degreeMask(key, degree, chord->type == TRIAD_CHORD ? MUSIC_TRIAD : MUSIC_SEVENTH);
+        if (!classes) return false;
+        *mask |= classes;
         return true;
     }
     if (chord->type != NOTES_CHORD) return false;
@@ -527,22 +522,72 @@ static bool knownChordMask(Scope *scope, const Expression *expression, unsigned 
         const Expression *value = knownExpression(scope, note->expression);
         if (!value || value->type != NOTE_LITERAL) return false;
         int pitch = literalPitch(value->text);
-        if (pitch < 0 || pitch > 107) return false;
+        if (pitch < 0) return false;
         *mask |= 1u << (pitch % 12);
     }
     unsigned int classes = 0;
     for (int bit = 0; bit < 12; ++bit) if (*mask & (1u << bit)) ++classes;
     return classes <= VOICE_COUNT;
 }
+/* Reports the first SATB violation, numbering chords from one. */
+static bool reportVoicing(MusicValidationResult result, size_t failed) {
+    if (result == MUSIC_VALID) return true;
+    const char *reason = result == MUSIC_TESSITURA_ERROR ? "tessitura" :
+        result == MUSIC_VOICE_CROSSING_ERROR ? "voice crossing" :
+        result == MUSIC_PARALLEL_FIFTHS_ERROR ? "parallel fifths" :
+        result == MUSIC_PARALLEL_OCTAVES_ERROR ? "parallel octaves" : "invalid voicing";
+    fprintf(stderr, "Semantic error: %s at chord %zu.\n", reason, failed + 1);
+    return false;
+}
+/*
+ * An explicit voicing of literal notes ([{C5, G4, E4, C3}, ...]) is checked as
+ * written, without redistributing: tessitura always and the requested rules.
+ * Other lists are left for the runtime.
+ */
+static bool checkExplicitVoicing(Scope *scope, const Expression *list, unsigned int rules) {
+    size_t count = 0;
+    for (ExpressionList *item = list->elements; item; item = item->next) {
+        const Expression *chord = knownExpression(scope, item->expression);
+        if (!chord || chord->type != NOTES_CHORD) return true;
+        ++count;
+    }
+    if (!count) return true;
+    MusicChord *chords = calloc(count, sizeof(*chords));
+    if (!chords) { *scope->failure = OUT_OF_MEMORY; fprintf(stderr, "Semantic analysis: out of memory.\n"); return false; }
+    size_t index = 0;
+    for (ExpressionList *item = list->elements; item; item = item->next, ++index) {
+        MusicNote notes[MUSIC_MAX_CHORD_NOTES];
+        size_t length = 0;
+        for (ExpressionList *note = knownExpression(scope, item->expression)->elements; note; note = note->next) {
+            const Expression *value = knownExpression(scope, note->expression);
+            if (!value || value->type != NOTE_LITERAL || length == MUSIC_MAX_CHORD_NOTES ||
+                musicParseNote(value->text, &notes[length]) != MUSIC_OK) { free(chords); return true; }
+            ++length;
+        }
+        if (musicChordFromNotes(notes, length, &chords[index]) != MUSIC_OK) { free(chords); return true; }
+    }
+    MusicVoicing voicing;
+    MusicStatus status = musicExplicitVoicing(chords, count, &voicing);
+    free(chords);
+    if (status == MUSIC_NO_MEMORY) { *scope->failure = OUT_OF_MEMORY; fprintf(stderr, "Semantic analysis: out of memory.\n"); return false; }
+    /* A chord without four notes was already reported by the type check. */
+    if (status != MUSIC_OK) return true;
+    size_t failed = 0;
+    MusicValidationResult result = musicCheckVoicingValue(&voicing, rules, &failed);
+    bool ok = reportVoicing(result, failed);
+    musicVoicingDestroy(&voicing);
+    return ok;
+}
 static bool checkKnownVoicing(Scope *scope, const Expression *expression, unsigned int rules) {
     if (scope->parent) return true;
     expression = knownExpression(scope, expression);
+    if (expression && expression->type == LIST_LITERAL) return checkExplicitVoicing(scope, expression, rules);
     if (!expression || expression->type != VOICE_EXPRESSION) return true;
     const Expression *progression = knownExpression(scope, expression->voice->progression);
     if (!progression) return true;
-    int scale[7]; bool degrees = progression->type == IN_EXPRESSION;
+    MusicKey key; bool degrees = progression->type == IN_EXPRESSION;
     if (degrees) {
-        if (progression->leftExpression->type != LIST_LITERAL || !knownScale(scope, progression->rightExpression, scale)) return true;
+        if (progression->leftExpression->type != LIST_LITERAL || !knownKey(scope, progression->rightExpression, &key)) return true;
         progression = progression->leftExpression;
     }
     if (progression->type != LIST_LITERAL) return true;
@@ -564,9 +609,9 @@ static bool checkKnownVoicing(Scope *scope, const Expression *expression, unsign
         const Expression *chord = knownExpression(scope, item->expression);
         if (degrees) {
             if (!chord || chord->type != DEGREE_LITERAL) { known = false; break; }
-            int degree = literalDegree(chord->text);
-            if (degree < 0) { known = false; break; }
-            for (int step = 0; step < 3; ++step) masks[index] |= 1u << (scale[(degree + 2 * step) % 7] % 12);
+            int degree;
+            if (musicParseDegree(chord->text, &degree) != MUSIC_OK) { known = false; break; }
+            masks[index] = degreeMask(key, degree, MUSIC_TRIAD);
             continue;
         }
         if (!knownChordMask(scope, chord, &masks[index])) known = false;
@@ -581,13 +626,7 @@ static bool checkKnownVoicing(Scope *scope, const Expression *expression, unsign
         } else {
             size_t failed = 0;
             MusicValidationResult result = musicCheckVoicing((const int (*)[VOICE_COUNT])voices, count, rules, &failed);
-            if (result != MUSIC_VALID) {
-                const char *reason = result == MUSIC_TESSITURA_ERROR ? "tessitura" :
-                    result == MUSIC_VOICE_CROSSING_ERROR ? "voice crossing" :
-                    result == MUSIC_PARALLEL_FIFTHS_ERROR ? "parallel fifths" :
-                    result == MUSIC_PARALLEL_OCTAVES_ERROR ? "parallel octaves" : "invalid voicing";
-                fprintf(stderr, "Semantic error: %s at chord %zu.\n", reason, failed + 1); ok = false;
-            }
+            ok = reportVoicing(result, failed);
         }
     }
     free(masks); free(voices); return ok;
@@ -616,7 +655,7 @@ static bool statement(Scope *scope, Statement *s) {
              (s->dataType == TYPE_CHORD && (s->expression->type == NOTES_CHORD || s->expression->type == TRIAD_CHORD || s->expression->type == SEVENTH_CHORD)) ||
              (s->dataType == TYPE_KEY && s->expression->type == KEY_LITERAL) ||
              (s->dataType == TYPE_PROGRESSION && (s->expression->type == LIST_LITERAL || s->expression->type == IN_EXPRESSION)) ||
-             (s->dataType == TYPE_VOICING && s->expression->type == VOICE_EXPRESSION))))) scope->symbols->literal = s->expression;
+             (s->dataType == TYPE_VOICING && (s->expression->type == VOICE_EXPRESSION || s->expression->type == LIST_LITERAL)))))) scope->symbols->literal = s->expression;
         if (s->dataType == TYPE_VOICING && !s->isVector && !checkKnownVoicing(scope, s->expression, 0)) return false;
         if (s->dataType == TYPE_KEY && !s->isVector) {
             scope->hasKeyContext = true;

@@ -1,0 +1,2 @@
+export C4 as midi to "pendiente.mid";
+define tempo() -> integer { return 0; } export C4 as sheet to "tempo.ly" at tempo() bpm;

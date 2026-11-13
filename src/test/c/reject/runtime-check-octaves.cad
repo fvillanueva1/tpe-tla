@@ -1,0 +1,2 @@
+export C4 as midi to "pendiente.mid";
+define nota() -> note { return C4; } voicing voces = voice [{nota()}, {D4}] as SATB; check voces for parallel_octaves;

@@ -1,7 +1,8 @@
 # Casos de prueba de Stage II
 
-Cada archivo prueba una construcción pequeña; `test.sh` solo verifica el código
-de salida del compilador. La extensión `.cad` identifica programas Cadence.
+Cada archivo prueba una construcción pequeña. `test.sh` verifica el código de
+salida del compilador y, para todas las aceptaciones, también la
+salida estándar y los archivos exportados (ver `doc/stage-iii/runtime.md`). La extensión `.cad` identifica programas Cadence.
 
 Se incluye desde el primer commit el rechazo de un programa vacío para que
 las dos carpetas que recorre el runner existan y contengan tests reales.
@@ -73,7 +74,7 @@ nueve casos semánticos y cuatro escenarios musicales por concretar.
 
 ## Actualizacion de Stage III
 
-La suite incluye rechazos semanticos activos y exige el mensaje `Semantic error:` para ellos, ademas del codigo 1. Los casos 54 a 57 y 60 a 63, instrumento y tempo invalidos ya son activos. Los casos 58 y 59 permanecen en `pending/`: necesitan escenarios concluyentes o una forma de fijar las voces. Las tablas anteriores describen los snapshots historicos de Stage II.
+La suite incluye rechazos semanticos activos y exige el mensaje `Semantic error:` para ellos, ademas del codigo 1. Los casos 54 a 57 y 60 a 63, instrumento y tempo invalidos ya son activos. Los casos 58 y 59 pasaron a `reject/` con voicings explícitos, que fijan las voces: 58 exige "voice crossing at chord 1" y 59 "tessitura at chord 1". Las tablas anteriores describen los snapshots historicos de Stage II.
 
 Los casos de rangos cubren literales y expresiones constantes; `semantic-dynamic-values.cad` verifica que las expresiones dependientes de variables sigan siendo aceptadas estaticamente.
 
@@ -115,10 +116,34 @@ Un alias tonal conserva su valor anterior cuando se reasigna la variable de orig
 
 Los rechazos de asignacion y operador verifican ademas los tipos incluidos en el diagnostico.
 
-La suite ejecuta aceptaciones semanticas con `--check`; las pruebas de generacion usan el modo normal y comprueban tanto la salida MIDI como el fallo explicito de programas aun no soportados. Los rechazos se ejecutan en directorios temporales con el modo normal.
+La suite ejecuta todas las aceptaciones en directorios temporales: compara stdout con `src/test/c/output/<caso>.out` (vacío si falta) y los archivos con `src/test/c/artifacts/<caso>/`. Los rechazos también se ejecutan en directorios temporales y no pueden dejar archivos. `--check` se comprueba aparte y no tiene efectos de ejecución.
 
 La integracion MIDI comprueba tambien una escala declarada y exportada por nombre.
 
 Los indices constantes sobre vectores literales inmutables incluyen pruebas de limite y de conservacion de vectores que pueden cambiar.
 
 Las llamadas antes de la definicion se rechazan, tambien desde otro procedimiento o cuando el cuerpo usa una global posterior; la recursion directa se acepta. El voicing explicito se acepta con acordes de cuatro notas y se rechaza con notas sueltas o acordes de otro tamano (`type-check-list`).
+
+## Runtime musical completo
+
+La suite tiene 102 aceptaciones y 142 rechazos. `runtime-musical-*` comprueba
+valores, comparaciones, propiedades, transformaciones, modulación y copias por
+valor de vectores de progresiones y voicings. `runtime-strict-scope` comprueba
+contexto tonal y restauración al salir de bloques. Los rechazos `runtime-*`
+exigen diagnósticos específicos para grados e índices fuera de rango,
+transposiciones, inversiones, repetición negativa, `strict` calculado, SATB,
+modulación sin clave, tempo y escritura. El antiguo caso de aceptación
+`semantic-loop-unknown` es `runtime-loop-transpose-range`: se acepta
+estáticamente, pero su ejecución sale del rango de alturas.
+
+Los fixtures MIDI/LilyPond se construyen desde eventos esperados mediante
+`generate-runtime-goldens.py`, sin ejecutar el compilador. Cubren notas,
+escalas, acordes, progresiones, arpegios, cuatro canales SATB, tempo,
+instrumento, vacíos, rutas con escapes y capturas previas a reasignaciones.
+No se regeneran durante la suite. Una salida inesperada hace fallar el caso.
+
+`runtime-value.c` comprueba copia profunda y liberación; `runtime-oom.c` fuerza
+cada reserva directa de una ejecución con nueve exportaciones, exige código 2
+y ningún archivo, y corre con ASan. Los errores posteriores a `export`
+conservan los logs previos y no escriben archivos. La suite rechaza reportes
+de ASan incluso si el programa ya devolvió un código de rechazo esperado.

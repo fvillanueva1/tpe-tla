@@ -1,0 +1,2 @@
+export C4 as midi to "pendiente.mid";
+define acorde() -> chord { return {C4, E4, G4}; } voicing voces = [acorde()];

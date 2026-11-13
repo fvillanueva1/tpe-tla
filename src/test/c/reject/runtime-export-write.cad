@@ -1,0 +1,2 @@
+export C4 as midi to "pendiente.mid";
+export C4 as sheet to "missing/salida.ly";

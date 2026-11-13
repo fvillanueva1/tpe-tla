@@ -1,0 +1,16 @@
+define bajar(integer cuenta) -> integer {
+    if (cuenta == 0) { return 0; }
+    return bajar(cuenta - 1);
+}
+integer salida = bajar(999);
+log "{salida}";
+
+define bajarAnidado(integer cuenta) -> integer {
+    if (cuenta == 0) { return 0; }
+    if (true) {
+        if (true) { return bajarAnidado(cuenta - 1); }
+    }
+    return 0;
+}
+integer anidada = bajarAnidado(999);
+log "{anidada}";

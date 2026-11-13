@@ -1,0 +1,2 @@
+export C4 as midi to "pendiente.mid";
+define numero() -> integer { return 2; } progression tema = [I, V] in C major; chord acorde = tema[numero()];

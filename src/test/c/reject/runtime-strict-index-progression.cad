@@ -1,0 +1,8 @@
+chord cromatico = {C#4, F4, G#4};
+chord[] acordes = [{C4, E4, G4}, cromatico];
+progression mixto = [{C4, E4, G4}, cromatico];
+export C4 as midi to "pending.mid";
+if (true) {
+    key tonalidad = C major strict;
+    note raiz = mixto[1].root;
+}

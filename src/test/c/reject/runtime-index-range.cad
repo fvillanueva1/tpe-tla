@@ -1,0 +1,3 @@
+integer[] numeros = [1];
+numeros = [1];
+integer resultado = numeros[3];

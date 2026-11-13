@@ -1,0 +1,10 @@
+{D4, F4, A4} {G4, B4, D5, F5} {C4, E4, G4, B4, D5}
+[{C4, E4, G4}, {G4, B4, D5}, {B4, D5, F5}] 3 {B4, D5, F5}
+[{C4, E4, G4}, {G4, B4, D5}, {B4, D5, F5}, {C4}, {D4}]
+[{C4, E4, G4}, {C4, E4, G4}] []
+[{D4, F#4, A4}, {A4, C#5, E5}] [{C4, E4, G4}, {G4, B4, D5}]
+{E4, G#4, B4} {E4, G4, C5} C5
+[{C4} as sixteenth, {E4} as sixteenth, {G4} as sixteenth]
+G major F major E minor
+[{A4, C5, E5}, {E5, G5, B5}]
+[{G4, B4, D5}, {G3, B3, D4}]

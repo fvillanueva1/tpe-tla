@@ -15,7 +15,12 @@ como argumento o retorno de ese tipo; el contexto determina su tipo.
 
 ## Limites e integracion
 
-Los valores calculados mediante variables, procedimientos o ciclos no se conocen en esta fase: el runtime debera verificar rangos, incluyendo tempo, inversion y transposicion. La validacion `strict` de valores dinamicos, la realizacion SATB para expresiones calculadas sigue pendiente de la evaluacion musical. Los escenarios de cruce y tesitura 58 y 59 permanecen en `src/test/c/pending/`. El generador ya admite una tonalidad literal y la exportacion MIDI de su escala, directamente o mediante una declaracion de escala intermedia. El resto de la generacion sigue pendiente. El AST no conserva posiciones para informar numeros de linea.
+Los valores calculados mediante variables, procedimientos o ciclos pueden no
+conocerse en esta fase. El runtime comprueba sus rangos, `strict`, la realización
+SATB y las reglas de `check`, y acumula los archivos hasta completar la ejecución
+sin errores. Todos los programas usan esa ruta, incluidas las escalas que antes
+exportaba el generador literal. Los escenarios 58 y 59 usan voicings explícitos.
+El AST no conserva posiciones para informar números de línea.
 
 El rechazo semantico usa codigo de salida 1 y un mensaje `Semantic error:`. La suite verifica ese diagnostico para los casos semanticos, evitando que un error sintactico o un fallo del proceso cuente como rechazo correcto.
 
@@ -27,9 +32,9 @@ Si no se puede reservar memoria para un simbolo, el analizador devuelve `OUT_OF_
 
 ## Validaciones musicales para integracion
 
-`MusicValidation.h` ofrece funciones puras sobre alturas MIDI (C4 = 60) para pertenencia a tonalidad/modo, tesitura, cruce de voces y quintas u octavas paralelas. Los vectores SATB se ordenan soprano, contralto, tenor y bajo. Los rangos inclusivos elegidos son soprano C4-A5, contralto F3-D5, tenor C3-A4 y bajo E2-E4. Voces en unisono no se consideran cruzadas. Para paralelas, ambas voces deben moverse en el mismo sentido; se consideran intervalos compuestos equivalentes y las octavas requieren distancia minima de una octava en ambos acordes.
+`backend/music/Music.h` (antes `MusicValidation.h`, ver `doc/stage-iii/musica.md`) ofrece funciones puras sobre alturas MIDI (C4 = 60) para pertenencia a tonalidad/modo, tesitura, cruce de voces y quintas u octavas paralelas. Los vectores SATB se ordenan soprano, contralto, tenor y bajo. Los rangos inclusivos elegidos son soprano C4-A5, contralto F3-D5, tenor C3-A4 y bajo E2-E4. Voces en unisono no se consideran cruzadas. Para paralelas, ambas voces deben moverse en el mismo sentido; se consideran intervalos compuestos equivalentes y las octavas requieren distancia minima de una octava en ambos acordes.
 
-Estas funciones se prueban con datos conocidos. El analizador utiliza la pertenencia tonal para `strict` conocido y verifica SATB y `check` para progresiones literales conocidas. Los escenarios `pending/58` y `59` siguen sin activarse. `musicInKey` recibe notas MIDI de C0 a B8, tonica como clase de altura de 0 a 11 y un modo; admite alteraciones enarmonicas por clase de altura.
+Estas funciones se prueban con datos conocidos. El analizador utiliza la pertenencia tonal para `strict` conocido y verifica SATB y `check` para progresiones literales conocidas. Los escenarios 58 y 59 se activaron con voicings explícitos. `musicInKey` recibe notas MIDI de C0 a B8, tonica como clase de altura de 0 a 11 y un modo; admite alteraciones enarmonicas por clase de altura.
 
 `musicCheckVoicing` valida una secuencia completa: siempre comprueba tesitura y aplica las reglas indicadas por la mascara `CheckRule`. Devuelve el primer tipo de violacion y, si se solicita, el indice del acorde donde aparece (para paralelas, el segundo acorde). Una secuencia vacia es valida; mascaras desconocidas y datos nulos no vacios son errores de entrada. Las funciones se invocan desde el analizador para progresiones literales conocidas.
 
@@ -43,11 +48,13 @@ Una declaracion de tonalidad escalar establece el contexto tonal del alcance a p
 
 `musicRealizeSATB` recibe una mascara de clases de altura por acorde y produce una distribucion SATB con las tesituras documentadas, sin cruce y que contiene todas las clases de cada acorde. Considera todas las distribuciones posibles y elige la secuencia con menor suma de desplazamientos absolutos entre voces mediante programacion dinamica. En empate, prefiere la distribucion inicial mas cercana al centro de las tesituras; si aun hay empate, usa el recorrido ascendente. La salida solo se escribe si toda la secuencia se pudo resolver.
 
-Una mascara vacia o que no admite distribucion devuelve `MUSIC_VOICE_INVALID_CHORD`; los errores de memoria devuelven `MUSIC_VOICE_NO_MEMORY`. Actualmente solo pueden distribuirse acordes con hasta cuatro clases distintas, pues no esta definida una regla de omision para acordes de novena. El analizador la utiliza para `voice` con progresiones literales conocidas.
+Una mascara vacia o que no admite distribucion devuelve `MUSIC_VOICE_INVALID_CHORD`; los errores de memoria devuelven `MUSIC_VOICE_NO_MEMORY`. Esta funcion de bajo nivel requiere como maximo cuatro clases distintas por acorde: debe conservar todas las clases de la mascara y no aplica omisiones. El analizador la utiliza para `voice` con progresiones literales conocidas.
+
+En cambio, `musicVoiceProgression` prepara las mascaras antes de llamar a `musicRealizeSATB`: si un acorde supera las cuatro clases, omite primero la quinta y, si todavia hace falta, la septima. Por eso una novena puede realizarse conservando fundamental, tercera, septima y novena. Si aun quedan mas de cuatro clases devuelve `MUSIC_TOO_MANY_NOTES`. El detalle de esta regla de omision del runtime esta en `doc/stage-iii/musica.md`.
 
 ## Comprobacion estatica de `voice` y `check`
 
-El analizador realiza y verifica progresiones literales de acordes por notas en el alcance global. Se admiten variables de nota, acorde, progresion y voicing cuando su inicializador es literal y no se asigna al mismo nombre en ninguna parte del programa. `check` aplica solamente las reglas solicitadas sobre esa realizacion; las tesituras se comprueban siempre. Tambien se admiten progresiones por grados y acordes de triada o septima construidos a partir de tonalidades y grados literales o variables inmutables conocidas. Casos con mas de cuatro clases por acorde, valores mutables o expresiones dentro de bloques y procedimientos quedan para la evaluacion en ejecucion. Los escenarios 56 y 57 usan acordes que fuerzan las paralelas; 58 y 59 siguen pendientes porque la realizacion escogida ya evita cruces y tesituras invalidas; se probaran con voicings explicitos cuando el runtime los evalue. Por ahora el analizador solo verifica que los acordes literales de un voicing explicito tengan cuatro notas.
+El analizador realiza y verifica progresiones literales de acordes por notas en el alcance global. Se admiten variables de nota, acorde, progresion y voicing cuando su inicializador es literal y no se asigna al mismo nombre en ninguna parte del programa. `check` aplica solamente las reglas solicitadas sobre esa realizacion; las tesituras se comprueban siempre. Tambien se admiten progresiones por grados y acordes de triada o septima construidos a partir de tonalidades y grados literales o variables inmutables conocidas. Casos con mas de cuatro clases por acorde, valores mutables o expresiones dentro de bloques y procedimientos quedan para la evaluacion en ejecucion. Los escenarios 56 y 57 usan acordes que fuerzan las paralelas; 58 y 59 usan voicings explicitos, porque la realizacion escogida ya evita cruces y tesituras invalidas. Un voicing explicito de notas literales (directo o en una variable inmutable) se verifica tal como esta escrito, sin redistribuir: tesitura siempre y las reglas pedidas por `check` (`musicExplicitVoicing` y `musicCheckVoicingValue`). Los acordes literales de un voicing explicito deben tener cuatro notas.
 
 Los errores SATB identifican la regla y el acorde (numeracion desde uno).
 
@@ -55,7 +62,7 @@ Para reconstruir valores compuestos usados en SATB se exige ademas que sus varia
 
 Los errores de tipos informan el tipo esperado y el recibido, o el operador y los dos operandos incompatibles.
 
-Por defecto el compilador devuelve error si el generador todavia no soporta el programa; `--check` ejecuta solo el frontend y la semantica y no crea archivos. La suite usa ese modo para casos de aceptacion semantica y prueba la generacion por separado.
+Por defecto el compilador ejecuta el programa después de validar. `--check` ejecuta solo el frontend y la semántica: no imprime logs ni crea archivos. La suite ejecuta todas las aceptaciones y prueba `--check` por separado.
 
 Los indices constantes tambien se validan contra la longitud de vectores inicializados con listas literales cuyo nombre no recibe asignaciones en el programa. Si el vector puede cambiar, su longitud se comprueba en ejecucion.
 
@@ -65,6 +72,13 @@ Los documentos de catedra sobre scopes, sistema de tipos y tabla de simbolos est
 
 `analyzeSemantics(Program *)` valida el AST y devuelve `SUCCEEDED`, `FAILED` o `OUT_OF_MEMORY`; el punto de entrada no llama al generador si falla. Los simbolos y alcances son temporales y se liberan al terminar, por lo que el backend debe gestionar sus propios valores y entornos de ejecucion. `semanticInstrumentProgram` comparte el mapeo de instrumentos.
 
-Felipe debe completar las operaciones musicales y definir la realizacion de acordes con mas de cuatro clases; los casos 58 y 59 no prueban los errores que nombran y necesitan ejemplos concluyentes. Eduardo debe implementar la ejecucion y comprobar valores no resueltos estaticamente: limites de indices y grados, division por cero y desborde, transposicion, inversion, repeticion, tempo, `strict`, realizacion de `voice` y reglas de `check`. Tambien debe propagar errores de ejecucion y de escritura. La aceptacion con `--check` no significa que el generador ya soporte el programa.
+Las operaciones musicales y la salida están en `backend/music/` y
+`backend/output/` (ver `doc/stage-iii/musica.md` y `doc/stage-iii/salida.md`).
+El runtime ejecuta todas las construcciones y comprueba los valores que no se
+resuelven estáticamente: índices y grados, división por cero y desborde,
+transposición, inversión, repetición, tempo, `strict`, `voice` y `check`.
+También propaga errores de escritura y libera los valores ante errores o
+retornos; ver `doc/stage-iii/runtime.md`. Una progresión admite índices de
+base cero y devuelve un acorde.
 
 Las validaciones musicales conocidas no cubren todas las expresiones: `voice` y `check` se evaluan estaticamente solo en los casos descritos arriba; los demas quedan para el runtime. El AST no conserva ubicaciones para diagnosticos por linea.

@@ -1,0 +1,6 @@
+define aceptar(key contexto, chord acorde) {
+    chord copia = acorde;
+    log "aceptado";
+}
+export C4 as midi to "pendiente.mid";
+aceptar(C major strict, {C#4, F4, G#4});

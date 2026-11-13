@@ -1,0 +1,5 @@
+export C4 as midi to "pendiente.mid";
+chord acorde = {C#4, F4, G#4};
+key contexto = C major strict;
+string texto = "prefijo {acorde} sufijo";
+log "{texto}";

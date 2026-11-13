@@ -1,0 +1,2 @@
+integer numero = 65536;
+numero = numero * 65536;

@@ -1,0 +1,18 @@
+define obtener() -> key { return C major strict; }
+key tonalidad = obtener();
+note nota = C4 + M3;
+chord correcto = {C4, nota, G4};
+if (true) {
+    key local = G major strict;
+    chord dominante = triad on I of local;
+    log "{dominante}";
+}
+chord restaurado = {F4, A4, C5};
+key otra = G major;
+tonalidad = D major strict;
+chord libre = {C4, F#4};
+log "{correcto} {restaurado} {libre}";
+define conParametro(key local) -> chord { return triad on I of local; }
+key global = D major strict;
+chord desdeParametro = conParametro(D major);
+log "{desdeParametro}";

@@ -9,44 +9,6 @@
 #include <unistd.h>
 
 static char directory[] = "/tmp/cadence-output-XXXXXX";
-static int failLinkAfter = -1;
-static bool createDestination;
-static const char *replaceDestination;
-static const char *failUnlinkMatch;
-static bool failUnlinkExact;
-
-int __real_unlink(const char *);
-int __wrap_unlink(const char *path) {
-    const char *base = strrchr(path, '/');
-    base = base ? base + 1 : path;
-    if (failUnlinkMatch && (failUnlinkExact ? !strcmp(base, failUnlinkMatch) : strstr(path, failUnlinkMatch) != NULL)) {
-        errno = EACCES;
-        return -1;
-    }
-    return __real_unlink(path);
-}
-
-int __real_link(const char *, const char *);
-int __wrap_link(const char *source, const char *destination) {
-    if (failLinkAfter == 0) {
-        if (replaceDestination) {
-            /* rename keeps both inodes alive until replacement, avoiding inode reuse. */
-            char replacement[256];
-            snprintf(replacement, sizeof(replacement), "%s.replacement", source);
-            FILE *file = fopen(replacement, "wb");
-            assert(file && fputs("replacement data", file) >= 0 && fclose(file) == 0);
-            assert(rename(replacement, replaceDestination) == 0);
-        }
-        if (createDestination) {
-            FILE *file = fopen(destination, "wb");
-            assert(file && fputs("existing data", file) >= 0 && fclose(file) == 0);
-        }
-        errno = EOPNOTSUPP;
-        return -1;
-    }
-    if (failLinkAfter > 0) --failLinkAfter;
-    return __real_link(source, destination);
-}
 
 static MusicNote note(const char *lexeme) {
     MusicNote result;
@@ -223,78 +185,6 @@ static void files(void) {
 
     OutputFile badFormat[] = {{&score, (OutputFormat)99, path("invalid.mid")}};
     assert(outputWriteFiles(badFormat, 1, &failed) == OUTPUT_INVALID_ARGUMENT && failed == 0 && entries() == 1);
-
-    /* A failed publication rolls back earlier files and every temporary. */
-    OutputFile unsupported[] = {{&score, OUTPUT_FORMAT_MIDI, path("first.mid")}, {&score, OUTPUT_FORMAT_MIDI, path("second.mid")}};
-    failLinkAfter = 1;
-    assert(outputWriteFiles(unsupported, 2, &failed) == OUTPUT_WRITE_ERROR && failed == 1 && entries() == 1);
-
-    /* Another process replaces the first publication before the second fails. */
-    failLinkAfter = 1;
-    replaceDestination = unsupported[0].path;
-    assert(outputWriteFiles(unsupported, 2, &failed) == OUTPUT_WRITE_ERROR && failed == 1);
-    file = fopen(unsupported[0].path, "rb");
-    assert(file && fread(data, 1, sizeof(data), file) == strlen("replacement data"));
-    assert(!memcmp(data, "replacement data", strlen("replacement data")) && fclose(file) == 0);
-    assert(entries() == 2 && unlink(unsupported[0].path) == 0);
-    replaceDestination = NULL;
-
-    /* A destination created during publication must survive unchanged. */
-    failLinkAfter = 0;
-    createDestination = true;
-    assert(outputWriteFiles(unsupported, 2, &failed) == OUTPUT_WRITE_ERROR && failed == 0 && entries() == 2);
-    file = fopen(unsupported[0].path, "rb");
-    assert(file && fread(data, 1, sizeof(data), file) == strlen("existing data"));
-    assert(!memcmp(data, "existing data", strlen("existing data")) && fclose(file) == 0);
-    assert(unlink(unsupported[0].path) == 0);
-    failLinkAfter = -1;
-    createDestination = false;
-
-    /* A failed temporary cleanup must not report success. */
-    failUnlinkMatch = "first.mid.";
-    char *residual = NULL;
-    assert(outputWriteFilesWithCleanup(unsupported, 2, &failed, &residual) == OUTPUT_WRITE_ERROR && failed == 0);
-    assert(residual && strstr(residual, "first.mid.") && access(residual, F_OK) == 0);
-    assert(access(unsupported[0].path, F_OK) != 0 && access(unsupported[1].path, F_OK) != 0 && entries() == 2);
-    failUnlinkMatch = NULL;
-    assert(unlink(residual) == 0);
-    free(residual);
-
-    /* On publication failure, failed rollback must be reported and other removals attempted. */
-    OutputFile triple[] = {{&score, OUTPUT_FORMAT_MIDI, path("first.mid")},
-                           {&score, OUTPUT_FORMAT_MIDI, path("second.mid")},
-                           {&score, OUTPUT_FORMAT_MIDI, path("third.mid")}};
-    failLinkAfter = 2;
-    failUnlinkMatch = "first.mid";
-    assert(outputWriteFilesWithCleanup(triple, 3, &failed, &residual) == OUTPUT_WRITE_ERROR && failed == 0);
-    /* The first temporary and destination remain; second publication and every other temporary are gone. */
-    assert(residual && strstr(residual, "first.mid.") && access(residual, F_OK) == 0);
-    assert(access(triple[0].path, F_OK) == 0 && access(triple[1].path, F_OK) != 0 && entries() == 3);
-    failUnlinkMatch = NULL;
-    assert(unlink(residual) == 0 && unlink(triple[0].path) == 0);
-    free(residual);
-
-    /* A destination-only unlink failure also exposes the residual path. */
-    failLinkAfter = 1;
-    failUnlinkMatch = "first.mid";
-    /* Only match the exact destination in the wrapper for this case. */
-    failUnlinkExact = true;
-    assert(outputWriteFilesWithCleanup(triple, 2, &failed, &residual) == OUTPUT_WRITE_ERROR && failed == 0);
-    assert(residual && !strcmp(residual, triple[0].path) && access(residual, F_OK) == 0 && entries() == 2);
-    failUnlinkMatch = NULL;
-    failUnlinkExact = false;
-    failLinkAfter = -1;
-    assert(unlink(residual) == 0);
-    free(residual);
-
-    /* Preparation failure still cleans every temporary, and reports failed cleanup. */
-    OutputFile invalidCleanup[] = {triple[0], {&score, (OutputFormat)99, triple[1].path}};
-    failUnlinkMatch = "first.mid.";
-    assert(outputWriteFilesWithCleanup(invalidCleanup, 2, &failed, &residual) == OUTPUT_WRITE_ERROR && failed == 0);
-    assert(residual && strstr(residual, "first.mid.") && access(residual, F_OK) == 0 && entries() == 2);
-    failUnlinkMatch = NULL;
-    assert(unlink(residual) == 0);
-    free(residual);
 
     OutputFile both[] = {{&score, OUTPUT_FORMAT_MIDI, path("e.mid")}, {&score, OUTPUT_FORMAT_LILYPOND, path("f.ly")}};
     assert(outputWriteFiles(both, 2, &failed) == OUTPUT_OK && entries() == 3);

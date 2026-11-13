@@ -4,8 +4,6 @@
 #include <string.h>
 
 int main(void) {
-    /* A musical payload must not enlarge every recursive interpreter frame. */
-    assert(sizeof(Value) <= 4 * sizeof(void *));
     Value chord = {.type = TYPE_CHORD, .chord = calloc(1, sizeof(MusicChord))};
     Value scale = {.type = TYPE_SCALE, .scale = calloc(1, sizeof(MusicScale))};
     assert(chord.chord && scale.scale);

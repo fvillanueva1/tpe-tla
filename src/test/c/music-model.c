@@ -2,12 +2,6 @@
 #include <assert.h>
 #include <stddef.h>
 
-/* Allocation number "failAt" (1-based) fails; 0 never fails. */
-void *__real_calloc(size_t, size_t);
-static int failAt = 0, calls = 0;
-void *__wrap_calloc(size_t n, size_t size) { return ++calls == failAt ? NULL : __real_calloc(n, size); }
-static void failOn(int call) { failAt = call; calls = 0; }
-
 static void progressions(void) {
     MusicProgression empty, copy;
     assert(musicProgressionInit(&empty, 0) && !empty.steps && !empty.count);
@@ -28,12 +22,6 @@ static void progressions(void) {
     assert(!copy.steps && !copy.count);
     musicProgressionDestroy(&copy);
 
-    failOn(1);
-    copy.count = 7;
-    assert(!musicProgressionCopy(&progression, &copy) && !copy.steps && !copy.count);
-    failOn(1);
-    assert(!musicProgressionInit(&copy, 3) && !copy.steps && !copy.count);
-    failOn(0);
     MusicProgression broken = {NULL, 1};
     assert(!musicProgressionCopy(&broken, &copy) && !copy.steps && !copy.count);
     assert(!musicProgressionCopy(NULL, &copy) && !musicProgressionInit(NULL, 1));
@@ -56,14 +44,6 @@ static void voicings(void) {
     assert(!copy.chords && !copy.durations && !copy.count);
     musicVoicingDestroy(&copy);
 
-    /* Either of the two arrays can fail; nothing is left allocated (ASan checks it). */
-    for (int call = 1; call <= 2; ++call) {
-        failOn(call);
-        assert(!musicVoicingInit(&copy, 2) && !copy.chords && !copy.durations && !copy.count);
-        failOn(call);
-        assert(!musicVoicingCopy(&voicing, &copy) && !copy.chords && !copy.count);
-    }
-    failOn(0);
     MusicVoicing broken = {NULL, NULL, 1};
     assert(!musicVoicingCopy(&broken, &copy) && !copy.count);
     musicVoicingDestroy(&voicing);

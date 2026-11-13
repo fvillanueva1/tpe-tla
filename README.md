@@ -85,33 +85,10 @@ como `==`, `aug4`, instrumentos e interpolación.
 `test.sh` ejecuta `accept/` y `reject/` y exige el diagnostico semantico en los casos correspondientes. Comprueba el contenido MIDI de la primera exportacion de escala y las funciones de validacion musical; el runtime ejecuta también las expresiones musicales y acumula todas las exportaciones hasta finalizar sin errores. Los casos 55 a 59 validan `strict`, paralelas, cruce de voces y tesitura con valores conocidos; 58 y 59 usan voicings explícitos. También compila y ejecuta los tests de la biblioteca musical y de la salida (`doc/stage-iii/musica.md`, `doc/stage-iii/salida.md`).
 
 La suite actual tiene 106 aceptaciones ejecutadas y 155 rechazos, además de
-pruebas de las bibliotecas y de fallos de reserva. Los fixtures verifican MIDI
+pruebas de las bibliotecas. Los fixtures verifican MIDI
 y LilyPond byte a byte. Los casos 56–59, que en Stage II eran escenarios por
 concretar, ahora obligan a las paralelas o fijan un voicing explícito para
 comprobar cruce y tesitura. Ver [tests.md](doc/stage-ii/tests.md).
-
-En los commits iniciales se prepararon tests de nuevas construcciones en
-`src/test/c/planned/`. Cada implementación los activó moviéndolos a `accept/`
-o `reject/`. Esa carpeta era temporal y ya no tiene archivos en el estado final;
-es distinta de `pending/`, que se conserva para Stage III. Cada uno de los ocho
-commits de implementación compila y pasa la suite activa de ese momento.
-
-## Revisión final del frontend
-
-Con toda la gramática integrada se hicieron las dos revisiones de cierre de
-Stage II, sobre la imagen Docker del repo (Bison 3.8.2):
-
-- **Conflictos de Bison:** `bison -Wcounterexamples` no emite ningún aviso y la
-  gramática conserva `%expect 0`. Con `-Wall` solo aparecen siete avisos
-  `-Wprecedence` (`BY`, `AS`, `TO`, `OF`, `NOT`, `DOT` y `OPEN_BRACKET` se
-  declaran con `%left`/`%right`/`%nonassoc` aunque no son asociativos). Son
-  cosméticos: no hay conflictos ni reglas inútiles, y no se modificaron.
-- **Destructores y memoria:** `destroyExpression` y `destroyStatement` cubren
-  todos los valores de `ExpressionType` y `StatementType`, y cada nodo auxiliar
-  (`Voice`, `Check`, `Export`, `Log`, `StringPart`, listas y procedimientos)
-  libera a sus hijos. Los 80 programas de `accept/` y `reject/` se ejecutaron
-  con AddressSanitizer y detección de fugas sin errores. La imagen no incluye
-  `valgrind`; AddressSanitizer cubre el mismo chequeo.
 
 ## Ejemplo
 

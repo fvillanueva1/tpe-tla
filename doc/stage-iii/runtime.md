@@ -57,17 +57,12 @@ comprueba valores.
   evalúan en el alcance del llamador y se pasan por valor, vectores incluidos.
   El cuerpo ve y puede modificar globales; no hereda las variables locales del
   llamador. La profundidad máxima es `RUNTIME_MAX_CALL_DEPTH` (1000).
-  Además se limita el uso de pila de C a la mitad de `RLIMIT_STACK`, tomando
-  como máximo un límite de 8 MB. Según el tamaño del cuerpo y la instrumentación
-  de AddressSanitizer, la guarda de pila puede alcanzarse antes de 1000 llamadas
-  con muchos bloques anidados. En el contenedor de pruebas (GCC 14.2.0,
-  AArch64, `-O3 -fsanitize=address`, pila de 8 MB), la cuenta descendente desde
-  999 termina correctamente, también con dos `if` anidados en cada llamada:
-  son 1000 llamadas activas, contando el caso base. Antes de reducir `Value`,
-  los máximos eran 661 y 300 respectivamente. Con `-fstack-usage`, `_execute`
-  baja de 3792 a 960 bytes, `_evaluateUnchecked` de 1680 a 720 y `_call` de
-  848 a 464. Los helpers de exportación, `for` e índices evitan que GCC
-  reserve sus temporales en todos los frames recursivos.
+  Como el intérprete es recursivo, además corta con un error si el uso de la
+  pila de C supera la mitad del límite del sistema (como máximo 8 MB). Así un
+  programa con muchos bloques anidados termina con un mensaje en lugar de
+  caerse. Para que 1000 llamadas entren en la pila, acordes y escalas se
+  guardan fuera del `Value` y algunas funciones auxiliares no se integran en
+  las recursivas (`noinline`).
 - **Comparaciones:** notas por altura MIDI (`C#4 == Db4`), intervalos por
   semitonos (`aug4 == d5`), enteros por valor; modo y calidad admiten igualdad
   y desigualdad. No se compara la representación binaria de las estructuras.
@@ -169,14 +164,10 @@ defecto es 120 BPM y el instrumento es `piano`. MIDI exige 4–60000000 BPM;
 
 Las exportaciones se acumulan también dentro de bloques, ciclos y llamadas.
 Solo al terminar sin errores se llama una vez a `outputWriteFiles` con el lote
-completo. Un error previo libera las partituras sin crear archivos. Un fallo
-de escritura intenta revertir el lote completo, incluso si falla el borrado de
-un temporal después de publicar. Se intentan todas las limpiezas; si el sistema
-rechaza alguna, termina con código 1 e informa la primera ruta residual con
-`cannot remove file '<ruta>'`. La garantía de todo o nada requiere que los
-borrados funcionen, sin aislamiento ante reemplazos concurrentes. Destinos repetidos o existentes fallan sin
-sobrescribir, incluso si aparecieron durante la publicación. Los logs ya
-impresos permanecen en stdout. El contrato de escritura está en
+completo. Un error previo libera las partituras sin crear archivos. Si un
+archivo no se puede escribir, se borran los ya escritos del lote. Destinos
+repetidos o existentes fallan sin sobrescribir. Los logs ya impresos
+permanecen en stdout. El contrato de escritura está en
 `doc/stage-iii/salida.md`.
 
 ## Errores de ejecución
@@ -203,7 +194,6 @@ mensajes terminan con punto. Memoria insuficiente devuelve código 2.
 | Validación SATB | `parallel fifths`, `parallel octaves`, `voice crossing` o `tessitura`, seguido de `at chord N` |
 | Tempo | `tempo N is outside the export format's range` |
 | Escritura | `cannot write 'ruta'`; agrega `(destination already exists or is repeated)` si corresponde |
-| Limpieza de exportaciones | `cannot remove file 'ruta'` (pueden quedar otras rutas si también fallaron sus borrados) |
 | Más de 1000 llamadas | `procedure 'p' exceeds the maximum call depth of 1000` |
 | Pila de C | `the program nests too deeply for the available stack` |
 | Escritura de stdout | `cannot write the log output` |
@@ -246,12 +236,9 @@ límite de 1000 llamadas. `runtime-recursion-depth` exige que la cuenta desde
 999 imprima cero, tanto directa como con dos `if` anidados. La prueba con
 veinte bloques anidados exige la guarda de pila.
 
-`runtime-value.c` limita el tamaño de `Value` y comprueba copias independientes
+`runtime-value.c` comprueba copias independientes
 de acordes, escalas, progresiones dentro de vectores y los dos arreglos de un
 voicing, además de liberación repetida.
-`runtime-oom.c` fuerza por turno cada reserva directa de `malloc`, `calloc` y
-`realloc` de una ejecución con procedimientos, copias musicales, validaciones
-y nueve exportaciones. Exige código 2 y ningún archivo en cada fallo.
 
 El binario y las pruebas de memoria usan AddressSanitizer. `test.sh` fija su
 código de error en 86 y rechaza cualquier reporte: ni un fallo de memoria ni
@@ -263,14 +250,6 @@ comprueba su longitud, sin copiar la progresión completa por iteración.
 llamada, vectores de enteros y strings y la lectura de un acorde diatónico
 junto a otros cromáticos. Los tres rechazos `runtime-strict-index-*`
 comprueban el acorde seleccionado y las propiedades directas de un acorde.
-
-En el contenedor con ASan y `-O3`, el programa de `runtime-index-large`
-baja de 18406427911 a 4587911 bytes solicitados y de 40382 a 30381
-llamadas a reserva. Una ejecución tarda 5,447 s antes y 0,018 s después
-(tiempo real con `time` de Bash, sin incluir compilación ni arranque de Docker).
-La medición enlaza los mismos objetos con `--wrap=malloc`, `--wrap=calloc`
-y `--wrap=realloc` y suma los tamaños solicitados, incluido el frontend;
-no representa memoria residente ni cuenta reservas internas de libc.
 
 `runtime-strict-discarded-return` devuelve un acorde cromático desde un
 procedimiento con tonalidad no estricta y descarta el resultado dentro de un

@@ -209,3 +209,16 @@ En Stage III un procedimiento solo puede llamarse despues de su `define` o desde
 En Stage III un `voicing` tambien puede declararse explicitamente como lista de acordes de cuatro notas, en orden soprano, contralto, tenor y bajo: `voicing voces = [{C5, G4, E4, C3}, {B4, G4, D4, G2}];`. El runtime lo usa sin redistribuirlo, lo que permite probar cruce de voces y tesitura (casos 58 y 59).
 
 En Stage III el runtime fija la semántica de ejecución (detalle en `doc/stage-iii/runtime.md`): `for` con ambos límites inclusivos evaluados una vez, `and` / `or` en cortocircuito, división entera truncada hacia cero, paso de argumentos por valor (también vectores), profundidad máxima de 1000 llamadas anidadas y `log` con salto de línea final. Un error de ejecución termina con `Runtime error: ...` y código 1.
+
+En Stage III la duración por defecto de una nota, un acorde o un acorde de una progresión es la negra (`quarter`), la misma que ya usaba la exportación de escalas. `export` usa 120 BPM y `piano` si no se indican. Detalle en `doc/stage-iii/salida.md`.
+
+En Stage III las operaciones musicales siguen estas reglas (detalle en `doc/stage-iii/musica.md`):
+
+- `invert c by n`: `n` va de 0 a la cantidad de notas; cada inversión sube la nota más grave las octavas necesarias para quedar por encima de la más aguda. La fundamental y la calidad no cambian.
+- `arpeggiate c as d`: las notas de la más grave a la más aguda, cada una con la duración `d`.
+- `modulate p to k` conserva la función armónica: un acorde construido por grado se reconstruye sobre el mismo grado de `k` (`[I, V]` de C mayor a A menor da `[i, v]` de A menor); un acorde escrito por notas se transporta la distancia entre las tónicas, en la dirección más cercana. Si ningún acorde de la progresión sabe su tonalidad es un error de ejecución.
+- `voice p as SATB` con acordes de más de cuatro clases de altura omite primero la quinta y después la séptima; una novena queda con fundamental, tercera, séptima y novena. Si aun así quedan más de cuatro clases, o si un acorde no entra en las tesituras, es un error de ejecución.
+- La pertenencia (`in`, `strict`) se decide por clase de altura: `E7 in scale of k` es verdadero aunque la escala esté en octava 4.
+- La fundamental de un acorde escrito por notas es la nota más grave que tiene una tercera y una quinta justa en el acorde (luego cualquier quinta, luego la nota más grave), así un acorde invertido conserva su fundamental.
+
+En Stage III el MIDI es formato 0: una sola pista con el tempo, un cambio de programa por canal usado y los eventos. Una línea simple usa el canal 0; un voicing usa un canal por voz (soprano 0, contralto 1, tenor 2, bajo 3), todos con el mismo instrumento. Una negra son 480 ticks. `sheet` escribe LilyPond con un pentagrama por canal (Soprano, Alto, Tenor y Bass para un voicing). Ninguna exportación sobrescribe un archivo existente, y todas las exportaciones de un programa se escriben juntas o ninguna (`doc/stage-iii/salida.md`).

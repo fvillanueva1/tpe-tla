@@ -1,4 +1,4 @@
-#include "../../main/c/backend/semantic-analysis/MusicValidation.h"
+#include "../../main/c/backend/music/Music.h"
 #include <assert.h>
 #include <stddef.h>
 void *__real_calloc(size_t, size_t);

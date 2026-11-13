@@ -73,12 +73,12 @@ como `==`, `aug4`, instrumentos e interpolación.
 |---------|-----------|-------------------|
 | `src/test/c/accept/` | Programas validos | Codigo 0; si existe `src/test/c/output/<caso>.out` se ejecuta y se compara la salida, si no se usa `--check` |
 | `src/test/c/reject/` | Errores lexicos, sintacticos, semanticos y de ejecucion (`runtime-*`) | Codigo 1 |
-| `src/test/c/pending/` | Escenarios musicales pendientes | No se ejecutan en la suite |
+| `src/test/c/pending/` | Escenarios pendientes (hoy vacía: 58 y 59 pasaron a `reject/`) | No se ejecutan en la suite |
 
-`test.sh` ejecuta `accept/` y `reject/` y exige el diagnostico semantico en los casos correspondientes. Comprueba el contenido MIDI de la primera exportacion de escala y las funciones de validacion musical; la evaluacion general sigue pendiente. Los casos 55 a 57 validan `strict` y paralelas con valores conocidos; los casos 58 y 59 siguen pendientes.
+`test.sh` ejecuta `accept/` y `reject/` y exige el diagnostico semantico en los casos correspondientes. Comprueba el contenido MIDI de la primera exportacion de escala y las funciones de validacion musical; la evaluacion general sigue pendiente. Los casos 55 a 59 validan `strict`, paralelas, cruce de voces y tesitura con valores conocidos; 58 y 59 usan voicings explícitos. También compila y ejecuta los tests de la biblioteca musical y de la salida (`doc/stage-iii/musica.md`, `doc/stage-iii/salida.md`).
 
-Los archivos 58 y 59 son **escenarios por concretar**, no pruebas que ya
-garanticen cruce de voces o errores de tesitura.
+En Stage II los archivos 56–59 eran **escenarios por concretar**, no pruebas que ya
+garanticen quintas u octavas paralelas, cruce de voces o errores de tesitura.
 Enumerar notas no fija su asignación a SATB; el algoritmo posterior puede
 elegir otras inversiones y octavas. Se deberá definir una entrada o realización
 que obligue a cada error. No se declara tesitura en la sintaxis: los rangos

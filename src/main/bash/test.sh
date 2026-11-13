@@ -17,6 +17,8 @@ echo "Compiler should accept (and run, when an expected output exists)..."
 echo ""
 
 ROOT_PATH="$PWD"
+MUSIC_SOURCES="src/main/c/backend/music/Music.c src/main/c/backend/music/Note.c src/main/c/backend/music/Key.c src/main/c/backend/music/Chord.c src/main/c/backend/music/Property.c src/main/c/backend/music/Progression.c src/main/c/backend/music/Transform.c src/main/c/backend/music/Voicing.c src/main/c/backend/music/MusicValidation.c src/main/c/backend/music/VoiceLeading.c"
+OUTPUT_SOURCES="src/main/c/backend/output/Buffer.c src/main/c/backend/output/File.c src/main/c/backend/output/LilyPond.c src/main/c/backend/output/Midi.c src/main/c/backend/output/Score.c"
 TEST_DIRECTORY=$(mktemp -d)
 trap 'rm -rf "$TEST_DIRECTORY"' EXIT
 for test in $(ls src/test/c/accept/); do
@@ -63,7 +65,7 @@ for test in $(ls src/test/c/reject/); do
 		continue
 	fi
 	case "$test" in
-		54-*|55-*|56-*|57-*|60-*|61-*|62-*|63-*|log-undeclared-*|scope-outside*|type-*|procedure-*|return-outside*|export-invalid-*)
+		54-*|55-*|56-*|57-*|58-*|59-*|60-*|61-*|62-*|63-*|log-undeclared-*|scope-outside*|type-*|procedure-*|return-outside*|export-invalid-*)
 			if [[ "$OUTPUT" != *"Semantic error:"* || "$OUTPUT" == *"Code generation is not implemented"* ]]; then
 				echo -e "    $test, ${RED}missing semantic diagnostic or generation was invoked${OFF}"
 				STATUS=1
@@ -81,6 +83,8 @@ for test in $(ls src/test/c/reject/); do
         type-declaration.cad) EXPECTED="expected integer, got boolean" ;;
         56-*) EXPECTED="parallel fifths at chord 2" ;;
         57-*) EXPECTED="parallel octaves at chord 2" ;;
+        58-*) EXPECTED="voice crossing at chord 1" ;;
+        59-*) EXPECTED="tessitura at chord 1" ;;
         runtime-division-by-zero.cad) EXPECTED="Runtime error: division by zero." ;;
         runtime-overflow.cad) EXPECTED="integer overflow in 2147483647 + 1" ;;
         runtime-overflow-subtraction.cad) EXPECTED="integer overflow in -2147483647 - 2" ;;
@@ -187,31 +191,87 @@ fi
 
 echo "Checking instrument mapping..."
 INSTRUMENT_TEST=$(mktemp)
-if ! cc -std=gnu99 src/test/c/semantic-instrument.c src/main/c/backend/semantic-analysis/Semantic.c src/main/c/backend/semantic-analysis/MusicValidation.c src/main/c/backend/semantic-analysis/VoiceLeading.c -o "$INSTRUMENT_TEST" || ! "$INSTRUMENT_TEST"; then
+if ! cc -std=gnu99 src/test/c/semantic-instrument.c src/main/c/backend/semantic-analysis/Semantic.c $MUSIC_SOURCES -o "$INSTRUMENT_TEST" || ! "$INSTRUMENT_TEST"; then
     echo -e "    instrument mapping, ${RED}failed${OFF}"
     STATUS=1
 fi
 rm -f "$INSTRUMENT_TEST"
 echo "Checking allocation failure..."
 OOM_TEST=$(mktemp)
-if ! cc -std=gnu99 src/test/c/semantic-oom.c src/main/c/backend/semantic-analysis/Semantic.c src/main/c/backend/semantic-analysis/MusicValidation.c src/main/c/backend/semantic-analysis/VoiceLeading.c -Wl,--wrap=malloc -o "$OOM_TEST" || ! "$OOM_TEST"; then
+if ! cc -std=gnu99 src/test/c/semantic-oom.c src/main/c/backend/semantic-analysis/Semantic.c $MUSIC_SOURCES -Wl,--wrap=malloc -o "$OOM_TEST" || ! "$OOM_TEST"; then
     echo -e "    allocation failure, ${RED}failed${OFF}"
     STATUS=1
 fi
 rm -f "$OOM_TEST"
 echo "Checking music validation..."
 MUSIC_TEST=$(mktemp)
-if ! cc -std=gnu99 src/test/c/music-validation.c src/main/c/backend/semantic-analysis/MusicValidation.c src/main/c/backend/semantic-analysis/VoiceLeading.c -o "$MUSIC_TEST" || ! "$MUSIC_TEST"; then
+if ! cc -std=gnu99 src/test/c/music-validation.c $MUSIC_SOURCES -o "$MUSIC_TEST" || ! "$MUSIC_TEST"; then
     echo -e "    music validation, ${RED}failed${OFF}"
     STATUS=1
 fi
 rm -f "$MUSIC_TEST"
 echo "Checking voice allocation failure..."
 VOICE_OOM_TEST=$(mktemp)
-if ! cc -std=gnu99 src/test/c/music-voice-oom.c src/main/c/backend/semantic-analysis/MusicValidation.c src/main/c/backend/semantic-analysis/VoiceLeading.c -Wl,--wrap=calloc -Wl,--wrap=realloc -o "$VOICE_OOM_TEST" || ! "$VOICE_OOM_TEST"; then
+if ! cc -std=gnu99 src/test/c/music-voice-oom.c $MUSIC_SOURCES -Wl,--wrap=calloc -Wl,--wrap=realloc -o "$VOICE_OOM_TEST" || ! "$VOICE_OOM_TEST"; then
     echo -e "    voice allocation failure, ${RED}failed${OFF}"
     STATUS=1
 fi
 rm -f "$VOICE_OOM_TEST"
+echo "Checking music model..."
+MODEL_TEST=$(mktemp)
+if ! cc -std=gnu99 -fsanitize=address src/test/c/music-model.c $MUSIC_SOURCES -Wl,--wrap=calloc -o "$MODEL_TEST" || ! "$MODEL_TEST"; then
+    echo -e "    music model, ${RED}failed${OFF}"
+    STATUS=1
+fi
+rm -f "$MODEL_TEST"
+echo "Checking notes and intervals..."
+NOTE_TEST=$(mktemp)
+if ! cc -std=gnu99 -fsanitize=address src/test/c/music-note.c $MUSIC_SOURCES -o "$NOTE_TEST" || ! "$NOTE_TEST"; then
+    echo -e "    notes and intervals, ${RED}failed${OFF}"
+    STATUS=1
+fi
+rm -f "$NOTE_TEST"
+echo "Checking keys and scales..."
+KEY_TEST=$(mktemp)
+if ! cc -std=gnu99 -fsanitize=address src/test/c/music-key.c $MUSIC_SOURCES -o "$KEY_TEST" || ! "$KEY_TEST"; then
+    echo -e "    keys and scales, ${RED}failed${OFF}"
+    STATUS=1
+fi
+rm -f "$KEY_TEST"
+echo "Checking chords..."
+CHORD_TEST=$(mktemp)
+if ! cc -std=gnu99 -fsanitize=address src/test/c/music-chord.c $MUSIC_SOURCES -o "$CHORD_TEST" || ! "$CHORD_TEST"; then
+    echo -e "    chords, ${RED}failed${OFF}"
+    STATUS=1
+fi
+rm -f "$CHORD_TEST"
+echo "Checking properties and membership..."
+PROPERTY_TEST=$(mktemp)
+if ! cc -std=gnu99 -fsanitize=address src/test/c/music-property.c $MUSIC_SOURCES -o "$PROPERTY_TEST" || ! "$PROPERTY_TEST"; then
+    echo -e "    properties and membership, ${RED}failed${OFF}"
+    STATUS=1
+fi
+rm -f "$PROPERTY_TEST"
+echo "Checking output score..."
+SCORE_TEST=$(mktemp)
+if ! cc -std=gnu99 -fsanitize=address src/test/c/output-score.c $OUTPUT_SOURCES $MUSIC_SOURCES -Wl,--wrap=realloc -o "$SCORE_TEST" || ! "$SCORE_TEST"; then
+    echo -e "    output score, ${RED}failed${OFF}"
+    STATUS=1
+fi
+rm -f "$SCORE_TEST"
+echo "Checking progressions, transformations and voicings..."
+PROGRESSION_TEST=$(mktemp)
+if ! cc -std=gnu99 -fsanitize=address src/test/c/music-progression.c $MUSIC_SOURCES -Wl,--wrap=calloc -Wl,--wrap=malloc -o "$PROGRESSION_TEST" || ! "$PROGRESSION_TEST"; then
+    echo -e "    progressions, transformations and voicings, ${RED}failed${OFF}"
+    STATUS=1
+fi
+rm -f "$PROGRESSION_TEST"
+echo "Checking MIDI, LilyPond and file writing..."
+FILE_TEST=$(mktemp)
+if ! cc -std=gnu99 -fsanitize=address src/test/c/output-file.c $OUTPUT_SOURCES $MUSIC_SOURCES -Wl,--wrap=link -o "$FILE_TEST" || ! "$FILE_TEST"; then
+    echo -e "    MIDI, LilyPond and file writing, ${RED}failed${OFF}"
+    STATUS=1
+fi
+rm -f "$FILE_TEST"
 echo "All done."
 exit $STATUS

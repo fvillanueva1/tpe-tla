@@ -36,9 +36,22 @@ if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
 		src/main/c/backend/code-generation/Generator.c
 		src/main/c/backend/runtime/Runtime.c
 		src/main/c/backend/runtime/Value.c
+		src/main/c/backend/output/Buffer.c
+		src/main/c/backend/output/File.c
+		src/main/c/backend/output/LilyPond.c
+		src/main/c/backend/output/Midi.c
+		src/main/c/backend/output/Score.c
 		src/main/c/backend/semantic-analysis/Semantic.c
-		src/main/c/backend/semantic-analysis/MusicValidation.c
-		src/main/c/backend/semantic-analysis/VoiceLeading.c
+		src/main/c/backend/music/Music.c
+		src/main/c/backend/music/Note.c
+		src/main/c/backend/music/Key.c
+		src/main/c/backend/music/Chord.c
+		src/main/c/backend/music/Property.c
+		src/main/c/backend/music/Progression.c
+		src/main/c/backend/music/Transform.c
+		src/main/c/backend/music/Voicing.c
+		src/main/c/backend/music/MusicValidation.c
+		src/main/c/backend/music/VoiceLeading.c
 		src/main/c/EntryPoint.c
 		src/main/c/frontend/Frontend.c
 		src/main/c/frontend/lexical-analysis/FlexActions.c

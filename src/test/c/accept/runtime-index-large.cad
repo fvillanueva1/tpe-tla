@@ -1,0 +1,4 @@
+progression tema = [{C4, E4, G4}] * 10000;
+integer cantidad = tema.length;
+for indice = 0 to cantidad - 1 { note raiz = tema[indice].root; }
+log "{cantidad}";

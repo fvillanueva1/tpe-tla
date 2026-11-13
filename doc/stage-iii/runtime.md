@@ -32,12 +32,20 @@ comprueba valores.
 
 ## Semántica de ejecución
 
-- **Operandos:** se evalúan una vez, de izquierda a derecha.
+- **Operandos:** se evalúan una vez, de izquierda a derecha, salvo el acceso
+  indexado a una variable que se describe a continuación.
 - **Aritmética:** enteros de 32 bits, con comprobación de desborde. La división
   trunca hacia cero: `(0 - 7) / 2` da `-3`.
 - **Lógica:** `and` y `or` evalúan en cortocircuito.
 - **Índices:** de base cero en vectores, escalas y progresiones. Indexar una
   progresión devuelve el acorde; no modifica la duración del paso original.
+  Si la base es una variable, se evalúa primero el índice y luego se lee su
+  binding actual: `tema[cambiar()]` selecciona sobre el valor posterior a
+  `cambiar()`, incluso si reasigna `tema`. Solo se copia y valida el elemento
+  seleccionado, también en vectores de cualquier tipo; los demás acordes del
+  contenedor no se leen. Para otras bases se conserva el orden base, índice.
+  Las propiedades sobre variables leen el binding sin copiarlo y conservan
+  su validación estricta (incluida `.length` sobre toda la progresión).
 - **`for variable = desde to hasta`:** límites inclusivos evaluados una vez.
   Si `desde > hasta` no hay iteraciones. Asignar la variable dentro del cuerpo
   no cambia el contador del bucle.
@@ -192,13 +200,13 @@ de reserva; no se intenta agotar la memoria real con ASan.
 
 ## Tests
 
-`test.sh` ejecuta las 104 aceptaciones en directorios temporales. Compara
+`test.sh` ejecuta las 106 aceptaciones en directorios temporales. Compara
 stdout con `src/test/c/output/<caso>.out` (vacío si falta) y los archivos con
 `src/test/c/artifacts/<caso>/`. Falla ante archivos inesperados o fixtures sin
 caso. `generate-runtime-goldens.py` construye las referencias desde eventos
 esperados sin ejecutar Cadence; la suite nunca las regenera automáticamente.
 
-Los 151 rechazos exigen código 1 y ningún archivo. Los `runtime-*` exigen
+Los 154 rechazos exigen código 1 y ningún archivo. Los `runtime-*` exigen
 `Runtime error:`, sin `Semantic error:`, y el mensaje concreto. Los rechazos
 musicales encolan una exportación antes del error para comprobar el descarte.
 Los ocho casos `runtime-strict-interpolation-*` comprueban strings y `log`,
@@ -232,3 +240,18 @@ y nueve exportaciones. Exige código 2 y ningún archivo en cada fallo.
 El binario y las pruebas de memoria usan AddressSanitizer. `test.sh` fija su
 código de error en 86 y rechaza cualquier reporte: ni un fallo de memoria ni
 una fuga pueden contarse como un rechazo esperado.
+
+`runtime-index-large` recorre 10000 acordes mediante `tema[indice].root` y
+comprueba su longitud, sin copiar la progresión completa por iteración.
+`runtime-index-binding` comprueba el índice con reasignaciones desde una
+llamada, vectores de enteros y strings y la lectura de un acorde diatónico
+junto a otros cromáticos. Los tres rechazos `runtime-strict-index-*`
+comprueban el acorde seleccionado y las propiedades directas de un acorde.
+
+En el contenedor con ASan y `-O3`, el programa de `runtime-index-large`
+baja de 18406427911 a 4587911 bytes solicitados y de 40382 a 30381
+llamadas a reserva. Una ejecución tarda 5,447 s antes y 0,018 s después
+(tiempo real con `time` de Bash, sin incluir compilación ni arranque de Docker).
+La medición enlaza los mismos objetos con `--wrap=malloc`, `--wrap=calloc`
+y `--wrap=realloc` y suma los tamaños solicitados, incluido el frontend;
+no representa memoria residente ni cuenta reservas internas de libc.

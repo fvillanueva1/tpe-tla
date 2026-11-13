@@ -270,42 +270,43 @@ static bool _allocateMusic(Runtime * runtime, Value * value, int type) {
 	return value->scale != NULL || _outOfMemory(runtime);
 }
 
-/* Do not reserve an indexed container in unrelated recursive expressions. */
-static __attribute__((noinline)) bool _evaluateIndex(Runtime * runtime, RuntimeScope * scope, const Expression * expression, Value * result) {
-	Value vector;
-	int index;
-	if (!_evaluate(runtime, scope, expression->leftExpression, &vector)) return false;
-	if (!_evaluateInteger(runtime, scope, expression->rightExpression, &index)) {
-		destroyValue(&vector);
-		return false;
-	}
-	if (!vector.isVector && vector.type == TYPE_SCALE) {
+/* Read only the selected element; the caller owns the independent result. */
+static bool _readIndex(Runtime * runtime, const Value * vector, int index, Value * result) {
+	if (!vector->isVector && vector->type == TYPE_SCALE) {
 		result->type = TYPE_NOTE;
-		MusicStatus status = musicScaleNote(vector.scale, index, &result->note);
-		destroyValue(&vector);
+		MusicStatus status = musicScaleNote(vector->scale, index, &result->note);
 		if (status != MUSIC_OK) return _error(runtime, "index %d is out of range for a scale of length 7", index);
 		return true;
 	}
-	if (!vector.isVector && vector.type == TYPE_PROGRESSION) {
-		size_t count = vector.progression.count;
-		if (index < 0 || (size_t) index >= count) {
-			destroyValue(&vector);
+	if (!vector->isVector && vector->type == TYPE_PROGRESSION) {
+		size_t count = vector->progression.count;
+		if (index < 0 || (size_t) index >= count)
 			return _error(runtime, "index %d is out of range for a progression of length %zu", index, count);
-		}
-		if (!_allocateMusic(runtime, result, TYPE_CHORD)) { destroyValue(&vector); return false; }
-		*result->chord = vector.progression.steps[index].chord;
-		destroyValue(&vector);
+		if (!_allocateMusic(runtime, result, TYPE_CHORD)) return false;
+		*result->chord = vector->progression.steps[index].chord;
 		return true;
 	}
-	if (index < 0 || (size_t) index >= vector.vector.count) {
-		size_t length = vector.vector.count;
-		destroyValue(&vector);
-		return _error(runtime, "index %d is out of range for a vector of length %zu", index, length);
+	if (index < 0 || (size_t) index >= vector->vector.count)
+		return _error(runtime, "index %d is out of range for a vector of length %zu", index, vector->vector.count);
+	return copyValue(&vector->vector.items[index], result) || _outOfMemory(runtime);
+}
+
+/* Do not reserve an indexed container in unrelated recursive expressions. */
+static __attribute__((noinline)) bool _evaluateIndex(Runtime * runtime, RuntimeScope * scope, const Expression * expression, Value * result) {
+	int index;
+	if (expression->leftExpression->type == VARIABLE) {
+		/* An index call may replace globals: evaluate it before borrowing the binding. */
+		if (!_evaluateInteger(runtime, scope, expression->rightExpression, &index)) return false;
+		Binding * binding = findBinding(scope, expression->leftExpression->text);
+		if (!binding) return _error(runtime, "variable '%s' has no value", expression->leftExpression->text);
+		return _readIndex(runtime, &binding->value, index, result);
 	}
-	*result = vector.vector.items[index];
-	vector.vector.items[index] = (Value) {.type = TYPE_INTEGER};
+	Value vector;
+	if (!_evaluate(runtime, scope, expression->leftExpression, &vector)) return false;
+	bool ok = _evaluateInteger(runtime, scope, expression->rightExpression, &index)
+		&& _readIndex(runtime, &vector, index, result);
 	destroyValue(&vector);
-	return true;
+	return ok;
 }
 
 /* Both operands are evaluated once, from left to right, and always released. */
@@ -461,31 +462,40 @@ static bool _evaluateMusic(Runtime * runtime, RuntimeScope * scope, const Expres
 			break;
 		}
 		case PROPERTY_ACCESS: {
-			Value object;
-			if (!_evaluate(runtime, scope, expression->property.object, &object)) return false;
+			Value owned = {0};
+			const Value * object;
+			if (expression->property.object->type == VARIABLE) {
+				Binding * binding = findBinding(scope, expression->property.object->text);
+				if (!binding) return _error(runtime, "variable '%s' has no value", expression->property.object->text);
+				object = &binding->value;
+				if (!_validateStrict(runtime, scope, object)) return false;
+			} else {
+				if (!_evaluate(runtime, scope, expression->property.object, &owned)) return false;
+				object = &owned;
+			}
 			const char * name = expression->property.name;
 			operation = name;
-			if (!strcmp(name, "octave")) result->integer = musicNoteOctave(object.note);
+			if (!strcmp(name, "octave")) result->integer = musicNoteOctave(object->note);
 			else if (!strcmp(name, "root")) {
 				result->type = TYPE_NOTE;
-				status = musicChordRoot(object.chord, &result->note);
+				status = musicChordRoot(object->chord, &result->note);
 			} else if (!strcmp(name, "quality")) {
 				result->type = VALUE_QUALITY;
-				result->quality = musicChordQuality(object.chord);
+				result->quality = musicChordQuality(object->chord);
 			} else if (!strcmp(name, "tonic")) {
 				result->type = TYPE_NOTE;
-				status = musicKeyTonic(object.key, &result->note);
+				status = musicKeyTonic(object->key, &result->note);
 			} else if (!strcmp(name, "mode")) {
 				result->type = VALUE_MODE;
-				result->mode = musicKeyMode(object.key);
+				result->mode = musicKeyMode(object->key);
 			} else if (!strcmp(name, "length")) {
-				if (object.progression.count > INT_MAX) {
-					destroyValue(&object);
+				if (object->progression.count > INT_MAX) {
+					destroyValue(&owned);
 					return _error(runtime, "progression length exceeds the integer range");
 				}
-				result->integer = (int) object.progression.count;
+				result->integer = (int) object->progression.count;
 			}
-			destroyValue(&object);
+			destroyValue(&owned);
 			break;
 		}
 		case VOICE_EXPRESSION: {

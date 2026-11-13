@@ -6,7 +6,7 @@ x-shared:
   environment: &environment
     ENVIRONMENT: "${ENVIRONMENT:-Local}"
     LOG_IGNORED_LEXEMES: "${LOG_IGNORED_LEXEMES:-true}"
-    LOGGING_LEVEL: "${LOGGING_LEVEL:-ALL}"
+    LOGGING_LEVEL: "${LOGGING_LEVEL:-ERROR}"
 
 networks:
   ar-edu-itba-atlyc:

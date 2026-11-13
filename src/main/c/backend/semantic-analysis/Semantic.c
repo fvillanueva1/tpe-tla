@@ -417,7 +417,7 @@ static int typeOf(Scope *scope, Expression *e) {
 static bool compatible(Scope *scope, Expression *e, int expected) {
     int actual = typeOf(scope, e);
     if (actual == TYPE_INVALID) return false;
-    if (actual == TYPE_EMPTY_LIST && (expected >= TYPE_VECTOR || expected == TYPE_PROGRESSION)) return true;
+    if (actual == TYPE_EMPTY_LIST && (expected >= TYPE_VECTOR || expected == TYPE_PROGRESSION || expected == TYPE_VOICING)) return true;
     /* An explicit voicing lists each chord's notes as soprano, alto, tenor and bass. */
     if (actual == TYPE_CHORD_LIST && expected == TYPE_VOICING) {
         for (ExpressionList *item = e->elements; item; item = item->next) {

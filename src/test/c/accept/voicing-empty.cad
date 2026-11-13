@@ -1,0 +1,6 @@
+define vacio() -> voicing { return []; }
+define recibir(voicing voces) { }
+voicing voces = [];
+voces = [];
+recibir([]);
+voicing resultado = vacio();

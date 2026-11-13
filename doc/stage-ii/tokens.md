@@ -16,7 +16,7 @@ consume el valor es responsable de liberarlo (hay un `%destructor`).
 
 | Token | Valor | Lexema |
 |-------|-------|--------|
-| `INTEGER` | `integer` | `0`, `120` |
+| `INTEGER` | `integer` | `0`, `120`; un literal mayor a 2147483647 es un error léxico |
 | `NOTE` | `string` | `C4`, `F#3`, `Bb5`, `C` (sin octava) |
 | `DEGREE` | `string` | `I`, `V`, `ii`, `viidim` |
 | `INTERVAL` | `string` | `P1`, `m3`, `M6`, `aug4`, `P8` |

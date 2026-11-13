@@ -48,7 +48,9 @@ Una declaracion de tonalidad escalar establece el contexto tonal del alcance a p
 
 `musicRealizeSATB` recibe una mascara de clases de altura por acorde y produce una distribucion SATB con las tesituras documentadas, sin cruce y que contiene todas las clases de cada acorde. Considera todas las distribuciones posibles y elige la secuencia con menor suma de desplazamientos absolutos entre voces mediante programacion dinamica. En empate, prefiere la distribucion inicial mas cercana al centro de las tesituras; si aun hay empate, usa el recorrido ascendente. La salida solo se escribe si toda la secuencia se pudo resolver.
 
-Una mascara vacia o que no admite distribucion devuelve `MUSIC_VOICE_INVALID_CHORD`; los errores de memoria devuelven `MUSIC_VOICE_NO_MEMORY`. Actualmente solo pueden distribuirse acordes con hasta cuatro clases distintas, pues no esta definida una regla de omision para acordes de novena. El analizador la utiliza para `voice` con progresiones literales conocidas.
+Una mascara vacia o que no admite distribucion devuelve `MUSIC_VOICE_INVALID_CHORD`; los errores de memoria devuelven `MUSIC_VOICE_NO_MEMORY`. Esta funcion de bajo nivel requiere como maximo cuatro clases distintas por acorde: debe conservar todas las clases de la mascara y no aplica omisiones. El analizador la utiliza para `voice` con progresiones literales conocidas.
+
+En cambio, `musicVoiceProgression` prepara las mascaras antes de llamar a `musicRealizeSATB`: si un acorde supera las cuatro clases, omite primero la quinta y, si todavia hace falta, la septima. Por eso una novena puede realizarse conservando fundamental, tercera, septima y novena. Si aun quedan mas de cuatro clases devuelve `MUSIC_TOO_MANY_NOTES`. El detalle de esta regla de omision del runtime esta en `doc/stage-iii/musica.md`.
 
 ## Comprobacion estatica de `voice` y `check`
 

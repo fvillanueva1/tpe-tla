@@ -7,7 +7,7 @@ El Stage III pide dos fases: análisis semántico y generación. La semántica y
 - **Felipe:** la biblioteca musical, la salida MIDI y `sheet`, y la coordinación del informe.
 - **Tadeo:** revisión, ajustes de semántica al integrar y sus secciones del informe.
 
-## Punto de partida (común a los tres)
+## Punto de partida histórico (común a los tres)
 
 - **Hecho:** frontend completo (Stage II) y análisis semántico: nombres, alcances, tipos, procedimientos, `log`, `export`, rangos de valores constantes, `strict` y SATB para valores conocidos. Las funciones musicales que se escribieron para la semántica estaban en `backend/semantic-analysis/MusicValidation.c` y `VoiceLeading.c` (ahora en `backend/music/`): escalas, pertenencia a tonalidad, realización SATB por masas de clases, tesitura, cruce y paralelas.
 - **Salida:** el generador solo exporta a MIDI la escala de una tonalidad literal (`exportLiteralScale` en `Generator.c`). Cualquier otro programa devuelve error *"Code generation is not implemented"*. `--check` corre solo frontend y semántica; la suite acepta con `--check` hasta que exista el runtime.
@@ -23,6 +23,12 @@ El Stage III pide dos fases: análisis semántico y generación. La semántica y
 1. **Modelo musical** (Felipe, `backend/music/Music.h`): nota = altura MIDI más su grafía, acorde = arreglo de alturas, progresión = acordes más duraciones, voicing = `int[n][4]`.
 2. **Valores del runtime** (Eduardo, `backend/runtime/Value.h`): unión con un tipo por cada `DataType` que usa los structs de Felipe, más un entorno de variables.
 3. **Eventos de salida** (Felipe, `backend/output/Output.h`): lista de `{pitch, start, duration, channel}` en ticks, más tempo e instrumento. El runtime arma la lista y la salida solo la escribe.
+
+El runtime y la integración de salida ya están completos: todos los programas
+se ejecutan por `executeProgram`, con los valores de `Music.h` y un único lote
+de `outputWriteFiles` al terminar sin errores. La suite ejecuta todas las
+aceptaciones; ver `runtime.md`. El punto de partida anterior describe el estado
+previo al reparto, no una limitación actual.
 
 ## Tu parte A: el módulo `backend/music/`, en C puro, sin dependencia del AST
 
@@ -53,14 +59,14 @@ Cada función devuelve un resultado o un código de error, sin imprimir nada. Ed
 
 ## Tu parte B: salida (`backend/output/`)
 
-Ya existe un prototipo: `exportLiteralScale` en `Generator.c` escribe un MIDI válido de una escala. Tomalo como base y probalo con `src/test/c/scale-midi.c`.
+El prototipo inicial `exportLiteralScale` sirvió de base para el MIDI de escalas. Hoy lo reemplaza el runtime general; `src/test/c/scale-midi.c` sigue comprobando sus bytes.
 
 ### 5. Contrato y MIDI general (temprano: Eduardo lo necesita para `export`)
 - [x] Definir `Output.h` (contrato 3) y pasárselo a Eduardo. (Ver `doc/stage-iii/salida.md`.)
 - [x] Escritor MIDI con la lista de eventos: notas simultáneas (acordes), secuencias, cuatro canales para SATB, tempo y cambio de instrumento (`semanticInstrumentProgram`).
 - [x] Errores de escritura: no sobrescribir, no dejar archivos a medio escribir (escribir a temporal y renombrar), código de salida 1.
 - [x] Probarlo con eventos fijos, sin runtime. Extender `scale-midi.c` para comprobar alturas, tiempos y canales de acordes y progresiones. (Los acordes, progresiones y voicings se comprueban en `output-file.c` y `output-score.c`; `scale-midi.c` sigue comprobando la escala.)
-- [ ] Cuando el runtime produzca eventos, reemplazar `exportLiteralScale` por este escritor junto con Eduardo. (Hecho a medias: `exportLiteralScale` ya escribe con `outputWriteMidi`; falta que el runtime de Eduardo arme los eventos de cualquier `export` y llame a `outputWriteFiles` al final.)
+- [x] Reemplazar `exportLiteralScale`: el runtime arma los eventos de cualquier `export` y llama una sola vez a `outputWriteFiles` al terminar sin errores.
 
 ### 6. `sheet` en LilyPond
 - [x] Escribir `.ly` a partir de los mismos eventos, usando la grafía de las notas (por eso conviene que lo hagas vos). Para un voicing, cuatro voces.

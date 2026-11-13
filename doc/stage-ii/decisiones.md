@@ -232,3 +232,20 @@ progresiones y voicings. Los parámetros de tonalidad establecen contexto en
 orden de la firma; un procedimiento hereda el contexto global existente al
 llamarlo. Los bloques no cambian el contexto exterior salvo que asignen su
 tonalidad vigente.
+
+Las listas de acordes adquieren su representación por el tipo esperado en
+inicializadores, asignaciones, argumentos y retornos: vector, progresión o
+voicing explícito. Los operandos se evalúan una vez de izquierda a derecha.
+`export` captura el valor y el tempo en ese momento; reasignarlos después no
+cambia lo que se escribirá al finalizar.
+
+`strict` se aplica al evaluar cada acorde, también al leer variables y recibir
+resultados de procedimientos, y recorre progresiones, vectores y voicings.
+Una nota suelta no se rechaza por contexto estricto. Los acordes por notas no
+adquieren una tonalidad implícita por ese contexto; la modulación sigue el
+contrato de `Music.h`.
+
+`log` muestra notas con su grafía, intervalos por su nombre, tonalidades sin
+octava con modo y `strict`, acordes entre llaves y colecciones entre corchetes.
+Las duraciones distintas de negra se indican con `as duración`. Los voicings
+se imprimen con sostenidos porque guardan alturas, no grafías originales.

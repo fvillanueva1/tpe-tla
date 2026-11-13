@@ -117,9 +117,10 @@ ninguno**, que es lo que el runtime necesita al terminar un programa con varios
 permisos normales (`0666` menos la `umask`). `outputWriteMidi` y
 `outputWriteLilyPond` escriben un solo archivo con la misma garantía.
 
-El generador ya usa este módulo para la exportación de escalas literales
-(`exportLiteralScale`): el archivo que produce es el mismo de antes, pero ahora
-se escribe a un temporal y se publica sin sobrescribir.
+El runtime usa este módulo para todos los valores exportables. Cada `export`
+captura una partitura y solo al terminar sin errores entrega el lote a
+`outputWriteFiles`. No queda una ruta especial para escalas literales; los
+bytes MIDI de esas escalas siguen siendo los mismos. Ver `runtime.md`.
 
 ## Errores
 

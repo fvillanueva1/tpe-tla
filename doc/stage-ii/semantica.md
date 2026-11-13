@@ -15,7 +15,12 @@ como argumento o retorno de ese tipo; el contexto determina su tipo.
 
 ## Limites e integracion
 
-Los valores calculados mediante variables, procedimientos o ciclos no se conocen en esta fase: el runtime debera verificar rangos, incluyendo tempo, inversion y transposicion. La validacion `strict` de valores dinamicos, la realizacion SATB para expresiones calculadas sigue pendiente de la evaluacion musical. Los escenarios de cruce y tesitura 58 y 59 estan en `reject/` con voicings explicitos. El generador ya admite una tonalidad literal y la exportacion MIDI de su escala, directamente o mediante una declaracion de escala intermedia. El resto de la generacion sigue pendiente. El AST no conserva posiciones para informar numeros de linea.
+Los valores calculados mediante variables, procedimientos o ciclos pueden no
+conocerse en esta fase. El runtime comprueba sus rangos, `strict`, la realización
+SATB y las reglas de `check`, y acumula los archivos hasta completar la ejecución
+sin errores. Todos los programas usan esa ruta, incluidas las escalas que antes
+exportaba el generador literal. Los escenarios 58 y 59 usan voicings explícitos.
+El AST no conserva posiciones para informar números de línea.
 
 El rechazo semantico usa codigo de salida 1 y un mensaje `Semantic error:`. La suite verifica ese diagnostico para los casos semanticos, evitando que un error sintactico o un fallo del proceso cuente como rechazo correcto.
 
@@ -55,7 +60,7 @@ Para reconstruir valores compuestos usados en SATB se exige ademas que sus varia
 
 Los errores de tipos informan el tipo esperado y el recibido, o el operador y los dos operandos incompatibles.
 
-Por defecto el compilador devuelve error si el generador todavia no soporta el programa; `--check` ejecuta solo el frontend y la semantica y no crea archivos. La suite usa ese modo para casos de aceptacion semantica y prueba la generacion por separado.
+Por defecto el compilador ejecuta el programa después de validar. `--check` ejecuta solo el frontend y la semántica: no imprime logs ni crea archivos. La suite ejecuta todas las aceptaciones y prueba `--check` por separado.
 
 Los indices constantes tambien se validan contra la longitud de vectores inicializados con listas literales cuyo nombre no recibe asignaciones en el programa. Si el vector puede cambiar, su longitud se comprueba en ejecucion.
 
@@ -65,6 +70,13 @@ Los documentos de catedra sobre scopes, sistema de tipos y tabla de simbolos est
 
 `analyzeSemantics(Program *)` valida el AST y devuelve `SUCCEEDED`, `FAILED` o `OUT_OF_MEMORY`; el punto de entrada no llama al generador si falla. Los simbolos y alcances son temporales y se liberan al terminar, por lo que el backend debe gestionar sus propios valores y entornos de ejecucion. `semanticInstrumentProgram` comparte el mapeo de instrumentos.
 
-Las operaciones musicales, la regla de omision para acordes de mas de cuatro clases y la salida estan en `backend/music/` y `backend/output/` (ver `doc/stage-iii/musica.md` y `doc/stage-iii/salida.md`). Eduardo debe implementar la ejecucion y comprobar valores no resueltos estaticamente: limites de indices y grados, division por cero y desborde, transposicion, inversion, repeticion, tempo, `strict`, realizacion de `voice` y reglas de `check`. Tambien debe propagar errores de ejecucion y de escritura. La aceptacion con `--check` no significa que el generador ya soporte el programa. El runtime ya ejecuta la parte no musical del lenguaje que esta implementada y comprueba division por cero, desborde, indices y profundidad de llamadas; ver `doc/stage-iii/runtime.md`.
+Las operaciones musicales y la salida están en `backend/music/` y
+`backend/output/` (ver `doc/stage-iii/musica.md` y `doc/stage-iii/salida.md`).
+El runtime ejecuta todas las construcciones y comprueba los valores que no se
+resuelven estáticamente: índices y grados, división por cero y desborde,
+transposición, inversión, repetición, tempo, `strict`, `voice` y `check`.
+También propaga errores de escritura y libera los valores ante errores o
+retornos; ver `doc/stage-iii/runtime.md`. Una progresión admite índices de
+base cero y devuelve un acorde.
 
 Las validaciones musicales conocidas no cubren todas las expresiones: `voice` y `check` se evaluan estaticamente solo en los casos descritos arriba; los demas quedan para el runtime. El AST no conserva ubicaciones para diagnosticos por linea.

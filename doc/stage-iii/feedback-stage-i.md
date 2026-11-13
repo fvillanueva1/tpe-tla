@@ -9,8 +9,8 @@ del Stage III: el PDF del Stage I no se reentrega.
 | 1 | La licencia solo nombra a Felipe | Resuelto | `LICENSE.md` (commit `9b3d515`) |
 | 2 | El informe no tiene fecha ni tabla de contenidos | Pendiente | Informe final (Felipe) |
 | 3 | `log` no está explicado; conviene interpolar por nombre | Resuelto en código; falta el informe | Interpolación por nombre en la gramática (PR #11) y ejecución en el runtime (`doc/stage-iii/runtime.md`). Explicarlo en 2.2 Lenguaje (Felipe) y 3.2 Backend, runtime (Eduardo) |
-| 4 | ¿Los relacionales aplican solo a notas e intervalos? | Decidido y documentado | Tabla por tipo en `doc/stage-ii/decisiones.md`. Enteros ya se ejecutan; notas e intervalos, con la biblioteca musical (Eduardo, paso 3). Explicarlo en 2.2 Lenguaje |
-| 5 | MIDI: falta la asignación de instrumentos y el manejo de pistas | Instrumentos resueltos; pistas pendientes | `with instrumento` (PR #10) con la tabla General MIDI de `semanticInstrumentProgram`. No hay sintaxis de pistas: es una decisión de diseño. Falta fijar y documentar cómo se reparten las voces en pistas o canales al definir `Output.h` (Felipe, con el armado de eventos de Eduardo) |
+| 4 | ¿Los relacionales aplican solo a notas e intervalos? | Decidido y documentado | Tabla por tipo en `doc/stage-ii/decisiones.md`. El runtime ejecuta comparaciones de enteros, notas e intervalos con la biblioteca musical. Explicarlo en 2.2 Lenguaje |
+| 5 | MIDI: falta la asignación de instrumentos y el manejo de pistas | Resuelto en código; falta el informe | `with instrumento` (PR #10) con la tabla General MIDI de `semanticInstrumentProgram`. No hay sintaxis de pistas: es una decisión de diseño. MIDI formato 0, una pista y un canal por voz SATB (0–3), implementado y comprobado por el runtime y los escritores; ver `doc/stage-iii/salida.md` |
 | 6 | Dos carpetas de documentación | Resuelto | Todo en `doc/` (consignas en `doc/consignas/`), commit `9b3d515` |
 | 7 | `CLAUDE.md` debe importar `AGENTS.md` | Resuelto | `CLAUDE.md` contiene `@AGENTS.md` (commit `9b3d515`) |
 | 8 | Texto sin justificar | Pendiente | Informe final (Felipe) |

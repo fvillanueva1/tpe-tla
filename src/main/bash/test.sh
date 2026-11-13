@@ -256,7 +256,7 @@ unit_test "chords" src/test/c/music-chord.c $MUSIC_SOURCES
 unit_test "properties and membership" src/test/c/music-property.c $MUSIC_SOURCES
 unit_test "output score" src/test/c/output-score.c $OUTPUT_SOURCES $MUSIC_SOURCES
 unit_test "progressions, transformations and voicings" src/test/c/music-progression.c $MUSIC_SOURCES
-unit_test "MIDI, LilyPond and file writing" src/test/c/output-file.c $OUTPUT_SOURCES $MUSIC_SOURCES -Wl,--wrap=link -Wl,--wrap=unlink
+unit_test "MIDI, LilyPond and file writing" src/test/c/output-file.c $OUTPUT_SOURCES $MUSIC_SOURCES
 echo "Suite: $ACCEPT_PASSED/$ACCEPT_TOTAL accept, $REJECT_PASSED/$REJECT_TOTAL reject; status $STATUS."
 echo "All done."
 exit $STATUS

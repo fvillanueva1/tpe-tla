@@ -169,14 +169,10 @@ defecto es 120 BPM y el instrumento es `piano`. MIDI exige 4–60000000 BPM;
 
 Las exportaciones se acumulan también dentro de bloques, ciclos y llamadas.
 Solo al terminar sin errores se llama una vez a `outputWriteFiles` con el lote
-completo. Un error previo libera las partituras sin crear archivos. Un fallo
-de escritura intenta revertir el lote completo, incluso si falla el borrado de
-un temporal después de publicar. Se intentan todas las limpiezas; si el sistema
-rechaza alguna, termina con código 1 e informa la primera ruta residual con
-`cannot remove file '<ruta>'`. La garantía de todo o nada requiere que los
-borrados funcionen, sin aislamiento ante reemplazos concurrentes. Destinos repetidos o existentes fallan sin
-sobrescribir, incluso si aparecieron durante la publicación. Los logs ya
-impresos permanecen en stdout. El contrato de escritura está en
+completo. Un error previo libera las partituras sin crear archivos. Si un
+archivo no se puede escribir, se borran los ya escritos del lote. Destinos
+repetidos o existentes fallan sin sobrescribir. Los logs ya impresos
+permanecen en stdout. El contrato de escritura está en
 `doc/stage-iii/salida.md`.
 
 ## Errores de ejecución
@@ -203,7 +199,6 @@ mensajes terminan con punto. Memoria insuficiente devuelve código 2.
 | Validación SATB | `parallel fifths`, `parallel octaves`, `voice crossing` o `tessitura`, seguido de `at chord N` |
 | Tempo | `tempo N is outside the export format's range` |
 | Escritura | `cannot write 'ruta'`; agrega `(destination already exists or is repeated)` si corresponde |
-| Limpieza de exportaciones | `cannot remove file 'ruta'` (pueden quedar otras rutas si también fallaron sus borrados) |
 | Más de 1000 llamadas | `procedure 'p' exceeds the maximum call depth of 1000` |
 | Pila de C | `the program nests too deeply for the available stack` |
 | Escritura de stdout | `cannot write the log output` |

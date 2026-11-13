@@ -1,0 +1,2 @@
+export C4 as midi to "pendiente.mid";
+define numero() -> integer { return 4; } chord acorde = invert {C4, E4, G4} by numero();

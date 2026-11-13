@@ -13,7 +13,12 @@ STATUS=0
 # A sanitizer report (memory error or leak) must not look like an expected rejection (status 1).
 export ASAN_OPTIONS="exitcode=86${ASAN_OPTIONS:+:$ASAN_OPTIONS}"
 
-echo "Compiler should accept (and run, when an expected output exists)..."
+ACCEPT_TOTAL=0
+ACCEPT_PASSED=0
+REJECT_TOTAL=0
+REJECT_PASSED=0
+
+echo "Compiler should accept and run..."
 echo ""
 
 ROOT_PATH="$PWD"
@@ -21,40 +26,50 @@ MUSIC_SOURCES="src/main/c/backend/music/Music.c src/main/c/backend/music/Note.c 
 OUTPUT_SOURCES="src/main/c/backend/output/Buffer.c src/main/c/backend/output/File.c src/main/c/backend/output/LilyPond.c src/main/c/backend/output/Midi.c src/main/c/backend/output/Score.c"
 TEST_DIRECTORY=$(mktemp -d)
 trap 'rm -rf "$TEST_DIRECTORY"' EXIT
-for test in $(ls src/test/c/accept/); do
+for source in src/test/c/accept/*.cad; do
+    test=${source##*/}
+    ACCEPT_TOTAL=$((ACCEPT_TOTAL + 1))
     TEST_WORK="$TEST_DIRECTORY/$test"
     mkdir "$TEST_WORK"
     EXPECTED_OUTPUT="$ROOT_PATH/src/test/c/output/${test%.cad}.out"
-    if [ -f "$EXPECTED_OUTPUT" ]; then
-        (cd "$TEST_WORK" && LOGGING_LEVEL=ERROR "$ROOT_PATH/.build/Flex-Bison-Compiler" < "$ROOT_PATH/src/test/c/accept/$test") > "$TEST_DIRECTORY/$test.out" 2>/dev/null
-        RESULT="$?"
-        if [ "$RESULT" == "0" ] && ! cmp -s "$TEST_DIRECTORY/$test.out" "$EXPECTED_OUTPUT"; then
-            echo -e "    $test, ${RED}but its output differs${OFF}"
-            STATUS=1
-            continue
-        fi
-        if [ -n "$(ls -A "$TEST_WORK")" ]; then
-            echo -e "    $test, ${RED}but it writes unexpected files${OFF}"
-            STATUS=1
-            continue
-        fi
-    else
-        (cd "$TEST_WORK" && "$ROOT_PATH/.build/Flex-Bison-Compiler" --check < "$ROOT_PATH/src/test/c/accept/$test") >/dev/null 2>&1
-        RESULT="$?"
+    EXPECTED_FILES="$ROOT_PATH/src/test/c/artifacts/${test%.cad}"
+    (cd "$TEST_WORK" && LOGGING_LEVEL=ERROR "$ROOT_PATH/.build/Flex-Bison-Compiler" < "$ROOT_PATH/$source") > "$TEST_DIRECTORY/$test.out" 2> "$TEST_DIRECTORY/$test.err"
+    RESULT=$?
+    if [ "$RESULT" != 0 ] || [[ "$(cat "$TEST_DIRECTORY/$test.err")" == *"Sanitizer"* ]]; then
+        echo -e "    $test, ${RED}but it rejects or the sanitizer reports an error${OFF} (status $RESULT)"
+        cat "$TEST_DIRECTORY/$test.err"
+        STATUS=1
+        continue
     fi
-	if [ "$RESULT" == "0" ]; then
-		echo -e "    $test, ${GREEN}and it does${OFF} (status $RESULT)"
-	else
-		STATUS=1
-		echo -e "    $test, ${RED}but it rejects${OFF} (status $RESULT)"
-	fi
+    if [ ! -f "$EXPECTED_OUTPUT" ]; then EXPECTED_OUTPUT=/dev/null; fi
+    if ! cmp -s "$TEST_DIRECTORY/$test.out" "$EXPECTED_OUTPUT"; then
+        echo -e "    $test, ${RED}but its output differs${OFF}"
+        diff -u "$EXPECTED_OUTPUT" "$TEST_DIRECTORY/$test.out"
+        STATUS=1
+        continue
+    fi
+    if [ -d "$EXPECTED_FILES" ]; then
+        if ! diff -r "$EXPECTED_FILES" "$TEST_WORK"; then
+            echo -e "    $test, ${RED}but its files differ${OFF}"
+            STATUS=1
+            continue
+        fi
+    elif [ -n "$(ls -A "$TEST_WORK")" ]; then
+        echo -e "    $test, ${RED}but it writes unexpected files${OFF}"
+        STATUS=1
+        continue
+    fi
+    ACCEPT_PASSED=$((ACCEPT_PASSED + 1))
+    echo -e "    $test, ${GREEN}and it does${OFF} (status $RESULT)"
 done
 echo ""
 
 echo "Compiler should reject..."
 echo ""
 
-for test in $(ls src/test/c/reject/); do
+for source in src/test/c/reject/*.cad; do
+    test=${source##*/}
+    REJECT_TOTAL=$((REJECT_TOTAL + 1))
     TEST_WORK="$TEST_DIRECTORY/reject-$test"
     mkdir "$TEST_WORK"
 	OUTPUT=$(cd "$TEST_WORK" && "$ROOT_PATH/.build/Flex-Bison-Compiler" < "$ROOT_PATH/src/test/c/reject/$test" 2>&1)
@@ -85,6 +100,24 @@ for test in $(ls src/test/c/reject/); do
         57-*) EXPECTED="parallel octaves at chord 2" ;;
         58-*) EXPECTED="voice crossing at chord 1" ;;
         59-*) EXPECTED="tessitura at chord 1" ;;
+        runtime-scale-index.cad) EXPECTED="index 7 is out of range for a scale of length 7" ;;
+        runtime-scale-degree.cad) EXPECTED="chord degree 8 must be between 1 and 7" ;;
+        runtime-progression-index.cad) EXPECTED="index 2 is out of range for a progression of length 2" ;;
+        runtime-strict-*.cad) EXPECTED="chord contains a note outside the strict key" ;;
+        runtime-invert-range.cad) EXPECTED="inversion is out of range" ;;
+        runtime-repeat-negative.cad) EXPECTED="repetition count cannot be negative" ;;
+        runtime-*transpose-range.cad) EXPECTED="transposition is out of range" ;;
+        runtime-check-computed.cad) EXPECTED="parallel fifths at chord 2" ;;
+        runtime-check-octaves.cad) EXPECTED="parallel octaves at chord 2" ;;
+        runtime-check-crossing.cad) EXPECTED="voice crossing at chord 1" ;;
+        runtime-voicing-tessitura.cad) EXPECTED="tessitura at chord 1" ;;
+        runtime-voicing-count.cad) EXPECTED="explicit voicing chords need four notes" ;;
+        runtime-voice-impossible.cad) EXPECTED="voice has too many notes" ;;
+        runtime-export-write.cad) EXPECTED="cannot write 'missing/salida.ly'" ;;
+        runtime-export-duplicate.cad) EXPECTED="destination already exists or is repeated" ;;
+        runtime-tempo*.cad|runtime-sheet-tempo.cad) EXPECTED="outside the export format's range" ;;
+        runtime-modulate-key.cad) EXPECTED="cannot modulate a progression without a known key" ;;
+        runtime-operand-cleanup.cad) EXPECTED="division by zero" ;;
         runtime-division-by-zero.cad) EXPECTED="Runtime error: division by zero." ;;
         runtime-overflow.cad) EXPECTED="integer overflow in 2147483647 + 1" ;;
         runtime-overflow-subtraction.cad) EXPECTED="integer overflow in -2147483647 - 2" ;;
@@ -112,6 +145,7 @@ for test in $(ls src/test/c/reject/); do
         continue
     fi
 	if [ "$RESULT" == "1" ]; then
+        REJECT_PASSED=$((REJECT_PASSED + 1))
 		echo -e "    $test, ${GREEN}and it does${OFF} (status $RESULT)"
 	else
 		STATUS=1
@@ -125,6 +159,14 @@ for expected in src/test/c/output/*.out; do
     name=$(basename "$expected" .out)
     if [ ! -f "src/test/c/accept/$name.cad" ]; then
         echo -e "    $name.out, ${RED}has no accept case${OFF}"
+        STATUS=1
+    fi
+done
+
+for artifacts in src/test/c/artifacts/*; do
+    name=${artifacts##*/}
+    if [ ! -f "src/test/c/accept/$name.cad" ]; then
+        echo -e "    $name artifacts, ${RED}has no accept case${OFF}"
         STATUS=1
     fi
 done
@@ -146,6 +188,15 @@ for program in "${ATOMIC_CASES[@]}"; do
         STATUS=1
     fi
 done
+
+echo "Checking frontend-only execution..."
+CHECK_WORK="$TEST_DIRECTORY/check-only"
+mkdir "$CHECK_WORK"
+(cd "$CHECK_WORK" && LOGGING_LEVEL=ERROR "$ROOT_PATH/.build/Flex-Bison-Compiler" --check < "$ROOT_PATH/src/test/c/accept/runtime-export-values.cad") > "$TEST_DIRECTORY/check-only.out" 2> "$TEST_DIRECTORY/check-only.err"
+if [ "$?" != 0 ] || [ -s "$TEST_DIRECTORY/check-only.out" ] || [ -s "$TEST_DIRECTORY/check-only.err" ] || [ -n "$(ls -A "$CHECK_WORK")" ]; then
+    echo -e "    frontend-only execution, ${RED}failed${OFF}"
+    STATUS=1
+fi
 
 echo "Checking log write failure..."
 LOG_FAILURE=$(cd "$RUNTIME_WORK" && LOGGING_LEVEL=ERROR "$ROOT_PATH/.build/Flex-Bison-Compiler" < "$ROOT_PATH/src/test/c/accept/log-text.cad" 2>&1 >/dev/full)
@@ -211,6 +262,14 @@ if ! cc -std=gnu99 src/test/c/music-voice-oom.c $MUSIC_SOURCES -Wl,--wrap=calloc
     STATUS=1
 fi
 rm -f "$VOICE_OOM_TEST"
+echo "Checking runtime allocation failure..."
+RUNTIME_OOM_TEST=$(mktemp)
+if ! cc -std=gnu99 -fsanitize=address src/test/c/runtime-oom.c src/main/c/backend/runtime/Runtime.c src/main/c/backend/runtime/Value.c src/main/c/backend/semantic-analysis/Semantic.c $MUSIC_SOURCES $OUTPUT_SOURCES -Wl,--wrap=malloc -Wl,--wrap=calloc -Wl,--wrap=realloc -o "$RUNTIME_OOM_TEST" || ! "$RUNTIME_OOM_TEST" 2>"$TEST_DIRECTORY/runtime-oom.err"; then
+    cat "$TEST_DIRECTORY/runtime-oom.err"
+    echo -e "    runtime allocation failure, ${RED}failed${OFF}"
+    STATUS=1
+fi
+rm -f "$RUNTIME_OOM_TEST"
 echo "Checking runtime values..."
 VALUE_TEST=$(mktemp)
 if ! cc -std=gnu99 -fsanitize=address src/test/c/runtime-value.c src/main/c/backend/runtime/Value.c $MUSIC_SOURCES -o "$VALUE_TEST" || ! "$VALUE_TEST"; then
@@ -274,5 +333,6 @@ if ! cc -std=gnu99 -fsanitize=address src/test/c/output-file.c $OUTPUT_SOURCES $
     STATUS=1
 fi
 rm -f "$FILE_TEST"
+echo "Suite: $ACCEPT_PASSED/$ACCEPT_TOTAL accept, $REJECT_PASSED/$REJECT_TOTAL reject; status $STATUS."
 echo "All done."
 exit $STATUS

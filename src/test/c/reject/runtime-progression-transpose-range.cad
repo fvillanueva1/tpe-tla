@@ -1,0 +1,2 @@
+export C4 as midi to "pendiente.mid";
+progression fuera = [{B8}] + M2;

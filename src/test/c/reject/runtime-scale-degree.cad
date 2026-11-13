@@ -1,0 +1,2 @@
+export C4 as midi to "pendiente.mid";
+define numero() -> integer { return 8; } key tonalidad = C major; chord acorde = triad on numero() of tonalidad;

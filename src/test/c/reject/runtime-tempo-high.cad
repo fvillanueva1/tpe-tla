@@ -1,0 +1,2 @@
+export C4 as midi to "pendiente.mid";
+define tempo() -> integer { return 60000001; } export C4 as midi to "tempo.mid" at tempo() bpm;

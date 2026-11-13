@@ -1,0 +1,6 @@
+chord acorde = {C4, E4, G4};
+export acorde as sheet to "antes.ly";
+acorde = {D4, F4, A4};
+export acorde as sheet to "despues.ly";
+integer[] tempos = [60000001];
+export C4 as sheet to "tempo.ly" at tempos[0] bpm;

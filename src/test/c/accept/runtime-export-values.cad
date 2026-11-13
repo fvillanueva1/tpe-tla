@@ -1,0 +1,21 @@
+define guardar(note nota) { export nota as midi to "nota.mid" at 100 bpm with flute; }
+key tonalidad = G major;
+scale escala = scale of tonalidad;
+chord acorde = {C4, E4, G4};
+progression tema = [I, V] in tonalidad;
+voicing voces = [{C5, G4, E4, C3}, {B4, G4, D4, G2}];
+progression arpegio = arpeggiate acorde as eighth;
+guardar(Cb4);
+export acorde as midi to "acorde.mid";
+export escala as sheet to "escala.ly";
+export tema as midi to "progresion.mid" at 90 bpm with violin;
+export voces as midi to "voces.mid";
+export voces as sheet to "voces.ly";
+export arpegio as midi to "arpegio.mid";
+export arpegio as sheet to "arpegio.ly";
+export [] as midi to "vacio.mid";
+export C4 as midi to "nota\\final.mid";
+if (true) { export C4 as sheet to "antes.ly"; }
+acorde = {D4, F4, A4};
+tema = tema * 0;
+log "exportado";

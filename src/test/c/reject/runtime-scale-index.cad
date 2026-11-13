@@ -1,0 +1,2 @@
+export C4 as midi to "pendiente.mid";
+define numero() -> integer { return 7; } key tonalidad = C major; note nota = (scale of tonalidad)[numero()];

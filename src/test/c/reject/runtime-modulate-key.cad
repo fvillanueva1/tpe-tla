@@ -1,0 +1,2 @@
+export C4 as midi to "pendiente.mid";
+progression tema = [{C4, E4, G4}]; progression puente = modulate tema to G major;

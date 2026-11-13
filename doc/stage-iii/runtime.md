@@ -96,14 +96,14 @@ agotar la memoria real.
 
 ## Tests
 
-`test.sh` ejecuta de verdad cada caso de `src/test/c/accept/` que tenga un
-`src/test/c/output/<caso>.out`, compara la salida estándar byte a byte y
-comprueba que no se escriba ningún archivo. Un `.out` sin caso de aceptación
-con el mismo nombre hace fallar la suite, así un error de nombre no deja el
-caso en `--check` sin aviso. Ningún rechazo puede dejar archivos en su
-directorio de trabajo. Los casos sin `.out` siguen con
-`--check`. Los rechazos `src/test/c/reject/runtime-*.cad` exigen el diagnóstico
-`Runtime error:` (y ningún `Semantic error:`), además del mensaje concreto.
+`test.sh` ejecuta todos los casos de `src/test/c/accept/` en directorios
+temporales. Compara stdout con `src/test/c/output/<caso>.out` (vacío si no
+hay `.out`) y los archivos con `src/test/c/artifacts/<caso>/`. Rechaza archivos
+inesperados, fixtures sin caso y reportes de AddressSanitizer. Los fixtures se
+construyen con `generate-runtime-goldens.py` desde eventos esperados sin invocar
+el compilador; no se regeneran en la suite. Ningún rechazo puede dejar archivos.
+Los casos `runtime-*` exigen el mensaje concreto, código 1 y `Runtime error:`
+sin `Semantic error:`. `--check` se prueba aparte: no imprime logs ni exporta.
 La garantía de exportación atómica se prueba con errores después de un
 `export`, también dentro de bloques y procedimientos: no queda ningún archivo
 y el `log "antes"` sigue en stdout.
@@ -157,3 +157,11 @@ completo. Un fallo previo libera las partituras sin escribir nada; un fallo
 de escritura revierte el lote y se informa como `cannot write 'ruta'`.
 Destinos repetidos o existentes fallan sin sobrescribir. MIDI exige de 4 a
 60000000 BPM; `sheet` admite cualquier entero positivo.
+
+`runtime-oom.c` falla por turno cada reserva de `malloc`, `calloc` y `realloc`
+de una ejecución con procedimientos, copias de progresiones y voicings,
+validaciones y nueve exportaciones. Exige código 2 y ningún archivo en cada
+fallo; AddressSanitizer verifica la liberación. Los rechazos musicales también
+encolan una exportación antes del error para comprobar el descarte del lote.
+El antiguo `semantic-loop-unknown` es ahora `runtime-loop-transpose-range`:
+un `while (false)` deja B8 sin modificar y la transposición posterior falla.

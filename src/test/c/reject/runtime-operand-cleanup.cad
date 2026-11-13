@@ -1,0 +1,2 @@
+export C4 as midi to "pendiente.mid";
+define fallar() -> interval { integer[] ceros = [0]; integer resultado = 1 / ceros[0]; return M2; } progression tema = ([I, V] in C major) + fallar();

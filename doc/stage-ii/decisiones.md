@@ -132,6 +132,10 @@ que `not a == b` es `not (a == b)`. Los relacionales no son asociativos:
 - `voice expresión as SATB` es una expresión con nodo `Voice` propio.
   `as` conserva su precedencia baja. La distribución efectiva, la minimización
   de movimientos y los rangos fijos de las voces se validan en Stage III.
+  `voice` respeta tesituras y evita cruces, pero no garantiza las demás reglas
+  de `check`: son operaciones independientes y un voicing generado puede no
+  pasar `check ... for parallel_fifths, parallel_octaves`
+  (ver `doc/stage-iii/musica.md`).
 
 ## Control de flujo y procedimientos
 

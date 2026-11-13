@@ -242,6 +242,14 @@ Los errores de memoria devuelven `MUSIC_NO_MEMORY`.
   un voicing. Siempre comprueba la tesitura y además las reglas pedidas;
   devuelve la primera violación y el índice del acorde.
 
+`voice` minimiza el movimiento de las voces, pero no aplica las reglas de
+`check`: un voicing generado puede contener quintas u octavas paralelas. Por
+ejemplo, `[I, vi, IV, V, I] in C major` produce octavas paralelas entre
+soprano y tenor en el paso V → I (B → C), que `check ... for parallel_octaves`
+rechaza. Tampoco prioriza la fundamental en el bajo, así que varios acordes
+quedan en segunda inversión. Cuando la conducción importa, conviene escribir
+un voicing explícito y validarlo con `check` (ver `demo/03-coral-a-mano.cad`).
+
 La semántica verifica en compilación los voicings explícitos de notas
 literales (directos o en una variable inmutable) con estas funciones. Así los
 casos 58 (cruce) y 59 (tesitura) pasaron de `pending/` a `reject/`.

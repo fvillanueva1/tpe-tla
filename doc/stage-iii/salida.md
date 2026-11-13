@@ -148,6 +148,21 @@ captura una partitura y solo al terminar sin errores entrega el lote a
 `outputWriteFilesWithCleanup`. No queda una ruta especial para escalas literales; los
 bytes MIDI de esas escalas siguen siendo los mismos. Ver `runtime.md`.
 
+## Abrir las salidas
+
+Un `.mid` no contiene audio grabado sino eventos: qué nota suena, cuándo,
+cuánto dura y con qué instrumento. Para escucharlo hace falta un sintetizador.
+MuseScore, libre y gratuito, abre el archivo, lo reproduce con su banco de
+sonidos y lo muestra como partitura. Desde el mismo programa se puede exportar
+a un formato de audio como MP3 (**File → Export**), para escucharlo en
+cualquier reproductor.
+
+Al importar un MIDI, MuseScore deduce los nombres de las voces y las claves a
+partir del instrumento, porque el archivo no los incluye. La partitura con una
+pauta y una clave por voz es la del `.ly`, que LilyPond convierte en PDF
+(`lilypond coro.ly`). Algunos reproductores, como VLC, necesitan que se
+configure una SoundFont (`.sf2`) para reproducir MIDI.
+
 ## Errores
 
 `OutputStatus`: `OUTPUT_OK`, `OUTPUT_INVALID_ARGUMENT`, `OUTPUT_NO_MEMORY`,

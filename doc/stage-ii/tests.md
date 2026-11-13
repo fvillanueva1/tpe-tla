@@ -116,7 +116,7 @@ Un alias tonal conserva su valor anterior cuando se reasigna la variable de orig
 
 Los rechazos de asignacion y operador verifican ademas los tipos incluidos en el diagnostico.
 
-La suite ejecuta todas las aceptaciones en directorios temporales: compara stdout con `src/test/c/output/<caso>.out` (vacío si falta) y los archivos con `src/test/c/artifacts/<caso>/`. Los rechazos también se ejecutan en directorios temporales y no pueden dejar archivos. `--check` se comprueba aparte y no tiene efectos de ejecución.
+La suite ejecuta todas las aceptaciones en directorios temporales: compara stdout con `src/test/c/output/<caso>.out` (vacío si falta) y los archivos con `src/test/c/artifacts/<caso>/`. Los rechazos también se ejecutan en directorios temporales y no pueden dejar archivos. `--check` se comprueba aparte y no tiene efectos de ejecución. Los fixtures `.ly` se fijan en LF en `.gitattributes` y ningún fixture usa caracteres inválidos en Windows (`runtime-export-values` prueba los escapes de la ruta con `nota\{final\}.mid`), para que el repositorio se pueda clonar y la comparación byte a byte pase desde cualquier sistema.
 
 La integracion MIDI comprueba tambien una escala declarada y exportada por nombre.
 
@@ -126,7 +126,7 @@ Las llamadas antes de la definicion se rechazan, tambien desde otro procedimient
 
 ## Runtime musical completo
 
-La suite tiene 102 aceptaciones y 142 rechazos. `runtime-musical-*` comprueba
+La suite tiene 106 aceptaciones y 155 rechazos. `runtime-musical-*` comprueba
 valores, comparaciones, propiedades, transformaciones, modulación y copias por
 valor de vectores de progresiones y voicings. `runtime-strict-scope` comprueba
 contexto tonal y restauración al salir de bloques. Los rechazos `runtime-*`

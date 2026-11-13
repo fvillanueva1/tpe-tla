@@ -102,6 +102,22 @@ el de los bloques locales del llamador. Sus parámetros o declaraciones de
 tonalidad pueden reemplazarlo. Estas reglas completan el contexto que el
 analizador deja desconocido ante control de flujo y llamadas.
 
+Los argumentos se evalúan y validan en el contexto `strict` del llamador,
+de izquierda a derecha. Ligar un parámetro `key ... strict` establece el
+contexto para las lecturas y expresiones del cuerpo; no revalida los otros
+argumentos al ligarlos ni cambia el contexto donde se evalúan. Por ejemplo,
+sin tonalidad estricta en el llamador:
+
+```cadence
+define aceptar(key contexto, chord acorde) { log "aceptado"; }
+aceptar(C major strict, {C#4, F4, G#4});
+```
+
+Imprime `aceptado`: el cuerpo no lee el acorde. Agregar `chord copia = acorde;`
+dentro del cuerpo falla con `chord contains a note outside the strict key`.
+Si el llamador tiene un contexto estricto, este valida los argumentos incluso
+cuando el parámetro de tonalidad del procedimiento sea no estricto.
+
 Se comprueba cada acorde evaluado, incluidos resultados calculados, lecturas
 de variables, argumentos, retornos, progresiones, vectores y voicings.
 Todas sus notas deben pertenecer a la tonalidad estricta vigente por clase de
@@ -176,18 +192,20 @@ de reserva; no se intenta agotar la memoria real con ASan.
 
 ## Tests
 
-`test.sh` ejecuta las 103 aceptaciones en directorios temporales. Compara
+`test.sh` ejecuta las 104 aceptaciones en directorios temporales. Compara
 stdout con `src/test/c/output/<caso>.out` (vacío si falta) y los archivos con
 `src/test/c/artifacts/<caso>/`. Falla ante archivos inesperados o fixtures sin
 caso. `generate-runtime-goldens.py` construye las referencias desde eventos
 esperados sin ejecutar Cadence; la suite nunca las regenera automáticamente.
 
-Los 150 rechazos exigen código 1 y ningún archivo. Los `runtime-*` exigen
+Los 151 rechazos exigen código 1 y ningún archivo. Los `runtime-*` exigen
 `Runtime error:`, sin `Semantic error:`, y el mensaje concreto. Los rechazos
 musicales encolan una exportación antes del error para comprobar el descarte.
 Los ocho casos `runtime-strict-interpolation-*` comprueban strings y `log`,
 con acordes, vectores de acordes y vectores de progresiones o voicings; un
 acorde cromático invalida la lectura y descarta también la exportación pendiente.
+La aceptación y el rechazo `runtime-strict-key-parameter` distinguen el paso
+de un acorde cromático a un parámetro `key` estricto de su lectura en el cuerpo.
 `runtime-loop-transpose-range`, antes `semantic-loop-unknown`, comprueba que
 un `while (false)` deja B8 sin modificar y falla al transponer después.
 

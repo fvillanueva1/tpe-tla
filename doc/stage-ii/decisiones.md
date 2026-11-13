@@ -230,8 +230,15 @@ del paso original; un acorde suelto exportado dura una negra.
 El runtime comprueba `strict` también al obtener acordes calculados,
 progresiones y voicings. Los parámetros de tonalidad establecen contexto en
 orden de la firma; un procedimiento hereda el contexto global existente al
-llamarlo. Los bloques no cambian el contexto exterior salvo que asignen su
-tonalidad vigente.
+llamarlo. Los argumentos se evalúan y validan de izquierda a derecha en el
+contexto estricto del llamador. Un parámetro `key ... strict` gobierna las
+lecturas dentro del cuerpo; no revalida los demás argumentos al ligarlos ni
+cambia su contexto de evaluación. Por eso `aceptar(C major strict,
+{C#4, F4, G#4})` puede imprimir `aceptado` si el llamador no es estricto y el
+cuerpo no lee el acorde; leerlo en el cuerpo sí falla. Un parámetro no estricto
+tampoco evita la validación de los argumentos en un llamador estricto.
+Los bloques no cambian el contexto exterior salvo que asignen su tonalidad
+vigente. Los ejemplos y las pruebas están en `doc/stage-iii/runtime.md`.
 
 Las listas de acordes adquieren su representación por el tipo esperado en
 inicializadores, asignaciones, argumentos y retornos: vector, progresión o

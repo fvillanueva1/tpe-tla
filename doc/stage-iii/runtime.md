@@ -119,3 +119,7 @@ por un rechazo esperado (código 1).
 `runtime-value.c` verifica copias independientes de progresiones dentro de
 vectores y de los dos arreglos de un voicing, liberación repetida e impresión
 con duraciones. Se ejecuta con AddressSanitizer.
+
+La prueba de recursión infinita acepta el límite de 1000 llamadas o la guarda
+de pila: el tamaño de los valores y la instrumentación de ASan determinan cuál
+se alcanza primero. La prueba con bloques anidados exige la guarda de pila.

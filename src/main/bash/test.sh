@@ -92,7 +92,12 @@ for test in $(ls src/test/c/reject/); do
         runtime-division-overflow.cad) EXPECTED="integer overflow in -2147483648 / -1" ;;
         runtime-index-range.cad) EXPECTED="index 3 is out of range for a vector of length 1" ;;
         runtime-negative-index.cad) EXPECTED="index -1 is out of range for a vector of length 1" ;;
-        runtime-call-depth.cad) EXPECTED="exceeds the maximum call depth of 1000" ;;
+        runtime-call-depth.cad)
+            if [[ "$OUTPUT" == *"the program nests too deeply for the available stack"* ]]; then
+                EXPECTED="the program nests too deeply for the available stack"
+            else
+                EXPECTED="exceeds the maximum call depth of 1000"
+            fi ;;
         runtime-stack-depth.cad) EXPECTED="the program nests too deeply for the available stack" ;;
         *) EXPECTED="" ;;
     esac

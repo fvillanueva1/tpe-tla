@@ -1,9 +1,9 @@
 # Runtime de Cadence
 
 El compilador interpreta el AST: no genera otro programa. Después de
-`analyzeSemantics`, `executeGenerator` prueba primero la exportación literal de
-escalas (`exportLiteralScale`) y, si no aplica, ejecuta el programa con el
-runtime de `src/main/c/backend/runtime/`.
+`analyzeSemantics`, `executeGenerator` ejecuta el programa por una única ruta:
+`executeProgram` en `src/main/c/backend/runtime/`. La exportación de escalas
+usa las mismas funciones de salida y conserva los bytes MIDI anteriores.
 
 ## Módulos
 
@@ -30,12 +30,9 @@ Enteros, booleanos, strings, duraciones y sus vectores, declaraciones,
 asignaciones, aritmética, lógica, comparaciones, índices, `if` / `else if` /
 `else`, `while`, `for`, procedimientos y `log`.
 
-Antes de ejecutar, `runtimeSupports` recorre todo el programa. Si aparece una
-construcción que el runtime todavía no ejecuta (notas, tonalidades, acordes,
-`voice`, `check`, `export` de valores calculados), el compilador falla con
-*"Code generation is not implemented for this program"* sin ejecutar nada, así
-no deja efectos parciales. Esa lista se amplía a medida que la biblioteca
-musical esté disponible.
+Las expresiones musicales, `strict`, `voice`, `check` y `export` se evalúan
+en la misma ejecución que el control de flujo y los procedimientos. No existe
+un recorrido que rechace construcciones musicales antes de ejecutar.
 
 ## Semántica de ejecución
 
@@ -107,11 +104,9 @@ caso en `--check` sin aviso. Ningún rechazo puede dejar archivos en su
 directorio de trabajo. Los casos sin `.out` siguen con
 `--check`. Los rechazos `src/test/c/reject/runtime-*.cad` exigen el diagnóstico
 `Runtime error:` (y ningún `Semantic error:`), además del mensaje concreto.
-Para la garantía de no ejecutar nada, `test.sh` corre programas que empiezan
-con `log "antes";` y tienen una nota dentro de un `if`, un `while`, un `for`,
-el cuerpo de un procedimiento, un parámetro, el tipo de retorno o un
-argumento: exige la salida estándar vacía y el mensaje de generación no
-implementada.
+La garantía de exportación atómica se prueba con errores después de un
+`export`, también dentro de bloques y procedimientos: no queda ningún archivo
+y el `log "antes"` sigue en stdout.
 `test.sh` cambia el código de salida de AddressSanitizer a 86 y rechaza
 cualquier reporte del sanitizador, así un error de memoria o una fuga no pasa
 por un rechazo esperado (código 1).
@@ -127,8 +122,7 @@ se alcanza primero. La prueba con bloques anidados exige la guarda de pila.
 El evaluador musical ya resuelve literales de nota, intervalo y tonalidad,
 relaciones tonales, escalas, acordes por notas o grados, propiedades,
 comparaciones por altura/semitonos e índices de escalas. Los grados enteros
-son de 1 a 7; los índices siguen siendo de base cero. La integración con el
-generador permanece detrás del recorrido de soporte hasta completar la salida.
+son de 1 a 7; los índices siguen siendo de base cero. Todas estas expresiones se ejecutan desde el generador común.
 
 Las listas de acordes se convierten a progresión al inicializar, asignar,
 pasar un argumento o devolver ese tipo. También se convierten al concatenar,

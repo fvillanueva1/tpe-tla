@@ -61,7 +61,9 @@ comprueba valores.
   y desigualdad. No se compara la representación binaria de las estructuras.
 - **Strings y `log`:** los escapes `\"`, `\\`, `\{`, `\}`, `\n`, `\t` se
   decodifican al evaluar. Cada `{variable}` toma el valor actual. Un string
-  guardado no cambia al reasignar después una variable interpolada. `log`
+  guardado no cambia al reasignar después una variable interpolada. La lectura
+  interpolada aplica el mismo contexto `strict` que una expresión de variable,
+  también dentro de vectores, progresiones y voicings. `log`
   agrega un salto de línea y comprueba la escritura de stdout.
 
 Las notas se imprimen con su grafía; los intervalos, modos y calidades, por
@@ -180,9 +182,12 @@ stdout con `src/test/c/output/<caso>.out` (vacío si falta) y los archivos con
 caso. `generate-runtime-goldens.py` construye las referencias desde eventos
 esperados sin ejecutar Cadence; la suite nunca las regenera automáticamente.
 
-Los 142 rechazos exigen código 1 y ningún archivo. Los `runtime-*` exigen
+Los 150 rechazos exigen código 1 y ningún archivo. Los `runtime-*` exigen
 `Runtime error:`, sin `Semantic error:`, y el mensaje concreto. Los rechazos
 musicales encolan una exportación antes del error para comprobar el descarte.
+Los ocho casos `runtime-strict-interpolation-*` comprueban strings y `log`,
+con acordes, vectores de acordes y vectores de progresiones o voicings; un
+acorde cromático invalida la lectura y descarta también la exportación pendiente.
 `runtime-loop-transpose-range`, antes `semantic-loop-unknown`, comprueba que
 un `while (false)` deja B8 sin modificar y falla al transponer después.
 

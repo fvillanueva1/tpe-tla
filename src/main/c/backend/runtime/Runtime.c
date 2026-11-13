@@ -111,6 +111,7 @@ static bool _checkStack(Runtime * runtime) {
 /* EXPRESSIONS */
 
 static bool _evaluate(Runtime * runtime, RuntimeScope * scope, const Expression * expression, Value * result);
+static bool _validateStrict(Runtime * runtime, RuntimeScope * scope, const Value * value);
 static bool _call(Runtime * runtime, RuntimeScope * scope, const ProcedureCall * call, Value * result);
 static Flow _executeStatements(Runtime * runtime, RuntimeScope * scope, const StatementList * list);
 
@@ -141,6 +142,11 @@ static bool _interpolate(Runtime * runtime, RuntimeScope * scope, const StringPa
 			if (binding == NULL) {
 				free(buffer.text);
 				return _error(runtime, "variable '%s' has no value", part->text);
+			}
+			/* Interpolation reads the binding just like a variable expression. */
+			if (!_validateStrict(runtime, scope, &binding->value)) {
+				free(buffer.text);
+				return false;
 			}
 			ok = appendValue(&buffer, &binding->value);
 		}

@@ -1,0 +1,6 @@
+export C4 as midi to "pendiente.mid";
+progression diatonica = [{C4, E4, G4}];
+progression cromatica = [{C#4, F4, G#4}];
+progression[] progresiones = [diatonica, cromatica];
+key contexto = C major strict;
+log "prefijo {progresiones} sufijo";

@@ -1,0 +1,27 @@
+// Demo de Cadence: una progresión pop en Do mayor, armonizada a cuatro voces.
+key tonalidad = C major;
+progression estrofa = [I, vi, IV, V] in tonalidad;
+progression cierre = [IV, V, I] in tonalidad;
+progression tema = (estrofa * 2) + cierre;
+
+integer acordes = tema.length;
+log "El tema tiene {acordes} acordes: {tema}";
+
+// Distribución SATB automática y control de conducción de voces.
+voicing coro = voice tema as SATB;
+// "voice" minimiza el movimiento pero no evita paralelas: con parallel_octaves este tema falla en el acorde 4.
+check coro for voice_crossing;
+log "Voces: {coro}";
+
+// El mismo tema un tono más arriba, y un arpegio para terminar.
+progression enRe = tema + M2;
+progression arpegio = arpeggiate {C4, E4, G4, C5} as eighth;
+
+for vuelta = 1 to 3 {
+    log "vuelta {vuelta}";
+}
+
+export coro as midi to "coro.mid" at 90 bpm with choir_aahs;
+export coro as sheet to "coro.ly" at 90 bpm;
+export enRe as midi to "en-re.mid" at 110 bpm with piano;
+export arpegio as midi to "arpegio.mid" with orchestral_harp;

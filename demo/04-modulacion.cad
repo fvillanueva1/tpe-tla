@@ -1,0 +1,13 @@
+// Una cadencia ii–V–I que recorre varias tonalidades con un procedimiento.
+define cadencia(key tonalidad) -> progression {
+    return [ii, V, I] in tonalidad;
+}
+key inicio = C major;
+progression viaje = cadencia(inicio) + cadencia(dominant of inicio);
+viaje = viaje + cadencia(subdominant of inicio);
+progression menor = modulate cadencia(inicio) to A minor;
+progression completo = viaje + menor;
+log "Viaje: {completo}";
+integer cantidad = completo.length;
+log "Acordes: {cantidad}";
+export completo as midi to "modulacion.mid" at 100 bpm with electric_grand_piano;

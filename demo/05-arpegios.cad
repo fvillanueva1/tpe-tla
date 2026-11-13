@@ -1,0 +1,14 @@
+// Acordes de séptima y novena arpegiados en semicorcheas, como un patrón de arpa.
+key tonalidad = F major;
+chord uno = ninth on I of tonalidad;
+chord seis = seventh on vi of tonalidad;
+chord dos = seventh on ii of tonalidad;
+chord cinco = seventh on V of tonalidad;
+progression patron = arpeggiate uno as sixteenth;
+patron = patron + arpeggiate seis as sixteenth;
+patron = patron + arpeggiate dos as sixteenth;
+patron = patron + arpeggiate cinco as sixteenth;
+progression final = patron * 2 + arpeggiate {F4, A4, C5, F5} as quarter;
+log "I9 = {uno}, vi7 = {seis}, ii7 = {dos}, V7 = {cinco}";
+export final as midi to "arpegios.mid" at 80 bpm with orchestral_harp;
+export final as sheet to "arpegios.ly" at 80 bpm;

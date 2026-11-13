@@ -1,0 +1,4 @@
+// Error a propósito: en Do mayor estricto no entra el G# de la dominante secundaria.
+key tonalidad = C major strict;
+progression tema = [I, vi] in tonalidad;
+chord dominanteSecundaria = {E4, G#4, B4};

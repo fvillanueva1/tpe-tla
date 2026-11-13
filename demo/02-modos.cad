@@ -1,0 +1,14 @@
+// La misma tónica en distintos modos: cada escala suena con otro color.
+scale mayor = scale of D major;
+scale dorica = scale of D dorian;
+scale frigia = scale of D phrygian;
+scale lidia = scale of D lydian;
+log "Re mayor:  {mayor}";
+log "Re dórico: {dorica}";
+log "Re frigio: {frigia}";
+log "Re lidio:  {lidia}";
+export mayor as midi to "re-mayor.mid" with piano;
+export dorica as midi to "re-dorico.mid" with flute;
+export frigia as midi to "re-frigio.mid" with acoustic_guitar_nylon;
+export lidia as midi to "re-lidio.mid" with vibraphone;
+export frigia as sheet to "re-frigio.ly";

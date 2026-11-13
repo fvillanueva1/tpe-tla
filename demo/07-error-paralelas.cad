@@ -1,0 +1,4 @@
+// Error a propósito: soprano y bajo suben en quintas paralelas (C–F y D–G).
+voicing coral = [{C5, G4, E4, F3}, {D5, B4, G4, G3}];
+check coral for parallel_fifths;
+export coral as midi to "nunca.mid";

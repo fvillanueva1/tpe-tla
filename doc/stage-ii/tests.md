@@ -142,6 +142,9 @@ escalas, acordes, progresiones, arpegios, cuatro canales SATB, tempo,
 instrumento, vacíos, rutas con escapes y capturas previas a reasignaciones.
 No se regeneran durante la suite. Una salida inesperada hace fallar el caso.
 
+Los programas de `demo/` son ejemplos para mostrar el lenguaje y no forman
+parte de la suite: `test.sh` no los recorre y sus salidas no se versionan.
+
 `runtime-value.c` comprueba copia profunda y liberación; `runtime-oom.c` fuerza
 cada reserva directa de una ejecución con nueve exportaciones, exige código 2
 y ningún archivo, y corre con ASan. Los errores posteriores a `export`

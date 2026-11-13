@@ -129,6 +129,15 @@ Con `--check` solo se valida y no se escribe ningún archivo.
 Se usa `voces` porque `v` es un grado reservado. La comparación se escribe
 `==`, la cuarta aumentada `aug4` y los grados disminuidos con sufijo `dim`.
 
+## Demo
+
+[`demo/`](demo/README.md) tiene siete programas para mostrar el lenguaje:
+armonización SATB, modos, un coral escrito voz por voz, modulación con
+procedimientos, arpegios y dos errores a propósito. Se corren todos con
+`docker compose run --rm compiler bash -lc 'bash demo/demo.sh'`. Cómo escuchar
+los `.mid` y ver los `.ly` está en
+[salida.md](doc/stage-iii/salida.md#abrir-las-salidas).
+
 ## Feedback y siguientes etapas
 
 La licencia incluye a los tres integrantes, la documentación vive en `doc/`

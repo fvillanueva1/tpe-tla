@@ -1,0 +1,7 @@
+// Cadencia I–IV–V–I escrita voz por voz (soprano, alto, tenor, bajo).
+// A diferencia de "voice", acá las voces las elige el compositor y check las valida.
+voicing coral = [{C5, G4, E4, C3}, {C5, A4, F4, F3}, {B4, G4, D4, G3}, {C5, G4, E4, C3}];
+check coral for parallel_fifths, parallel_octaves, voice_crossing;
+log "Coral válido: {coral}";
+export coral as midi to "coral.mid" at 70 bpm with church_organ;
+export coral as sheet to "coral.ly" at 70 bpm;

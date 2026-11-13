@@ -97,6 +97,11 @@ for test in $(ls src/test/c/reject/); do
         STATUS=1
         continue
     fi
+    if [ -n "$(ls -A "$TEST_WORK")" ]; then
+        echo -e "    $test, ${RED}but it leaves files behind${OFF}"
+        STATUS=1
+        continue
+    fi
 	if [ "$RESULT" == "1" ]; then
 		echo -e "    $test, ${GREEN}and it does${OFF} (status $RESULT)"
 	else
@@ -105,6 +110,15 @@ for test in $(ls src/test/c/reject/); do
 	fi
 done
 echo ""
+
+echo "Checking expected outputs..."
+for expected in src/test/c/output/*.out; do
+    name=$(basename "$expected" .out)
+    if [ ! -f "src/test/c/accept/$name.cad" ]; then
+        echo -e "    $name.out, ${RED}has no accept case${OFF}"
+        STATUS=1
+    fi
+done
 
 echo "Checking unsupported generation..."
 UNSUPPORTED_WORK="$TEST_DIRECTORY/unsupported"

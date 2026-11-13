@@ -44,6 +44,8 @@ bool copyValue(const Value * source, Value * target) {
 		target->vector.count = source->vector.count;
 		return true;
 	}
+	if (source->type == TYPE_PROGRESSION) return musicProgressionCopy(&source->progression, &target->progression);
+	if (source->type == TYPE_VOICING) return musicVoicingCopy(&source->voicing, &target->voicing);
 	if (source->type == TYPE_STRING) {
 		target->string = strdup(source->string);
 		return target->string != NULL;
@@ -58,6 +60,8 @@ void destroyValue(Value * value) {
 		value->vector.items = NULL;
 		value->vector.count = 0;
 	}
+	else if (value->type == TYPE_PROGRESSION) musicProgressionDestroy(&value->progression);
+	else if (value->type == TYPE_VOICING) musicVoicingDestroy(&value->voicing);
 	else if (value->type == TYPE_STRING) {
 		free(value->string);
 		value->string = NULL;
@@ -79,6 +83,16 @@ bool appendText(TextBuffer * buffer, const char * text, size_t length) {
 	return true;
 }
 
+static bool appendNotes(TextBuffer * buffer, const MusicNote * notes, size_t count, bool chord) {
+	if (!appendText(buffer, chord ? "{" : "[", 1)) return false;
+	for (size_t k = 0; k < count; ++k) {
+		char text[MUSIC_NOTE_TEXT_SIZE];
+		musicFormatNote(notes[k], text);
+		if ((k && !appendText(buffer, ", ", 2)) || !appendText(buffer, text, strlen(text))) return false;
+	}
+	return appendText(buffer, chord ? "}" : "]", 1);
+}
+
 bool appendValue(TextBuffer * buffer, const Value * value) {
 	if (value->isVector) {
 		if (!appendText(buffer, "[", 1)) return false;
@@ -88,9 +102,68 @@ bool appendValue(TextBuffer * buffer, const Value * value) {
 		}
 		return appendText(buffer, "]", 1);
 	}
-	char number[16];
+	char number[64];
 	const char * text;
 	switch (value->type) {
+		case TYPE_NOTE:
+			musicFormatNote(value->note, number);
+			text = number;
+			break;
+		case TYPE_INTERVAL: {
+			static const char * names[] = {"P1", "P4", "P5", "P8", "m2", "m3", "m6", "m7", "M2", "M3", "M6", "M7", "d5", "aug4"};
+			text = "?";
+			for (size_t k = 0; k < sizeof(names) / sizeof(names[0]); ++k) {
+				MusicInterval interval;
+				musicParseInterval(names[k], &interval);
+				if (interval.steps == value->interval.steps && interval.semitones == value->interval.semitones) { text = names[k]; break; }
+			}
+			break;
+		}
+		case TYPE_KEY: {
+			MusicNote tonic;
+			musicKeyTonic(value->key, &tonic);
+			char note[MUSIC_NOTE_TEXT_SIZE];
+			musicFormatNote(tonic, note);
+			/* A key has no octave; its tonic is always written in octave four. */
+			note[strlen(note) - 1] = '\0';
+			snprintf(number, sizeof(number), "%s %s%s", note, musicModeName(value->key.mode), value->key.strict ? " strict" : "");
+			text = number;
+			break;
+		}
+		case TYPE_SCALE:
+			return appendNotes(buffer, value->scale.notes, 7, false);
+		case TYPE_CHORD:
+			return appendNotes(buffer, value->chord.notes, value->chord.count, true);
+		case TYPE_PROGRESSION:
+		case TYPE_VOICING: {
+			if (!appendText(buffer, "[", 1)) return false;
+			size_t count = value->type == TYPE_PROGRESSION ? value->progression.count : value->voicing.count;
+			for (size_t k = 0; k < count; ++k) {
+				if (k && !appendText(buffer, ", ", 2)) return false;
+				MusicDuration duration;
+				if (value->type == TYPE_PROGRESSION) {
+					const MusicStep * step = &value->progression.steps[k];
+					if (!appendNotes(buffer, step->chord.notes, step->chord.count, true)) return false;
+					duration = step->duration;
+				} else {
+					MusicNote notes[VOICE_COUNT];
+					for (size_t v = 0; v < VOICE_COUNT; ++v) musicNoteFromPitch(value->voicing.chords[k][v], &notes[v]);
+					if (!appendNotes(buffer, notes, VOICE_COUNT, true)) return false;
+					duration = value->voicing.durations[k];
+				}
+				if (duration != MUSIC_DEFAULT_DURATION) {
+					const char * name = musicDurationName(duration);
+					if (!appendText(buffer, " as ", 4) || !appendText(buffer, name, strlen(name))) return false;
+				}
+			}
+			return appendText(buffer, "]", 1);
+		}
+		case VALUE_QUALITY:
+			text = musicQualityName(value->quality);
+			break;
+		case VALUE_MODE:
+			text = musicModeName(value->mode);
+			break;
 		case TYPE_INTEGER:
 			snprintf(number, sizeof(number), "%d", value->integer);
 			text = number;

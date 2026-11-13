@@ -10,8 +10,12 @@ runtime de `src/main/c/backend/runtime/`.
 - `Value.h` / `Value.c`: el valor de ejecución y el entorno. Un `Value` lleva
   su `DataType` (o el de sus elementos, si es vector) y una unión con el entero,
   el booleano, la duración, el string ya decodificado o el arreglo de elementos.
-  Los tipos musicales se agregan cuando `backend/music/Music.h` defina su
-  representación. Las copias son profundas.
+  Incluye las estructuras de `Music.h` para notas, intervalos, tonalidades,
+  escalas, acordes, progresiones y voicings. Las copias son profundas, también
+  para los arreglos de progresiones y voicings dentro de vectores.
+  Calidad y modo son tipos internos de expresión. Las notas conservan su
+  grafía al imprimir; acordes usan llaves y escalas, progresiones y voicings
+  usan corchetes. Una duración distinta de negra se muestra con `as duración`.
 - `RuntimeScope`: lista de variables con puntero al alcance padre. La búsqueda
   va del alcance más interno al global, con las mismas reglas de ocultamiento
   que la semántica (`doc/stage-ii/semantica.md`).
@@ -111,3 +115,7 @@ implementada.
 `test.sh` cambia el código de salida de AddressSanitizer a 86 y rechaza
 cualquier reporte del sanitizador, así un error de memoria o una fuga no pasa
 por un rechazo esperado (código 1).
+
+`runtime-value.c` verifica copias independientes de progresiones dentro de
+vectores y de los dos arreglos de un voicing, liberación repetida e impresión
+con duraciones. Se ejecuta con AddressSanitizer.

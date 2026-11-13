@@ -2,13 +2,13 @@
 #define VALUE_HEADER
 
 #include "../../frontend/syntactic-analysis/AbstractSyntaxTree.h"
+#include "../music/Music.h"
 #include <stdbool.h>
 #include <stddef.h>
 
 /**
  * Runtime values. "type" is the DataType of the value or, for a vector, the
- * DataType of its elements. The musical types are added as the music library
- * (backend/music/Music.h) provides their representation.
+ * DataType of its elements. Quality and mode are internal expression types.
  */
 
 /** Note lengths, ordered from the longest to the shortest. */
@@ -20,15 +20,27 @@ typedef enum {
 	DURATION_SIXTEENTH
 } Duration;
 
+/* Internal expression types, which cannot be declared as standalone variables. */
+enum { VALUE_QUALITY = TYPE_DURATION + 1, VALUE_MODE };
+
 typedef struct Value Value;
 
 struct Value {
-	DataType type;
+	int type;
 	bool isVector;
 	union {
 		int integer;
 		bool boolean;
 		Duration duration;
+		MusicNote note;
+		MusicInterval interval;
+		MusicKey key;
+		MusicScale scale;
+		MusicChord chord;
+		MusicProgression progression;
+		MusicVoicing voicing;
+		MusicQuality quality;
+		MusicMode mode;
 		/* Owned, NUL-terminated and already decoded (escapes and interpolations). */
 		char * string;
 		struct {

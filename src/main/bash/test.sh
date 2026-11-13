@@ -217,6 +217,13 @@ if ! cc -std=gnu99 src/test/c/music-voice-oom.c $MUSIC_SOURCES -Wl,--wrap=calloc
     STATUS=1
 fi
 rm -f "$VOICE_OOM_TEST"
+echo "Checking runtime values..."
+VALUE_TEST=$(mktemp)
+if ! cc -std=gnu99 -fsanitize=address src/test/c/runtime-value.c src/main/c/backend/runtime/Value.c $MUSIC_SOURCES -o "$VALUE_TEST" || ! "$VALUE_TEST"; then
+    echo -e "    runtime values, ${RED}failed${OFF}"
+    STATUS=1
+fi
+rm -f "$VALUE_TEST"
 echo "Checking music model..."
 MODEL_TEST=$(mktemp)
 if ! cc -std=gnu99 -fsanitize=address src/test/c/music-model.c $MUSIC_SOURCES -Wl,--wrap=calloc -o "$MODEL_TEST" || ! "$MODEL_TEST"; then

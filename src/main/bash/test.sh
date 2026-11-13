@@ -113,6 +113,25 @@ if [[ "$UNSUPPORTED_RESULT" != 1 || "$UNSUPPORTED_OUTPUT" != *"Code generation i
     echo -e "    unsupported generation, ${RED}failed${OFF}"
     STATUS=1
 fi
+# The runtime must reject a program before running any of it, wherever the unsupported construct appears.
+UNSUPPORTED_CASES=(
+    'if (true) { note nota = C4; }'
+    'while (false) { note nota = C4; }'
+    'for contador = 1 to 0 { note nota = C4; }'
+    'define p() { note nota = C4; }'
+    'define p(note nota) { }'
+    'define p() -> note { return p(); }'
+    'define p(boolean b) { } p(E4 in scale of C major);'
+)
+for program in "${UNSUPPORTED_CASES[@]}"; do
+    printf 'log "antes";\n%s\n' "$program" > "$UNSUPPORTED_WORK/case.cad"
+    UNSUPPORTED_STDOUT=$(cd "$UNSUPPORTED_WORK" && LOGGING_LEVEL=ERROR "$ROOT_PATH/.build/Flex-Bison-Compiler" < case.cad 2>"$UNSUPPORTED_WORK/case.err")
+    UNSUPPORTED_RESULT=$?
+    if [[ "$UNSUPPORTED_RESULT" != 1 || -n "$UNSUPPORTED_STDOUT" || "$(cat "$UNSUPPORTED_WORK/case.err")" != *"Code generation is not implemented"* ]]; then
+        echo -e "    unsupported generation ($program), ${RED}ran part of the program${OFF}"
+        STATUS=1
+    fi
+done
 
 echo "Checking log write failure..."
 LOG_FAILURE=$(cd "$UNSUPPORTED_WORK" && LOGGING_LEVEL=ERROR "$ROOT_PATH/.build/Flex-Bison-Compiler" < "$ROOT_PATH/src/test/c/accept/log-text.cad" 2>&1 >/dev/full)

@@ -57,17 +57,12 @@ comprueba valores.
   evalúan en el alcance del llamador y se pasan por valor, vectores incluidos.
   El cuerpo ve y puede modificar globales; no hereda las variables locales del
   llamador. La profundidad máxima es `RUNTIME_MAX_CALL_DEPTH` (1000).
-  Además se limita el uso de pila de C a la mitad de `RLIMIT_STACK`, tomando
-  como máximo un límite de 8 MB. Según el tamaño del cuerpo y la instrumentación
-  de AddressSanitizer, la guarda de pila puede alcanzarse antes de 1000 llamadas
-  con muchos bloques anidados. En el contenedor de pruebas (GCC 14.2.0,
-  AArch64, `-O3 -fsanitize=address`, pila de 8 MB), la cuenta descendente desde
-  999 termina correctamente, también con dos `if` anidados en cada llamada:
-  son 1000 llamadas activas, contando el caso base. Antes de reducir `Value`,
-  los máximos eran 661 y 300 respectivamente. Con `-fstack-usage`, `_execute`
-  baja de 3792 a 960 bytes, `_evaluateUnchecked` de 1680 a 720 y `_call` de
-  848 a 464. Los helpers de exportación, `for` e índices evitan que GCC
-  reserve sus temporales en todos los frames recursivos.
+  Como el intérprete es recursivo, además corta con un error si el uso de la
+  pila de C supera la mitad del límite del sistema (como máximo 8 MB). Así un
+  programa con muchos bloques anidados termina con un mensaje en lugar de
+  caerse. Para que 1000 llamadas entren en la pila, acordes y escalas se
+  guardan fuera del `Value` y algunas funciones auxiliares no se integran en
+  las recursivas (`noinline`).
 - **Comparaciones:** notas por altura MIDI (`C#4 == Db4`), intervalos por
   semitonos (`aug4 == d5`), enteros por valor; modo y calidad admiten igualdad
   y desigualdad. No se compara la representación binaria de las estructuras.
@@ -241,7 +236,7 @@ límite de 1000 llamadas. `runtime-recursion-depth` exige que la cuenta desde
 999 imprima cero, tanto directa como con dos `if` anidados. La prueba con
 veinte bloques anidados exige la guarda de pila.
 
-`runtime-value.c` limita el tamaño de `Value` y comprueba copias independientes
+`runtime-value.c` comprueba copias independientes
 de acordes, escalas, progresiones dentro de vectores y los dos arreglos de un
 voicing, además de liberación repetida.
 

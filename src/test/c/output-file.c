@@ -170,7 +170,7 @@ static void files(void) {
     assert(fread(data, 1, sizeof(data), file) == expected.length && !memcmp(data, expected.data, expected.length));
     fclose(file);
 
-    /* All or nothing: a file that cannot be written leaves none of the others nor temporaries. */
+    /* All or nothing: a file that cannot be written leaves none of the others. */
     size_t failed = 99;
     OutputFile batch[] = {{&score, OUTPUT_FORMAT_MIDI, path("b.mid")}, {&score, OUTPUT_FORMAT_LILYPOND, path("missing/c.ly")}};
     assert(outputWriteFiles(batch, 2, &failed) == OUTPUT_WRITE_ERROR && failed == 1 && entries() == 1);

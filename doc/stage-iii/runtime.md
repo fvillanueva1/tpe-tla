@@ -13,8 +13,7 @@ booleanos, strings, duraciones, notas, intervalos, tonalidades, escalas,
 acordes, progresiones y voicings, y sus vectores. Nota, intervalo y tonalidad
 usan estructuras pequeñas de `Music.h`. Escalas y acordes poseen un puntero a
 su estructura en el heap; progresiones y voicings poseen sus arreglos.
-Así `sizeof(Value)` es 32 bytes en el contenedor de pruebas de 64 bits, en lugar
-de 184. Las copias de escalas y acordes también reservan su propio payload. Calidad y modo son tipos internos
+Las copias de escalas y acordes también reservan su propio payload. Calidad y modo son tipos internos
 de expresión; los grados literales se evalúan como enteros de 1 a 7.
 
 Las copias son profundas, también para progresiones y voicings dentro de

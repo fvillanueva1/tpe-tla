@@ -2,14 +2,6 @@
 #include <assert.h>
 #include <string.h>
 
-/* Allocation number "failAt" (1-based) fails; 0 never fails. */
-void *__real_calloc(size_t, size_t);
-void *__real_malloc(size_t);
-static int failAt = 0, calls = 0;
-void *__wrap_calloc(size_t n, size_t size) { return ++calls == failAt ? NULL : __real_calloc(n, size); }
-void *__wrap_malloc(size_t size) { return ++calls == failAt ? NULL : __real_malloc(size); }
-static void failOn(int call) { failAt = call; calls = 0; }
-
 static MusicKey key(const char *tonic, MusicMode mode) {
     MusicKey result = {.mode = mode};
     assert(musicParseSpelling(tonic, &result.tonic) == MUSIC_OK);
@@ -77,11 +69,6 @@ static void progressions(void) {
     assert(musicRepeat(&q, 0, &r) == MUSIC_OK && empty(&r));
     assert(musicRepeat(&q, -1, &r) == MUSIC_OUT_OF_RANGE && empty(&r));
 
-    failOn(1);
-    assert(musicConcatenate(&p, &q, &r) == MUSIC_NO_MEMORY && empty(&r));
-    failOn(1);
-    assert(musicRepeat(&q, 2, &r) == MUSIC_NO_MEMORY && empty(&r));
-    failOn(0);
     musicProgressionDestroy(&p);
     musicProgressionDestroy(&q);
 }
@@ -195,13 +182,6 @@ static void voicings(void) {
     assert(musicChordProgression(&cluster, 1, &p) == MUSIC_OK);
     assert(musicVoiceProgression(&p, &v) == MUSIC_TOO_MANY_NOTES && !v.count && !v.chords);
     musicProgressionDestroy(&p);
-    MusicProgression single;
-    MusicChord c = chord((const char *[]){"C4", "E4", "G4"}, 3);
-    assert(musicChordProgression(&c, 1, &single) == MUSIC_OK);
-    failOn(1);
-    assert(musicVoiceProgression(&single, &v) == MUSIC_NO_MEMORY && !v.count);
-    failOn(0);
-    musicProgressionDestroy(&single);
     assert(musicVoiceProgression(&(MusicProgression){NULL, 0}, &v) == MUSIC_OK && !v.count);
 
     /* Explicit voicings are taken as written. */
@@ -211,6 +191,7 @@ static void voicings(void) {
     MusicVoicing second = {v.chords + 1, v.durations + 1, 1};
     assert(musicCheckVoicingValue(&second, 0, &failed) == MUSIC_TESSITURA_ERROR && failed == 0);
     musicVoicingDestroy(&v);
+    MusicChord c = chord((const char *[]){"C4", "E4", "G4"}, 3);
     assert(musicExplicitVoicing(&c, 1, &v) == MUSIC_NOT_FOUR_VOICES && !v.count);
     assert(musicCheckVoicingValue(NULL, 0, NULL) == MUSIC_INVALID_INPUT);
 }

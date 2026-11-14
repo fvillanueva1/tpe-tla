@@ -825,14 +825,8 @@ static bool _writeExports(Runtime * runtime) {
 		files[k] = (OutputFile) {&pending->score, pending->format, pending->path};
 	}
 	size_t failed = 0;
-	char * residualPath = NULL;
-	OutputStatus status = outputWriteFilesWithCleanup(files, runtime->exportCount, &failed, &residualPath);
+	OutputStatus status = outputWriteFiles(files, runtime->exportCount, &failed);
 	free(files);
-	if (residualPath) {
-		_error(runtime, "cannot remove file '%s'", residualPath);
-		free(residualPath);
-		return false;
-	}
 	return _outputStatus(runtime, status, runtime->exports[failed].path);
 }
 

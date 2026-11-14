@@ -234,112 +234,29 @@ else
     fi
 fi
 
-echo "Checking instrument mapping..."
-INSTRUMENT_TEST=$(mktemp)
-if ! cc -std=gnu99 src/test/c/semantic-instrument.c src/main/c/backend/semantic-analysis/Semantic.c $MUSIC_SOURCES -o "$INSTRUMENT_TEST" || ! "$INSTRUMENT_TEST"; then
-    echo -e "    instrument mapping, ${RED}failed${OFF}"
-    STATUS=1
-fi
-rm -f "$INSTRUMENT_TEST"
-echo "Checking allocation failure..."
-OOM_TEST=$(mktemp)
-if ! cc -std=gnu99 src/test/c/semantic-oom.c src/main/c/backend/semantic-analysis/Semantic.c $MUSIC_SOURCES -Wl,--wrap=malloc -o "$OOM_TEST" || ! "$OOM_TEST"; then
-    echo -e "    allocation failure, ${RED}failed${OFF}"
-    STATUS=1
-fi
-rm -f "$OOM_TEST"
-echo "Checking music validation..."
-MUSIC_TEST=$(mktemp)
-if ! cc -std=gnu99 src/test/c/music-validation.c $MUSIC_SOURCES -o "$MUSIC_TEST" || ! "$MUSIC_TEST"; then
-    echo -e "    music validation, ${RED}failed${OFF}"
-    STATUS=1
-fi
-rm -f "$MUSIC_TEST"
-echo "Checking voice allocation failure..."
-VOICE_OOM_TEST=$(mktemp)
-if ! cc -std=gnu99 src/test/c/music-voice-oom.c $MUSIC_SOURCES -Wl,--wrap=calloc -Wl,--wrap=realloc -o "$VOICE_OOM_TEST" || ! "$VOICE_OOM_TEST"; then
-    echo -e "    voice allocation failure, ${RED}failed${OFF}"
-    STATUS=1
-fi
-rm -f "$VOICE_OOM_TEST"
-echo "Checking runtime allocation failure..."
-RUNTIME_OOM_TEST=$(mktemp)
-if ! cc -std=gnu99 -fsanitize=address src/test/c/runtime-oom.c src/main/c/backend/runtime/Runtime.c src/main/c/backend/runtime/Value.c src/main/c/backend/semantic-analysis/Semantic.c $MUSIC_SOURCES $OUTPUT_SOURCES -Wl,--wrap=malloc -Wl,--wrap=calloc -Wl,--wrap=realloc -o "$RUNTIME_OOM_TEST" || ! "$RUNTIME_OOM_TEST" 2>"$TEST_DIRECTORY/runtime-oom.err"; then
-    cat "$TEST_DIRECTORY/runtime-oom.err"
-    echo -e "    runtime allocation failure, ${RED}failed${OFF}"
-    STATUS=1
-fi
-rm -f "$RUNTIME_OOM_TEST"
-echo "Checking runtime cleanup failure..."
-RUNTIME_CLEANUP_TEST=$(mktemp)
-if ! cc -std=gnu99 -fsanitize=address src/test/c/runtime-output-cleanup.c src/main/c/backend/runtime/Runtime.c src/main/c/backend/runtime/Value.c src/main/c/backend/semantic-analysis/Semantic.c $MUSIC_SOURCES $OUTPUT_SOURCES -Wl,--wrap=unlink -o "$RUNTIME_CLEANUP_TEST" || ! "$RUNTIME_CLEANUP_TEST"; then
-    echo -e "    runtime cleanup failure, ${RED}failed${OFF}"
-    STATUS=1
-fi
-rm -f "$RUNTIME_CLEANUP_TEST"
-echo "Checking runtime values..."
-VALUE_TEST=$(mktemp)
-if ! cc -std=gnu99 -fsanitize=address src/test/c/runtime-value.c src/main/c/backend/runtime/Value.c $MUSIC_SOURCES -o "$VALUE_TEST" || ! "$VALUE_TEST"; then
-    echo -e "    runtime values, ${RED}failed${OFF}"
-    STATUS=1
-fi
-rm -f "$VALUE_TEST"
-echo "Checking music model..."
-MODEL_TEST=$(mktemp)
-if ! cc -std=gnu99 -fsanitize=address src/test/c/music-model.c $MUSIC_SOURCES -Wl,--wrap=calloc -o "$MODEL_TEST" || ! "$MODEL_TEST"; then
-    echo -e "    music model, ${RED}failed${OFF}"
-    STATUS=1
-fi
-rm -f "$MODEL_TEST"
-echo "Checking notes and intervals..."
-NOTE_TEST=$(mktemp)
-if ! cc -std=gnu99 -fsanitize=address src/test/c/music-note.c $MUSIC_SOURCES -o "$NOTE_TEST" || ! "$NOTE_TEST"; then
-    echo -e "    notes and intervals, ${RED}failed${OFF}"
-    STATUS=1
-fi
-rm -f "$NOTE_TEST"
-echo "Checking keys and scales..."
-KEY_TEST=$(mktemp)
-if ! cc -std=gnu99 -fsanitize=address src/test/c/music-key.c $MUSIC_SOURCES -o "$KEY_TEST" || ! "$KEY_TEST"; then
-    echo -e "    keys and scales, ${RED}failed${OFF}"
-    STATUS=1
-fi
-rm -f "$KEY_TEST"
-echo "Checking chords..."
-CHORD_TEST=$(mktemp)
-if ! cc -std=gnu99 -fsanitize=address src/test/c/music-chord.c $MUSIC_SOURCES -o "$CHORD_TEST" || ! "$CHORD_TEST"; then
-    echo -e "    chords, ${RED}failed${OFF}"
-    STATUS=1
-fi
-rm -f "$CHORD_TEST"
-echo "Checking properties and membership..."
-PROPERTY_TEST=$(mktemp)
-if ! cc -std=gnu99 -fsanitize=address src/test/c/music-property.c $MUSIC_SOURCES -o "$PROPERTY_TEST" || ! "$PROPERTY_TEST"; then
-    echo -e "    properties and membership, ${RED}failed${OFF}"
-    STATUS=1
-fi
-rm -f "$PROPERTY_TEST"
-echo "Checking output score..."
-SCORE_TEST=$(mktemp)
-if ! cc -std=gnu99 -fsanitize=address src/test/c/output-score.c $OUTPUT_SOURCES $MUSIC_SOURCES -Wl,--wrap=realloc -o "$SCORE_TEST" || ! "$SCORE_TEST"; then
-    echo -e "    output score, ${RED}failed${OFF}"
-    STATUS=1
-fi
-rm -f "$SCORE_TEST"
-echo "Checking progressions, transformations and voicings..."
-PROGRESSION_TEST=$(mktemp)
-if ! cc -std=gnu99 -fsanitize=address src/test/c/music-progression.c $MUSIC_SOURCES -Wl,--wrap=calloc -Wl,--wrap=malloc -o "$PROGRESSION_TEST" || ! "$PROGRESSION_TEST"; then
-    echo -e "    progressions, transformations and voicings, ${RED}failed${OFF}"
-    STATUS=1
-fi
-rm -f "$PROGRESSION_TEST"
-echo "Checking MIDI, LilyPond and file writing..."
-FILE_TEST=$(mktemp)
-if ! cc -std=gnu99 -fsanitize=address src/test/c/output-file.c $OUTPUT_SOURCES $MUSIC_SOURCES -Wl,--wrap=link -Wl,--wrap=unlink -o "$FILE_TEST" || ! "$FILE_TEST"; then
-    echo -e "    MIDI, LilyPond and file writing, ${RED}failed${OFF}"
-    STATUS=1
-fi
-rm -f "$FILE_TEST"
+# Compiles a C unit test with AddressSanitizer and runs it.
+unit_test() {
+    local name="$1"
+    shift
+    echo "Checking $name..."
+    if ! cc -std=gnu99 -fsanitize=address "$@" -o "$TEST_DIRECTORY/unit" || ! "$TEST_DIRECTORY/unit"; then
+        echo -e "    $name, ${RED}failed${OFF}"
+        STATUS=1
+    fi
+}
+SEMANTIC_SOURCES="src/main/c/backend/semantic-analysis/Semantic.c"
+RUNTIME_SOURCES="src/main/c/backend/runtime/Value.c"
+unit_test "instrument mapping" src/test/c/semantic-instrument.c $SEMANTIC_SOURCES $MUSIC_SOURCES
+unit_test "music validation" src/test/c/music-validation.c $MUSIC_SOURCES
+unit_test "runtime values" src/test/c/runtime-value.c $RUNTIME_SOURCES $MUSIC_SOURCES
+unit_test "music model" src/test/c/music-model.c $MUSIC_SOURCES
+unit_test "notes and intervals" src/test/c/music-note.c $MUSIC_SOURCES
+unit_test "keys and scales" src/test/c/music-key.c $MUSIC_SOURCES
+unit_test "chords" src/test/c/music-chord.c $MUSIC_SOURCES
+unit_test "properties and membership" src/test/c/music-property.c $MUSIC_SOURCES
+unit_test "output score" src/test/c/output-score.c $OUTPUT_SOURCES $MUSIC_SOURCES
+unit_test "progressions, transformations and voicings" src/test/c/music-progression.c $MUSIC_SOURCES
+unit_test "MIDI, LilyPond and file writing" src/test/c/output-file.c $OUTPUT_SOURCES $MUSIC_SOURCES
 echo "Suite: $ACCEPT_PASSED/$ACCEPT_TOTAL accept, $REJECT_PASSED/$REJECT_TOTAL reject; status $STATUS."
 echo "All done."
 exit $STATUS

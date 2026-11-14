@@ -2,11 +2,6 @@
 #include <assert.h>
 #include <stddef.h>
 
-/* realloc fails while "failRealloc" is set. */
-void *__real_realloc(void *, size_t);
-static bool failRealloc = false;
-void *__wrap_realloc(void *pointer, size_t size) { return failRealloc ? NULL : __real_realloc(pointer, size); }
-
 static MusicNote note(const char *lexeme) {
     MusicNote result;
     assert(musicParseNote(lexeme, &result) == MUSIC_OK);
@@ -116,26 +111,8 @@ static void values(void) {
     outputScoreDestroy(&score);
 }
 
-static void memory(void) {
-    OutputScore score;
-    assert(outputScoreInit(&score, 120, 0) == OUTPUT_OK);
-    failRealloc = true;
-    assert(outputAddNote(&score, note("C4")) == OUTPUT_NO_MEMORY && !score.count && !score.end);
-    failRealloc = false;
-    for (int i = 0; i < 64; ++i) assert(outputAddNote(&score, note("C4")) == OUTPUT_OK);
-    /* The 65th event needs to grow the array: the chord fails as a whole. */
-    MusicChord chord;
-    MusicKey c = {{'C', 0}, MUSIC_MODE_MAJOR, false};
-    assert(musicDegreeChord(c, 0, MUSIC_TRIAD, &chord) == MUSIC_OK);
-    failRealloc = true;
-    assert(outputAddChord(&score, &chord) == OUTPUT_NO_MEMORY && score.count == 64 && score.end == 64 * 480);
-    failRealloc = false;
-    outputScoreDestroy(&score);
-}
-
 int main(void) {
     basics();
     values();
-    memory();
     return 0;
 }

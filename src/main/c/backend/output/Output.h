@@ -107,15 +107,9 @@ OutputStatus outputEncodeMidi(const OutputScore *score, OutputBuffer *buffer);
 OutputStatus outputEncodeLilyPond(const OutputScore *score, OutputBuffer *buffer);
 
 /*
- * Writers. Each file is written to a temporary file next to its destination
- * and published only when every file of the call was written. On failure,
- * cleanup attempts to remove every temporary and every batch publication
- * whose device/inode still matches. Cleanup failure returns OUTPUT_WRITE_ERROR
- * and may leave files; there is no locking between the identity check and
- * unlink. They never overwrite: if
- * a destination exists (or is repeated in the call) nothing is written and
- * they return OUTPUT_FILE_EXISTS. File systems without hard links return
- * OUTPUT_WRITE_ERROR rather than risk replacing a destination.
+ * Writers. They never overwrite: if a destination exists (or is repeated in
+ * the call) nothing is written and they return OUTPUT_FILE_EXISTS. If a file
+ * cannot be written, the ones already written by the call are removed.
  */
 
 typedef enum { OUTPUT_FORMAT_MIDI, OUTPUT_FORMAT_LILYPOND } OutputFormat;
@@ -127,20 +121,11 @@ typedef struct {
 } OutputFile;
 
 /**
- * Writes the batch; on publication or cleanup failure, attempts rollback as
- * described above. "failed", when not NULL, receives the first cleanup failure's
- * index, or the index of the write/publication failure when cleanup succeeds.
- * The runtime calls the variant below once, at the end of a program that ran
- * without errors, with every "export" of the program.
+ * Writes all the files or none. "failed", when not NULL, receives the index of
+ * the file that failed. The runtime calls it once, at the end of a program
+ * that ran without errors, with every "export" of the program.
  */
 OutputStatus outputWriteFiles(const OutputFile *files, size_t count, size_t *failed);
-/**
- * Same operation, also returning the first path whose cleanup failed in
- * "residualPath" (NULL when cleanup succeeded). The caller owns that string
- * and must free it. Other cleanups are still attempted; more than one path
- * may remain. A failed identity check also reports its destination here.
- */
-OutputStatus outputWriteFilesWithCleanup(const OutputFile *files, size_t count, size_t *failed, char **residualPath);
 /** A single MIDI file (outputWriteFiles with one file). */
 OutputStatus outputWriteMidi(const OutputScore *score, const char *path);
 /** A single LilyPond file. */

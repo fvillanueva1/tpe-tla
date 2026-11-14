@@ -196,15 +196,10 @@ que `not a == b` es `not (a == b)`. Los relacionales no son asociativos:
   y lo rechaza la gramática. Un string o una interpolación sin cerrar fallan
   al llegar al final del archivo.
 
-## Proceso
+## Gramática
 
-- `BisonGrammar.y` declara `%expect 0` desde el primer commit: ningún commit
-  entra con conflictos de Bison.
-- Los tests de rechazo que dependen del análisis semántico viven en
-  `src/test/c/pending/`, que `test.sh` no ejecuta. Se mueven a `reject/` en el
-  Stage III. Así el CI se mantiene verde.
-- Los nombres de tokens y de nodos del AST se acuerdan al inicio y se
-  registran en un documento junto con los `%token`.
+`BisonGrammar.y` declara `%expect 0`: la gramática no tiene conflictos de
+Bison.
 
 En Stage III, `duration` es una palabra reservada de tipo; ya no puede usarse como identificador.
 

@@ -262,12 +262,10 @@ La semántica y el generador convierten con un cast, y `Semantic.c` tiene
 
 ## Tests
 
-- `src/test/c/music-validation.c` y `music-voice-oom.c`: los que venían de la semántica, ahora
-  sobre `Music.h`.
-- `src/test/c/music-model.c`: creación, copia profunda, liberación repetida y
-  fallos de memoria de progresiones y voicings. Se compila con
-  AddressSanitizer, así que una fuga en un camino de error hace fallar la
-  suite.
+- `src/test/c/music-validation.c`: el que venía de la semántica, ahora sobre
+  `Music.h`.
+- `src/test/c/music-model.c`: creación, copia profunda y liberación repetida
+  de progresiones y voicings.
 - `src/test/c/music-note.c`: lectura de notas, tónicas e intervalos,
   clases de altura, octava escrita, transposición con su grafía (también con
   dobles alteraciones y cruces de octava) y los límites C0 y B8.
@@ -283,7 +281,6 @@ La semántica y el generador convierten con un cast, y `Semantic.c` tiene
   acorde por clase de altura y `strict` sobre notas y acordes calculados.
 - `src/test/c/music-progression.c`: progresiones, concatenación, repetición,
   transposición, inversión, arpegio, modulación (por grado, por notas y sin
-  tonalidad), `voice` con su regla de omisión, voicings explícitos, `check` y
-  fallos de memoria (`--wrap=calloc` y `--wrap=malloc`).
+  tonalidad), `voice` con su regla de omisión, voicings explícitos y `check`.
 
 `test.sh` compila todos los tests de la biblioteca con `$MUSIC_SOURCES`.

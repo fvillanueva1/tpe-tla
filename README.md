@@ -31,6 +31,7 @@ y [análisis semántico](doc/stage-ii/semantica.md).
 ## Documentación
 
 - [Especificación final de Stage I](<doc/Cadence%20-%20Stage%20I.pdf>)
+- [Informe final de Stage III](<doc/Cadence%20-%20Stage%20III.pdf>)
 - [Decisiones de diseño de Stage II](doc/stage-ii/decisiones.md)
 - [Tokens y nodos del AST](doc/stage-ii/tokens.md)
 - [Cobertura y clasificación de los tests](doc/stage-ii/tests.md)
